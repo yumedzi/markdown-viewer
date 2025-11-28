@@ -12,13 +12,16 @@
 ## Features
 
 - **Full HTML Support** - Render HTML tags within markdown
-- **Mermaid Diagrams** - Beautiful diagram rendering
-- **Syntax Highlighting** - Code blocks with Fira Code font
+- **Mermaid Diagrams** - Beautiful diagram rendering with popup viewer (pan/zoom)
+- **PrismJS Syntax Highlighting** - Code blocks with Solarized Light theme (offline)
+- **Live Markdown Editor** - Side-by-side editing with real-time preview
+- **PDF Export** - One-click export with full document support
 - **Auto Table of Contents** - Hierarchical index of headers with one-click navigation
 - **Search with Highlighting** - Find text with real-time highlighting (Ctrl+F)
-- **Zoom Controls** - Keyboard shortcuts and mouse wheel zoom
-- **Fullscreen Mode** - Distraction-free viewing
-- **Recent Files** - Quick access to last 100 opened files
+- **File Path Display** - Shows current file with copy-to-clipboard
+- **Zoom Controls** - Keyboard shortcuts and mouse wheel zoom (50%-200%)
+- **Fullscreen Mode** - Distraction-free viewing (F11)
+- **Recent Files** - Quick access to last 100 files with delete/clear all
 - **Professional Theme** - Clean interface with Omnicore branding
 - **Cross-Platform** - Works on Windows, macOS, and Linux
 - **Offline Support** - Works without internet connection
@@ -64,6 +67,7 @@ This creates both portable exe and installer.
 ### Keyboard Shortcuts
 
 - **Ctrl+O** (Cmd+O on Mac) - Open markdown file
+- **Ctrl+S** (Cmd+S on Mac) - Save file (in edit mode)
 - **Ctrl+F** (Cmd+F on Mac) - Open search panel
 - **Enter** (in search) - Next match
 - **Shift+Enter** (in search) - Previous match
