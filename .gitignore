@@ -52,5 +52,5 @@ CLAUDE.md
 nul
 
 # Temporary files
-temp-mermaid.html
-temp-mermaid-debug.html
+tmp/
+temp-*.html

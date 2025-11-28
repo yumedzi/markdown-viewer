@@ -814,11 +814,93 @@ async function renderMarkdown(content) {
     Prism.highlightAll();
   }
 
+  // Add maximize buttons to tables
+  addTableMaximizeButtons();
+
   // Build table of contents
   buildTableOfContents();
 
   // Scroll to top
   viewer.parentElement.scrollTop = 0;
+}
+
+// Add maximize buttons to tables for popup view
+function addTableMaximizeButtons() {
+  const tables = viewer.querySelectorAll('.markdown-body table, #viewer table');
+
+  tables.forEach((table) => {
+    // Skip if already wrapped
+    if (table.parentNode.classList?.contains('table-container')) {
+      return;
+    }
+
+    // Wrap in container
+    const container = document.createElement('div');
+    container.className = 'table-container';
+    table.parentNode.insertBefore(container, table);
+    container.appendChild(table);
+
+    // Add maximize button
+    const maxBtn = document.createElement('button');
+    maxBtn.className = 'table-maximize-btn';
+    maxBtn.title = 'Open in interactive popup';
+    maxBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+      </svg>
+    `;
+
+    maxBtn.addEventListener('click', () => {
+      // Extract table data
+      const tableData = extractTableData(table);
+      ipcRenderer.send('open-table-popup', { tableData });
+    });
+
+    container.appendChild(maxBtn);
+  });
+}
+
+// Extract table data as structured JSON for Tabulator
+function extractTableData(table) {
+  const data = [];
+  const columns = [];
+
+  // Extract headers
+  const headerRow = table.querySelector('thead tr, tr:first-child');
+  if (headerRow) {
+    const headers = headerRow.querySelectorAll('th, td');
+    headers.forEach((header, index) => {
+      const headerText = header.textContent.trim() || `Column ${index + 1}`;
+      columns.push({
+        title: headerText,
+        field: `col${index}`,
+        headerFilter: 'input',
+        headerFilterPlaceholder: 'Filter...'
+      });
+    });
+  }
+
+  // Extract data rows
+  const tbody = table.querySelector('tbody') || table;
+  const rows = tbody.querySelectorAll('tr');
+
+  rows.forEach((row, rowIndex) => {
+    // Skip header row if no thead
+    if (!table.querySelector('thead') && rowIndex === 0) {
+      return;
+    }
+
+    const cells = row.querySelectorAll('td, th');
+    if (cells.length > 0) {
+      const rowData = {};
+      cells.forEach((cell, index) => {
+        rowData[`col${index}`] = cell.textContent.trim();
+      });
+      data.push(rowData);
+    }
+  });
+
+  return { columns, data };
 }
 
 // Handle file opened
