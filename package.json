@@ -31,7 +31,8 @@
     "dompurify": "^3.0.6",
     "marked": "^9.1.6",
     "mermaid": "^10.6.1",
-    "prismjs": "^1.30.0"
+    "prismjs": "^1.30.0",
+    "svg-pan-zoom": "^3.6.2"
   },
   "build": {
     "appId": "com.omnicore.markdownviewer",

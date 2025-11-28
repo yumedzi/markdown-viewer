@@ -50,3 +50,7 @@ CLAUDE.md
 
 # Windows null device files
 nul
+
+# Temporary files
+temp-mermaid.html
+temp-mermaid-debug.html

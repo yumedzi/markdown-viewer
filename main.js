@@ -198,6 +198,280 @@ ipcMain.on('export-pdf', async (event, data) => {
   }
 });
 
+// Handle markdown file save request from renderer
+ipcMain.on('save-markdown-file', (event, data) => {
+  try {
+    const { filePath, content } = data;
+
+    if (!filePath) {
+      mainWindow.webContents.send('save-markdown-result', {
+        success: false,
+        error: 'No file path provided'
+      });
+      return;
+    }
+
+    // Write file to disk
+    fs.writeFile(filePath, content, 'utf8', (err) => {
+      if (err) {
+        console.error('Error saving file:', err);
+        mainWindow.webContents.send('save-markdown-result', {
+          success: false,
+          error: err.message
+        });
+      } else {
+        console.log('File saved successfully:', filePath);
+        mainWindow.webContents.send('save-markdown-result', {
+          success: true,
+          path: filePath
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error in save handler:', error);
+    mainWindow.webContents.send('save-markdown-result', {
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Handle Mermaid diagram popup request
+ipcMain.on('open-mermaid-popup', (event, data) => {
+  const { svgContent } = data;
+
+  // Create popup window
+  const popupWindow = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    backgroundColor: '#ffffff',
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    },
+    title: 'Mermaid Diagram - Zoom with mouse wheel, Pan by dragging',
+    icon: path.join(__dirname, 'logo.ico')
+  });
+
+  popupWindow.setMenu(null);
+
+  // Write a temporary HTML file
+  const tempHtmlPath = path.join(__dirname, 'temp-mermaid.html');
+
+  // Create HTML with pan/zoom using matrix transform approach
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Diagram</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f0f0f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            pointer-events: auto;
+            z-index: 10;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #333;
+        }
+        p {
+            margin: 0 0 10px 0;
+            font-size: 12px;
+            color: #666;
+        }
+        button {
+            padding: 8px 12px;
+            background-color: #279EA7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #1f8089;
+        }
+        #svg-container-wrapper {
+            cursor: grab;
+            overflow: hidden;
+        }
+        #svg-container-wrapper:active {
+            cursor: grabbing;
+        }
+        #viewport {
+            will-change: transform;
+        }
+    </style>
+</head>
+<body>
+    <div class="ui-overlay">
+        <h1>Mermaid Diagram</h1>
+        <p>• Scroll to Zoom (at cursor)<br>• Click & Drag to Pan</p>
+        <button onclick="resetView()">Reset View</button>
+    </div>
+    <div id="svg-container-wrapper" style="width: 100%; height: 100%; position: relative;">
+        <div id="viewport" style="transform-origin: 0 0;">
+            ${svgContent}
+        </div>
+    </div>
+    <script>
+        const svgWrapper = document.getElementById('svg-container-wrapper');
+        const viewport = document.getElementById('viewport');
+        const mermaidSvg = viewport.querySelector('svg');
+
+        // Don't extract children - keep the Mermaid SVG intact so styles work
+        if (mermaidSvg) {
+            mermaidSvg.style.display = 'block';
+            mermaidSvg.style.maxWidth = '100%';
+            mermaidSvg.style.height = 'auto';
+        }
+        const svg = svgWrapper; // Treat wrapper as pan/zoom container
+        let state = {
+            scale: 1,
+            panning: false,
+            pointX: 0,
+            pointY: 0,
+            startX: 0,
+            startY: 0
+        };
+        const config = {
+            minScale: 0.01,
+            maxScale: 10,
+            zoomSpeed: 0.1
+        };
+
+        // Initial fit to screen
+        if (mermaidSvg) {
+            const svgRect = mermaidSvg.getBoundingClientRect();
+            const wrapperRect = svgWrapper.getBoundingClientRect();
+            const scaleX = (wrapperRect.width * 0.9) / svgRect.width;
+            const scaleY = (wrapperRect.height * 0.9) / svgRect.height;
+            const initialScale = Math.min(scaleX, scaleY, 1);
+            state.scale = initialScale;
+            state.pointX = (wrapperRect.width - svgRect.width * initialScale) / 2;
+            state.pointY = (wrapperRect.height - svgRect.height * initialScale) / 2;
+            updateTransform();
+        }
+
+        // Mouse wheel zoom
+        svg.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const delta = -Math.sign(e.deltaY);
+            const zoomFactor = 1 + (config.zoomSpeed * delta);
+            let newScale = state.scale * zoomFactor;
+
+            if (newScale < config.minScale) newScale = config.minScale;
+            if (newScale > config.maxScale) newScale = config.maxScale;
+
+            const ratio = newScale / state.scale;
+            state.pointX = mouseX - (mouseX - state.pointX) * ratio;
+            state.pointY = mouseY - (mouseY - state.pointY) * ratio;
+            state.scale = newScale;
+
+            updateTransform();
+        }, { passive: false });
+
+        // Pan with left mouse button
+        function startPan(e) {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            state.panning = true;
+            state.startX = e.clientX - state.pointX;
+            state.startY = e.clientY - state.pointY;
+            svg.style.cursor = 'grabbing';
+        }
+
+        function pan(e) {
+            if (!state.panning) return;
+            e.preventDefault();
+            state.pointX = e.clientX - state.startX;
+            state.pointY = e.clientY - state.startY;
+            updateTransform();
+        }
+
+        function endPan(e) {
+            state.panning = false;
+            svg.style.cursor = 'grab';
+        }
+
+        svg.addEventListener('mousedown', startPan);
+        window.addEventListener('mousemove', pan);
+        window.addEventListener('mouseup', endPan);
+        svg.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                state.panning = true;
+                state.startX = e.touches[0].clientX - state.pointX;
+                state.startY = e.touches[0].clientY - state.pointY;
+            }
+        }, {passive: false});
+        window.addEventListener('touchmove', (e) => {
+            if (!state.panning || e.touches.length !== 1) return;
+            e.preventDefault();
+            state.pointX = e.touches[0].clientX - state.startX;
+            state.pointY = e.touches[0].clientY - state.startY;
+            updateTransform();
+        }, {passive: false});
+        window.addEventListener('touchend', endPan);
+
+        function updateTransform() {
+            viewport.style.transform = \`translate(\${state.pointX}px, \${state.pointY}px) scale(\${state.scale})\`;
+        }
+        window.resetView = function() {
+            state = {
+                scale: 1,
+                panning: false,
+                pointX: 0,
+                pointY: 0,
+                startX: 0,
+                startY: 0
+            };
+            updateTransform();
+        }
+    </script>
+</body>
+</html>`;
+
+  // Write temp HTML file
+  fs.writeFileSync(tempHtmlPath, htmlContent);
+
+  // Load the HTML file
+  popupWindow.loadFile(tempHtmlPath);
+
+  // Clean up temp file after window closes
+  popupWindow.on('closed', () => {
+    try {
+      if (fs.existsSync(tempHtmlPath)) {
+        fs.unlinkSync(tempHtmlPath);
+      }
+    } catch (err) {
+      console.error('Error cleaning up temp file:', err);
+    }
+  });
+});
+
 // Handle file argument from command line or "Open with"
 function handleFileArgument(argv) {
   // In packaged app: argv[1] is the file path

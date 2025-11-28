@@ -66,9 +66,22 @@ const fileInfoBar = document.getElementById('fileInfoBar');
 const fileName = document.getElementById('fileName');
 const filePath = document.getElementById('filePath');
 const exportPdfBtn = document.getElementById('exportPdf');
+const toggleEditBtn = document.getElementById('toggleEdit');
+const editorPanel = document.getElementById('editorPanel');
+const markdownEditor = document.getElementById('markdownEditor');
+const saveButton = document.getElementById('saveButton');
+const unsavedIndicator = document.getElementById('unsavedIndicator');
+const contentWrapper = document.querySelector('.content-wrapper');
 
 // Current file tracking
 let currentFilePath = null;
+
+// Editor state
+let isEditMode = false;
+let hasUnsavedChanges = false;
+let originalMarkdown = '';
+let previewDebounceTimer = null;
+const PREVIEW_DEBOUNCE_DELAY = 3000; // 3 seconds
 
 // Update file info display
 function updateFileInfo(path) {
@@ -167,16 +180,120 @@ exportPdfBtn.addEventListener('click', () => {
   ipcRenderer.send('export-pdf', { currentFileName });
 });
 
+// Show notification toast
+function showNotification(message, duration = 3000) {
+  const toast = document.getElementById('notificationToast');
+  const messageEl = document.getElementById('notificationMessage');
+
+  messageEl.textContent = message;
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, duration);
+}
+
 // Handle PDF export result
 ipcRenderer.on('pdf-export-result', (event, data) => {
   if (data.success) {
     console.log('PDF exported successfully to:', data.path);
-    // Optional: Show success notification
+    const fileName = data.path.split(/[\\/]/).pop();
+    showNotification(`PDF exported: ${fileName}`);
   } else {
     console.error('PDF export failed:', data.error);
     alert(`Failed to export PDF: ${data.error}`);
   }
 });
+
+// Toggle edit mode
+toggleEditBtn.addEventListener('click', () => {
+  if (isEditMode && hasUnsavedChanges) {
+    if (!confirm('You have unsaved changes. Exit edit mode anyway?')) {
+      return;
+    }
+  }
+
+  isEditMode = !isEditMode;
+
+  if (isEditMode) {
+    // Enter edit mode
+    contentWrapper.classList.add('split-view');
+    markdownEditor.value = originalMarkdown;
+    hasUnsavedChanges = false;
+    updateUnsavedIndicator();
+    toggleEditBtn.style.background = 'var(--primary-color)';
+    toggleEditBtn.style.color = '#ffffff';
+  } else {
+    // Exit edit mode
+    contentWrapper.classList.remove('split-view');
+    toggleEditBtn.style.background = '';
+    toggleEditBtn.style.color = '';
+    clearTimeout(previewDebounceTimer);
+  }
+});
+
+// Live preview with 3-second debounce
+markdownEditor.addEventListener('input', () => {
+  if (!isEditMode) return;
+
+  hasUnsavedChanges = (markdownEditor.value !== originalMarkdown);
+  updateUnsavedIndicator();
+
+  // Clear existing timer
+  clearTimeout(previewDebounceTimer);
+
+  // Set new timer for 3 seconds
+  previewDebounceTimer = setTimeout(() => {
+    renderMarkdown(markdownEditor.value);
+  }, PREVIEW_DEBOUNCE_DELAY);
+});
+
+// Save file
+function saveMarkdownFile() {
+  if (!currentFilePath) {
+    alert('No file is currently open.');
+    return;
+  }
+
+  const content = markdownEditor.value;
+  ipcRenderer.send('save-markdown-file', {
+    filePath: currentFilePath,
+    content: content
+  });
+}
+
+// Save button click
+saveButton.addEventListener('click', saveMarkdownFile);
+
+// Ctrl+S keyboard shortcut
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's' && isEditMode) {
+    e.preventDefault();
+    saveMarkdownFile();
+  }
+});
+
+// Handle save result
+ipcRenderer.on('save-markdown-result', (event, data) => {
+  if (data.success) {
+    originalMarkdown = markdownEditor.value;
+    hasUnsavedChanges = false;
+    updateUnsavedIndicator();
+    console.log('File saved successfully');
+  } else {
+    console.error('Save failed:', data.error);
+    alert(`Failed to save file: ${data.error}`);
+  }
+});
+
+// Update unsaved indicator
+function updateUnsavedIndicator() {
+  if (hasUnsavedChanges) {
+    unsavedIndicator.style.display = 'inline';
+  } else {
+    unsavedIndicator.style.display = 'none';
+  }
+}
 
 // Recent files panel toggle
 toggleRecentBtn.addEventListener('click', () => {
@@ -304,6 +421,16 @@ function updateRecentFilesList() {
           updateRecentFilesList();
           return;
         }
+        // Store original markdown for editor
+        originalMarkdown = data;
+
+        // If in edit mode, update editor content
+        if (isEditMode) {
+          markdownEditor.value = originalMarkdown;
+          hasUnsavedChanges = false;
+          updateUnsavedIndicator();
+        }
+
         renderMarkdown(data);
         updateFileInfo(file.path);
         saveRecentFile(file.path);
@@ -639,6 +766,35 @@ async function renderMarkdown(content) {
         querySelector: '.mermaid',
         suppressErrors: false
       });
+
+      // Add maximize buttons to rendered diagrams
+      mermaidElements.forEach((el) => {
+        const svg = el.querySelector('svg');
+        if (svg) {
+          // Wrap in container
+          const container = document.createElement('div');
+          container.className = 'mermaid-container';
+          el.parentNode.insertBefore(container, el);
+          container.appendChild(el);
+
+          // Add maximize button
+          const maxBtn = document.createElement('button');
+          maxBtn.className = 'mermaid-maximize-btn';
+          maxBtn.title = 'Open in new window';
+          maxBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+            </svg>
+          `;
+
+          maxBtn.addEventListener('click', () => {
+            const svgContent = svg.outerHTML;
+            ipcRenderer.send('open-mermaid-popup', { svgContent });
+          });
+
+          container.appendChild(maxBtn);
+        }
+      });
     }
   } catch (error) {
     console.error('Mermaid rendering error:', error);
@@ -667,6 +823,16 @@ async function renderMarkdown(content) {
 
 // Handle file opened
 ipcRenderer.on('file-opened', async (event, data) => {
+  // Store original markdown for editor
+  originalMarkdown = data.content;
+
+  // If in edit mode, update editor content
+  if (isEditMode) {
+    markdownEditor.value = originalMarkdown;
+    hasUnsavedChanges = false;
+    updateUnsavedIndicator();
+  }
+
   await renderMarkdown(data.content);
 
   // Update file info bar

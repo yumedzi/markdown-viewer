@@ -204,11 +204,107 @@ body {
   overflow-x: hidden;
 }
 
+/* Split-view mode */
+.content-wrapper.split-view {
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+.content-wrapper.split-view .editor-panel {
+  display: flex;
+}
+
+.content-wrapper.split-view #viewer {
+  max-width: none;
+  width: 50%;
+  border-left: 1px solid var(--border-color);
+}
+
+/* Editor Panel */
+.editor-panel {
+  display: none;
+  flex-direction: column;
+  width: 50%;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+}
+
+.editor-header {
+  padding: 12px 20px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: var(--secondary-color);
+  font-size: 13px;
+}
+
+.editor-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.unsaved-indicator {
+  color: #e74c3c;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.editor-save-btn {
+  background: var(--primary-color);
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Fira Code Local', 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.editor-save-btn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(39, 158, 167, 0.3);
+}
+
+.editor-save-btn:active {
+  transform: translateY(0);
+}
+
+.markdown-editor {
+  flex: 1;
+  width: 100%;
+  padding: 20px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Fira Code Local', 'Fira Code', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  tab-size: 2;
+}
+
+.markdown-editor::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
 #viewer {
   max-width: 900px;
   margin: 0 auto;
   padding: 40px 20px;
   line-height: 1.8;
+  overflow-y: auto;
 }
 
 .markdown-body {
@@ -411,17 +507,31 @@ body {
 
 .welcome h1 {
   margin-bottom: 20px;
+  font-size: 28px;
 }
 
 .features {
   text-align: left;
   max-width: 500px;
-  margin: 40px auto;
+  margin: 30px auto;
   background: var(--bg-secondary);
-  padding: 30px;
+  padding: 20px 25px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.features h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.features ul {
+  font-size: 13px;
+}
+
+.features li {
+  margin-bottom: 6px;
 }
 
 .demo-mermaid {
@@ -826,7 +936,8 @@ html {
   .file-info-bar,
   .search-panel,
   .recent-panel,
-  .index-panel {
+  .index-panel,
+  .editor-panel {
     display: none !important;
   }
 
@@ -844,6 +955,15 @@ html {
     overflow: visible;
     height: auto;
     width: 100%;
+    display: block !important;
+  }
+
+  /* Ensure viewer takes full width and has no borders */
+  #viewer {
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+    border-left: none !important;
   }
 
   /* Ensure markdown content uses full width */
@@ -864,4 +984,82 @@ html {
   body {
     background: white;
   }
+}
+
+/* Notification Toast */
+.notification-toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: var(--primary-color);
+  color: #ffffff;
+  padding: 16px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.notification-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notification-icon {
+  flex-shrink: 0;
+}
+
+.notification-message {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Fira Code Local', 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
+}
+
+/* Mermaid Maximize Button */
+.mermaid-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.mermaid-maximize-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--primary-color);
+  color: #ffffff;
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.mermaid-container:hover .mermaid-maximize-btn {
+  opacity: 1;
+}
+
+.mermaid-maximize-btn:hover {
+  background: var(--accent-hover);
+  transform: scale(1.1);
+}
+
+.mermaid-maximize-btn:active {
+  transform: scale(1);
 }
