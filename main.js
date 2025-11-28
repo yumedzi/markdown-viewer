@@ -472,6 +472,313 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
   });
 });
 
+// Handle Table popup request
+ipcMain.on('open-table-popup', (event, data) => {
+  const { tableData } = data;
+
+  // Create popup window
+  const popupWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    backgroundColor: '#ffffff',
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    },
+    title: 'Interactive Table - Sort, Filter, Export',
+    icon: path.join(__dirname, 'logo.ico')
+  });
+
+  popupWindow.setMenu(null);
+
+  // Write a temporary HTML file
+  const tempHtmlPath = path.join(__dirname, 'temp-table.html');
+
+  // Read Tabulator files from local directory
+  const tabulatorJsPath = path.join(__dirname, 'libs', 'tabulator', 'tabulator.min.js');
+  const tabulatorCssPath = path.join(__dirname, 'libs', 'tabulator', 'tabulator.min.css');
+
+  const tabulatorJs = fs.readFileSync(tabulatorJsPath, 'utf8');
+  const tabulatorCss = fs.readFileSync(tabulatorCssPath, 'utf8');
+
+  // Create HTML with embedded Tabulator
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Table</title>
+    <style>
+        ${tabulatorCss}
+
+        /* Custom theme to match app colors */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            color: #279EA7;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 16px;
+            background-color: #279EA7;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            background-color: #1f8089;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(39, 158, 167, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .table-wrapper {
+            flex: 1;
+            background: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #data-table {
+            flex: 1;
+        }
+
+        .info {
+            padding: 12px 20px;
+            background: #e8e8e8;
+            color: #5a6b7d;
+            font-size: 13px;
+            border-bottom: 1px solid #d0d0d0;
+        }
+
+        /* Tabulator theme customization */
+        .tabulator {
+            font-size: 13px;
+            border: none;
+        }
+
+        .tabulator .tabulator-header {
+            background-color: #1F3244;
+            color: #279EA7;
+            border: none;
+        }
+
+        .tabulator .tabulator-header .tabulator-col {
+            background-color: #1F3244;
+            border-right: 1px solid #3a4a5c;
+        }
+
+        .tabulator .tabulator-header .tabulator-col .tabulator-col-content {
+            padding: 12px;
+        }
+
+        .tabulator .tabulator-header .tabulator-col .tabulator-col-title {
+            color: #279EA7;
+            font-weight: 600;
+        }
+
+        .tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
+            background-color: #2a3a4c;
+        }
+
+        .tabulator .tabulator-tableholder .tabulator-table .tabulator-row {
+            border-bottom: 1px solid #d0d0d0;
+        }
+
+        .tabulator .tabulator-tableholder .tabulator-table .tabulator-row:hover {
+            background-color: #f5f5f5;
+        }
+
+        .tabulator .tabulator-tableholder .tabulator-table .tabulator-row .tabulator-cell {
+            padding: 10px 12px;
+            border-right: 1px solid #e8e8e8;
+        }
+
+        .tabulator .tabulator-footer {
+            background-color: #f5f5f5;
+            border-top: 2px solid #d0d0d0;
+            padding: 8px;
+        }
+
+        .tabulator .tabulator-footer .tabulator-page {
+            background-color: #279EA7;
+            color: white;
+            border: none;
+        }
+
+        .tabulator .tabulator-footer .tabulator-page:hover {
+            background-color: #1f8089;
+        }
+
+        .tabulator .tabulator-footer .tabulator-page.active {
+            background-color: #1F3244;
+        }
+
+        /* Header filter styling */
+        .tabulator .tabulator-header-filter input {
+            border: 1px solid #d0d0d0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: white;
+            color: #1F3244;
+        }
+
+        .tabulator .tabulator-header-filter input:focus {
+            border-color: #279EA7;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Interactive Table Viewer</h1>
+            <div class="controls">
+                <button onclick="clearFilters()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Clear Filters
+                </button>
+                <button onclick="exportCSV()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export CSV
+                </button>
+                <button onclick="exportJSON()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export JSON
+                </button>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <div class="info">
+                <strong>Tips:</strong> Click column headers to sort • Type in filter boxes to search • Use pagination at bottom • Export filtered data
+            </div>
+            <div id="data-table"></div>
+        </div>
+    </div>
+
+    <script>
+        ${tabulatorJs}
+
+        // Initialize Tabulator
+        const tableData = ${JSON.stringify(tableData)};
+
+        const table = new Tabulator("#data-table", {
+            data: tableData.data,
+            columns: tableData.columns,
+            layout: "fitColumns",
+            pagination: true,
+            paginationSize: 50,
+            paginationSizeSelector: [25, 50, 100, 200, true],
+            paginationCounter: "rows",
+            movableColumns: true,
+            resizableColumns: true,
+            responsiveLayout: "collapse",
+            headerFilterLiveFilterDelay: 300,
+            initialSort: [],
+            height: "100%"
+        });
+
+        // Export functions
+        function exportCSV() {
+            table.download("csv", "table-export.csv");
+        }
+
+        function exportJSON() {
+            table.download("json", "table-export.json");
+        }
+
+        function clearFilters() {
+            table.clearHeaderFilter();
+        }
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.close();
+            }
+        });
+    </script>
+</body>
+</html>`;
+
+  // Write temp HTML file
+  fs.writeFileSync(tempHtmlPath, htmlContent);
+
+  // Load the HTML file
+  popupWindow.loadFile(tempHtmlPath);
+
+  // Clean up temp file after window closes
+  popupWindow.on('closed', () => {
+    try {
+      if (fs.existsSync(tempHtmlPath)) {
+        fs.unlinkSync(tempHtmlPath);
+      }
+    } catch (err) {
+      console.error('Error cleaning up temp file:', err);
+    }
+  });
+});
+
 // Handle file argument from command line or "Open with"
 function handleFileArgument(argv) {
   // In packaged app: argv[1] is the file path
