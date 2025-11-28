@@ -47,8 +47,23 @@
       "output": "dist"
     },
     "files": [
-      "**/*",
-      "!**/*.md"
+      "index.html",
+      "main.js",
+      "renderer.js",
+      "styles.css",
+      "logo.ico",
+      "logo.png",
+      "omnicore_ico.png",
+      "libs/**/*",
+      "node_modules/**/*",
+      "!**/*.md",
+      "!dist/**/*",
+      "!release-artifacts/**/*",
+      "!linux-builds/**/*",
+      "!ss/**/*",
+      "!tmp/**/*",
+      "!.github/**/*",
+      "!.git/**/*"
     ],
     "win": {
       "target": [
