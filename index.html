@@ -60,6 +60,13 @@
             <line x1="3" y1="18" x2="3.01" y2="18"></line>
           </svg>
         </button>
+        <button class="btn" id="toggleEdit" title="Toggle Edit Mode">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          Edit
+        </button>
         <button class="btn" id="exportPdf" title="Export to PDF">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -148,6 +155,25 @@
       </div>
 
       <div class="content-wrapper">
+      <!-- Editor Panel -->
+      <div id="editorPanel" class="editor-panel">
+        <div class="editor-header">
+          <span>Raw Markdown</span>
+          <div class="editor-controls">
+            <span id="unsavedIndicator" class="unsaved-indicator" style="display: none;">● Unsaved</span>
+            <button id="saveButton" class="editor-save-btn" title="Save (Ctrl+S)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              Save
+            </button>
+          </div>
+        </div>
+        <textarea id="markdownEditor" class="markdown-editor" placeholder="Start typing markdown..."></textarea>
+      </div>
+
       <div id="viewer" class="markdown-body">
         <div class="welcome">
           <h1>Welcome to Omnicore Markdown Viewer</h1>
@@ -156,13 +182,16 @@
             <h2>Features</h2>
             <ul>
               <li>Full HTML support in markdown</li>
-              <li>Mermaid diagrams</li>
-              <li>Syntax highlighting</li>
+              <li>Mermaid diagrams rendering</li>
+              <li>PrismJS syntax highlighting (offline)</li>
+              <li>Live markdown editor with split-view</li>
+              <li>PDF export with full document support</li>
               <li>Auto-generated Table of Contents</li>
               <li>Search with highlighting (Ctrl+F)</li>
-              <li>Zoom controls</li>
-              <li>Fullscreen mode</li>
-              <li>Recent files history</li>
+              <li>File path display with copy-to-clipboard</li>
+              <li>Zoom controls (50%-200%)</li>
+              <li>Fullscreen mode (F11)</li>
+              <li>Recent files with delete & clear all</li>
             </ul>
           </div>
         </div>
@@ -180,6 +209,17 @@
     </div>
     </div>
   </div>
+
+  <!-- Notification Toast -->
+  <div id="notificationToast" class="notification-toast">
+    <div class="notification-content">
+      <svg class="notification-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span id="notificationMessage" class="notification-message"></span>
+    </div>
+  </div>
+
   <script src="renderer.js"></script>
 </body>
 </html>
