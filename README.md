@@ -138,9 +138,6 @@ This creates both portable exe and installer.
 - You can set it as the default program for markdown files
 - Double-click any `.md` file to open in Omnicore Markdown Viewer
 
-### Method 4: Drag & Drop (Not yet implemented)
-- Coming soon: Drag `.md` files onto the app window
-
 ## Mermaid Support
 
 The viewer supports all Mermaid diagram types. Simply use mermaid code blocks:
@@ -188,11 +185,6 @@ graph TD
 </div>
 
 ### Mermaid Diagram Popup Viewer
-<div align="center">
-  <img src="ss/markdown-viewer_recent_mermaid_open.png" alt="Mermaid Diagram with Popup Button" width="800">
-  <p><em>Mermaid diagrams with maximize button to open in dedicated viewer</em></p>
-</div>
-
 <div align="center">
   <img src="ss/markdown-viewer_recent_mermaid_opened.png" alt="Mermaid Popup Window" width="800">
   <p><em>Interactive Mermaid popup window with pan (click & drag) and zoom (scroll wheel) controls</em></p>
