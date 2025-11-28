@@ -7,7 +7,10 @@
     "start": "electron .",
     "build": "electron-builder --win portable",
     "build-installer": "electron-builder --win nsis",
-    "build-all": "electron-builder --win"
+    "build-all": "electron-builder --win",
+    "build-linux": "electron-builder --linux",
+    "build-linux-appimage": "electron-builder --linux AppImage",
+    "build-linux-deb": "electron-builder --linux deb"
   },
   "keywords": [
     "markdown",
@@ -16,7 +19,10 @@
     "mermaid",
     "omnicore"
   ],
-  "author": "Omnicore",
+  "author": {
+    "name": "Omnicore",
+    "email": "info@omnicore.com.tr"
+  },
   "license": "MIT",
   "homepage": "https://www.omnicore.com.tr",
   "repository": {
@@ -78,9 +84,20 @@
     },
     "linux": {
       "target": [
+        "deb",
         "AppImage"
       ],
-      "icon": "logo.png"
+      "category": "Utility",
+      "maintainer": "Omnicore <info@omnicore.com.tr>",
+      "icon": "omnicore_ico.png",
+      "fileAssociations": [
+        {
+          "ext": "md",
+          "name": "Markdown Document",
+          "description": "Markdown Document",
+          "mimeType": "text/markdown"
+        }
+      ]
     }
   }
 }
