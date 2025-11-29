@@ -1025,6 +1025,127 @@ html {
   font-family: 'Fira Code Local', 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
 }
 
+/* File Update Toast */
+.file-update-toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid var(--primary-color);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  z-index: 10001;
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  min-width: 380px;
+  max-width: 450px;
+}
+
+.file-update-toast.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.file-update-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.file-update-icon {
+  color: var(--primary-color);
+  flex-shrink: 0;
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.file-update-toast.show .file-update-icon {
+  animation: none;
+}
+
+.file-update-text {
+  flex: 1;
+}
+
+.file-update-text strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.file-update-text p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.file-update-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.file-update-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+}
+
+.file-update-btn.reload {
+  background: var(--primary-color);
+  color: #ffffff;
+  flex: 1;
+}
+
+.file-update-btn.reload:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(39, 158, 167, 0.3);
+}
+
+.file-update-btn.reload:active {
+  transform: translateY(0);
+}
+
+.file-update-btn.dismiss {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 8px 20px;
+}
+
+.file-update-btn.dismiss:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.file-update-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* Mermaid Maximize Button */
 .mermaid-container {
   position: relative;

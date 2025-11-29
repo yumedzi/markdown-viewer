@@ -31,7 +31,8 @@
   },
   "devDependencies": {
     "electron": "^27.0.0",
-    "electron-builder": "^24.6.4"
+    "electron-builder": "^24.6.4",
+    "png-to-ico": "^3.0.1"
   },
   "dependencies": {
     "dompurify": "^3.0.6",
@@ -54,6 +55,8 @@
       "logo.ico",
       "logo.png",
       "omnicore_ico.png",
+      "file-icon.png",
+      "file-icon.ico",
       "libs/**/*",
       "node_modules/**/*",
       "!**/*.md",
@@ -87,7 +90,7 @@
           "ext": "md",
           "name": "Markdown Document",
           "description": "Markdown Document",
-          "icon": "logo.ico",
+          "icon": "file-icon.ico",
           "role": "Viewer"
         }
       ]
@@ -96,7 +99,16 @@
       "target": [
         "dmg"
       ],
-      "icon": "logo.png"
+      "icon": "logo.png",
+      "fileAssociations": [
+        {
+          "ext": "md",
+          "name": "Markdown Document",
+          "description": "Markdown Document",
+          "icon": "file-icon.png",
+          "role": "Viewer"
+        }
+      ]
     },
     "linux": {
       "target": [
@@ -111,7 +123,8 @@
           "ext": "md",
           "name": "Markdown Document",
           "description": "Markdown Document",
-          "mimeType": "text/markdown"
+          "mimeType": "text/markdown",
+          "icon": "file-icon.png"
         }
       ]
     }

@@ -5,6 +5,9 @@ const os = require('os');
 
 let mainWindow;
 let fileToOpen = null;
+let fileWatcher = null; // File watching state
+let watchedFilePath = null;
+let lastModifiedTime = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -70,6 +73,93 @@ function createWindow() {
   });
 }
 
+// File watching functions
+function startFileWatching(filePath) {
+  // Stop any existing watcher
+  stopFileWatching();
+
+  if (!fs.existsSync(filePath)) {
+    console.error('Cannot watch non-existent file:', filePath);
+    return;
+  }
+
+  watchedFilePath = filePath;
+
+  // Get initial modification time
+  try {
+    const stats = fs.statSync(filePath);
+    lastModifiedTime = stats.mtimeMs;
+  } catch (err) {
+    console.error('Error getting file stats:', err);
+    return;
+  }
+
+  // Check for changes every 5 seconds
+  fileWatcher = setInterval(() => {
+    checkFileChanges();
+  }, 5000);
+
+  console.log('Started watching file:', filePath);
+}
+
+function checkFileChanges() {
+  if (!watchedFilePath || !fs.existsSync(watchedFilePath)) {
+    if (watchedFilePath && !fs.existsSync(watchedFilePath)) {
+      // File was deleted
+      mainWindow.webContents.send('file-deleted', { path: watchedFilePath });
+      stopFileWatching();
+    }
+    return;
+  }
+
+  try {
+    const stats = fs.statSync(watchedFilePath);
+    const currentModTime = stats.mtimeMs;
+
+    // Check if file has been modified
+    if (currentModTime > lastModifiedTime) {
+      console.log('File modified externally:', watchedFilePath);
+      lastModifiedTime = currentModTime;
+
+      // Notify renderer about file change
+      mainWindow.webContents.send('file-changed-externally', {
+        path: watchedFilePath,
+        modifiedTime: currentModTime
+      });
+    }
+  } catch (err) {
+    console.error('Error checking file changes:', err);
+  }
+}
+
+function stopFileWatching() {
+  if (fileWatcher) {
+    clearInterval(fileWatcher);
+    fileWatcher = null;
+    watchedFilePath = null;
+    lastModifiedTime = null;
+    console.log('Stopped file watching');
+  }
+}
+
+function pauseFileWatching() {
+  if (fileWatcher) {
+    clearInterval(fileWatcher);
+    fileWatcher = null;
+    console.log('Paused file watching');
+  }
+}
+
+function resumeFileWatching() {
+  if (watchedFilePath && !fileWatcher) {
+    // Restart the interval
+    fileWatcher = setInterval(() => {
+      checkFileChanges();
+    }, 5000);
+    console.log('Resumed file watching');
+  }
+}
+
 function openFile(filePath) {
   if (!fs.existsSync(filePath)) {
     console.error('File not found:', filePath);
@@ -96,6 +186,9 @@ function openFile(filePath) {
       path: filePath,
       allPaths: [filePath]
     });
+
+    // Start watching the file for external changes
+    startFileWatching(filePath);
   });
 }
 
@@ -127,6 +220,9 @@ function openFileDialog() {
           path: firstFilePath,
           allPaths: filePaths
         });
+
+        // Start watching the first file for external changes
+        startFileWatching(firstFilePath);
       });
     }
   }).catch(err => {
@@ -235,6 +331,66 @@ ipcMain.on('save-markdown-file', (event, data) => {
       error: error.message
     });
   }
+});
+
+// Handle file watching control requests
+ipcMain.on('start-file-watching', (event, data) => {
+  const { filePath } = data;
+  startFileWatching(filePath);
+});
+
+ipcMain.on('pause-file-watching', () => {
+  pauseFileWatching();
+});
+
+ipcMain.on('resume-file-watching', () => {
+  resumeFileWatching();
+});
+
+ipcMain.on('stop-file-watching', () => {
+  stopFileWatching();
+});
+
+// Handle file reload request
+ipcMain.on('reload-file', (event, data) => {
+  const { filePath } = data;
+
+  if (!fs.existsSync(filePath)) {
+    mainWindow.webContents.send('file-reload-result', {
+      success: false,
+      error: 'File not found'
+    });
+    return;
+  }
+
+  fs.readFile(filePath, 'utf8', (err, content) => {
+    if (err) {
+      console.error('Error reloading file:', err);
+      mainWindow.webContents.send('file-reload-result', {
+        success: false,
+        error: err.message
+      });
+    } else {
+      // Remove BOM if present
+      if (content.charCodeAt(0) === 0xFEFF) {
+        content = content.substring(1);
+      }
+
+      // Update the last modified time after successful reload
+      try {
+        const stats = fs.statSync(filePath);
+        lastModifiedTime = stats.mtimeMs;
+      } catch (statErr) {
+        console.error('Error updating file stats:', statErr);
+      }
+
+      mainWindow.webContents.send('file-reload-result', {
+        success: true,
+        content: content,
+        path: filePath
+      });
+    }
+  });
 });
 
 // Handle Mermaid diagram popup request
@@ -799,6 +955,14 @@ function handleFileArgument(argv) {
 // Check for file argument on first launch
 handleFileArgument(process.argv);
 
+// Handle request to open a file (with unsaved changes check in renderer)
+ipcMain.on('request-open-file', (event, data) => {
+  const { filePath } = data;
+  if (filePath && fs.existsSync(filePath)) {
+    openFile(filePath);
+  }
+});
+
 // Handle second-instance (when app is already running and user opens another file)
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -811,9 +975,9 @@ if (!gotTheLock) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
 
-      // Handle the file from second instance
+      // Handle the file from second instance - send to renderer for unsaved changes check
       if (handleFileArgument(commandLine)) {
-        openFile(fileToOpen);
+        mainWindow.webContents.send('external-file-open-request', { filePath: fileToOpen });
         fileToOpen = null;
       }
     }
