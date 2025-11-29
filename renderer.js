@@ -76,6 +76,11 @@ const contentWrapper = document.querySelector('.content-wrapper');
 // Current file tracking
 let currentFilePath = null;
 
+// File watching state
+let isFileTrackingActive = false;
+let fileUpdateNotificationShown = false;
+let fileUpdateDismissTimeout = null;
+
 // Editor state
 let isEditMode = false;
 let hasUnsavedChanges = false;
@@ -164,6 +169,13 @@ logoLink.addEventListener('click', (e) => {
 
 // Open file button
 openFileBtn.addEventListener('click', () => {
+  // Check for unsaved changes before opening file dialog
+  if (isEditMode && hasUnsavedChanges) {
+    if (!confirm('You have unsaved changes. Discard changes and open a new file?')) {
+      return; // User canceled, don't open file dialog
+    }
+  }
+
   ipcRenderer.send('open-file-dialog');
 });
 
@@ -191,6 +203,49 @@ function showNotification(message, duration = 3000) {
   setTimeout(() => {
     toast.classList.remove('show');
   }, duration);
+}
+
+// File update notification functions
+function showFileUpdateNotification() {
+  if (fileUpdateNotificationShown) {
+    return; // Don't show multiple notifications
+  }
+
+  const toast = document.getElementById('fileUpdateToast');
+  if (!toast) {
+    console.error('File update toast element not found');
+    return;
+  }
+
+  toast.classList.add('show');
+  fileUpdateNotificationShown = true;
+
+  // Auto-dismiss after 10 seconds
+  fileUpdateDismissTimeout = setTimeout(() => {
+    dismissFileUpdateNotification();
+  }, 10000);
+}
+
+function dismissFileUpdateNotification() {
+  const toast = document.getElementById('fileUpdateToast');
+  if (toast) {
+    toast.classList.remove('show');
+  }
+  fileUpdateNotificationShown = false;
+
+  if (fileUpdateDismissTimeout) {
+    clearTimeout(fileUpdateDismissTimeout);
+    fileUpdateDismissTimeout = null;
+  }
+}
+
+function reloadCurrentFile() {
+  if (!currentFilePath) {
+    return;
+  }
+
+  dismissFileUpdateNotification();
+  ipcRenderer.send('reload-file', { filePath: currentFilePath });
 }
 
 // Handle PDF export result
@@ -229,6 +284,12 @@ toggleEditBtn.addEventListener('click', () => {
     toggleEditBtn.style.background = '';
     toggleEditBtn.style.color = '';
     clearTimeout(previewDebounceTimer);
+
+    // Resume file tracking when exiting edit mode (if it was paused)
+    if (!isFileTrackingActive && currentFilePath) {
+      ipcRenderer.send('resume-file-watching');
+      isFileTrackingActive = true;
+    }
   }
 });
 
@@ -236,8 +297,15 @@ toggleEditBtn.addEventListener('click', () => {
 markdownEditor.addEventListener('input', () => {
   if (!isEditMode) return;
 
+  const previousUnsavedState = hasUnsavedChanges;
   hasUnsavedChanges = (markdownEditor.value !== originalMarkdown);
   updateUnsavedIndicator();
+
+  // Pause file tracking when unsaved changes appear
+  if (!previousUnsavedState && hasUnsavedChanges) {
+    ipcRenderer.send('pause-file-watching');
+    isFileTrackingActive = false;
+  }
 
   // Clear existing timer
   clearTimeout(previewDebounceTimer);
@@ -280,6 +348,12 @@ ipcRenderer.on('save-markdown-result', (event, data) => {
     hasUnsavedChanges = false;
     updateUnsavedIndicator();
     console.log('File saved successfully');
+
+    // Resume file tracking after save
+    if (!isFileTrackingActive) {
+      ipcRenderer.send('resume-file-watching');
+      isFileTrackingActive = true;
+    }
   } else {
     console.error('Save failed:', data.error);
     alert(`Failed to save file: ${data.error}`);
@@ -409,6 +483,13 @@ function updateRecentFilesList() {
     });
 
     contentDiv.addEventListener('click', () => {
+      // Check for unsaved changes before opening
+      if (isEditMode && hasUnsavedChanges) {
+        if (!confirm(`You have unsaved changes. Discard changes and open "${file.name}"?`)) {
+          return; // User canceled, don't open the file
+        }
+      }
+
       // Send request to main process to open this file
       const fs = require('fs');
       fs.readFile(file.path, 'utf8', (err, data) => {
@@ -435,6 +516,10 @@ function updateRecentFilesList() {
         updateFileInfo(file.path);
         saveRecentFile(file.path);
         recentPanel.classList.remove('visible');
+
+        // Start watching the file
+        ipcRenderer.send('start-file-watching', { filePath: file.path });
+        isFileTrackingActive = true;
       });
     });
 
@@ -920,6 +1005,9 @@ ipcRenderer.on('file-opened', async (event, data) => {
   // Update file info bar
   updateFileInfo(data.path);
 
+  // Enable file tracking
+  isFileTrackingActive = true;
+
   // If multiple files were selected, add all to recent files
   if (data.allPaths && data.allPaths.length > 0) {
     data.allPaths.forEach(filePath => {
@@ -929,6 +1017,63 @@ ipcRenderer.on('file-opened', async (event, data) => {
     // Fallback for single file (backwards compatibility)
     saveRecentFile(data.path);
   }
+});
+
+// Handle file changed externally
+ipcRenderer.on('file-changed-externally', (event, data) => {
+  console.log('File changed externally:', data.path);
+
+  // Don't show notification if we have unsaved changes (tracking should be paused anyway)
+  if (hasUnsavedChanges) {
+    return;
+  }
+
+  // Show notification
+  showFileUpdateNotification();
+});
+
+// Handle file deleted
+ipcRenderer.on('file-deleted', (event, data) => {
+  console.log('File deleted:', data.path);
+  showNotification('Warning: The opened file has been deleted from disk', 5000);
+  isFileTrackingActive = false;
+});
+
+// Handle file reload result
+ipcRenderer.on('file-reload-result', async (event, data) => {
+  if (data.success) {
+    // Store new content as original
+    originalMarkdown = data.content;
+
+    // If in edit mode, update editor content
+    if (isEditMode) {
+      markdownEditor.value = originalMarkdown;
+      hasUnsavedChanges = false;
+      updateUnsavedIndicator();
+    }
+
+    // Re-render the markdown
+    await renderMarkdown(data.content);
+
+    showNotification('File reloaded successfully', 2000);
+  } else {
+    showNotification(`Failed to reload file: ${data.error}`, 4000);
+  }
+});
+
+// Handle external file open request (from double-clicking a file when app is already open)
+ipcRenderer.on('external-file-open-request', (event, data) => {
+  const { filePath } = data;
+
+  // Check for unsaved changes
+  if (isEditMode && hasUnsavedChanges) {
+    if (!confirm(`You have unsaved changes. Discard changes and open "${filePath.split(/[\\/]/).pop()}"?`)) {
+      return; // User canceled, don't open the new file
+    }
+  }
+
+  // Proceed with opening the file
+  ipcRenderer.send('request-open-file', { filePath });
 });
 
 // Update zoom on load
