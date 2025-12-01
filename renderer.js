@@ -72,6 +72,8 @@ const markdownEditor = document.getElementById('markdownEditor');
 const saveButton = document.getElementById('saveButton');
 const unsavedIndicator = document.getElementById('unsavedIndicator');
 const contentWrapper = document.querySelector('.content-wrapper');
+const loadingScreen = document.getElementById('loadingScreen');
+const darkModeToggle = document.getElementById('darkModeToggle');
 
 // Current file tracking
 let currentFilePath = null;
@@ -152,6 +154,69 @@ zoomResetBtn.addEventListener('click', () => {
   updateZoom();
 });
 
+// Dark mode toggle
+darkModeToggle.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+  const isDarkMode = document.body.classList.contains('dark-mode');
+  localStorage.setItem('darkMode', isDarkMode ? 'enabled' : 'disabled');
+
+  // Re-initialize Mermaid with new theme if there are diagrams
+  const mermaidElements = document.querySelectorAll('.mermaid');
+  if (mermaidElements.length > 0) {
+    updateMermaidTheme(isDarkMode);
+  }
+});
+
+// Load dark mode preference on startup
+function loadDarkModePreference() {
+  const darkMode = localStorage.getItem('darkMode');
+  if (darkMode === 'enabled') {
+    document.body.classList.add('dark-mode');
+  }
+}
+
+// Update Mermaid theme based on dark mode
+function updateMermaidTheme(isDark) {
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDark ? 'dark' : 'default',
+    themeVariables: isDark ? {
+      primaryColor: '#3DBDC6',
+      primaryTextColor: '#e8e8e8',
+      primaryBorderColor: '#3DBDC6',
+      lineColor: '#3DBDC6',
+      secondaryColor: '#2d2d2d',
+      tertiaryColor: '#1a1a1a',
+      background: '#242424',
+      mainBkg: '#242424',
+      secondBkg: '#2d2d2d',
+      textColor: '#e8e8e8',
+      border1: '#404040',
+      border2: '#404040',
+      fontSize: '13px',
+      fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
+    } : {
+      primaryColor: '#279EA7',
+      primaryTextColor: '#1F3244',
+      primaryBorderColor: '#279EA7',
+      lineColor: '#279EA7',
+      secondaryColor: '#1F3244',
+      tertiaryColor: '#f5f5f5',
+      background: '#ffffff',
+      mainBkg: '#ffffff',
+      secondBkg: '#f5f5f5',
+      textColor: '#1F3244',
+      border1: '#d0d0d0',
+      border2: '#d0d0d0',
+      fontSize: '13px',
+      fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
+    }
+  });
+}
+
+// Load dark mode on startup
+loadDarkModePreference();
+
 // Fullscreen toggle
 fullscreenToggle.addEventListener('click', () => {
   if (document.fullscreenElement) {
@@ -203,6 +268,15 @@ function showNotification(message, duration = 3000) {
   setTimeout(() => {
     toast.classList.remove('show');
   }, duration);
+}
+
+// Loading screen functions
+function showLoadingScreen() {
+  loadingScreen.classList.add('active');
+}
+
+function hideLoadingScreen() {
+  loadingScreen.classList.remove('active');
 }
 
 // File update notification functions
@@ -389,6 +463,7 @@ clearAllRecentBtn.addEventListener('click', () => {
 
 // Mouse hover to open recent panel
 let mouseHoverTimeout = null;
+let isMouseInTriggerZone = false;
 const HOVER_TRIGGER_ZONE = 10; // pixels from left edge
 const HOVER_DELAY = 500; // milliseconds
 
@@ -397,16 +472,31 @@ document.addEventListener('mousemove', (e) => {
   if (e.clientX <= HOVER_TRIGGER_ZONE) {
     // Start timeout if not already started
     if (!mouseHoverTimeout && !recentPanel.classList.contains('visible')) {
+      isMouseInTriggerZone = true;
       mouseHoverTimeout = setTimeout(() => {
-        recentPanel.classList.add('visible');
+        // Only open if mouse is still in the trigger zone
+        if (isMouseInTriggerZone) {
+          recentPanel.classList.add('visible');
+        }
         mouseHoverTimeout = null;
       }, HOVER_DELAY);
     }
   } else {
-    // Clear timeout if mouse moves away
+    // Clear timeout if mouse moves away before delay completes
+    isMouseInTriggerZone = false;
     if (mouseHoverTimeout) {
       clearTimeout(mouseHoverTimeout);
       mouseHoverTimeout = null;
+    }
+  }
+});
+
+// Close recent panel when clicking outside
+document.addEventListener('click', (e) => {
+  if (recentPanel.classList.contains('visible')) {
+    // Check if click is outside the recent panel
+    if (!recentPanel.contains(e.target) && e.target !== toggleRecentBtn) {
+      recentPanel.classList.remove('visible');
     }
   }
 });
@@ -801,14 +891,21 @@ document.addEventListener('wheel', (e) => {
 
 // Process markdown with Mermaid support
 async function renderMarkdown(content) {
-  // Remove BOM (Byte Order Mark) if present
-  if (content.charCodeAt(0) === 0xFEFF) {
-    content = content.substring(1);
-  }
+  // Show loading screen
+  showLoadingScreen();
 
-  // First, extract mermaid blocks and replace with placeholders
-  const mermaidBlocks = [];
-  let mermaidIndex = 0;
+  // Give browser time to render the loading screen before heavy processing
+  await new Promise(resolve => setTimeout(resolve, 10));
+
+  try {
+    // Remove BOM (Byte Order Mark) if present
+    if (content.charCodeAt(0) === 0xFEFF) {
+      content = content.substring(1);
+    }
+
+    // First, extract mermaid blocks and replace with placeholders
+    const mermaidBlocks = [];
+    let mermaidIndex = 0;
 
   // Replace mermaid code blocks with placeholders (handle both \n and \r\n)
   content = content.replace(/```mermaid[\r\n]+([\s\S]*?)```/g, (match, code) => {
@@ -894,24 +991,44 @@ async function renderMarkdown(content) {
     });
   }
 
-  // Apply syntax highlighting with PrismJS
-  if (typeof Prism !== 'undefined') {
-    Prism.highlightAll();
+    // Add maximize buttons to tables
+    addTableMaximizeButtons();
+
+    // Build table of contents
+    buildTableOfContents();
+
+    // Scroll to top
+    viewer.parentElement.scrollTop = 0;
+
+    // Apply syntax highlighting with PrismJS (asynchronously to avoid blocking)
+    if (typeof Prism !== 'undefined') {
+      // Use requestIdleCallback for non-blocking syntax highlighting
+      const highlightCallback = window.requestIdleCallback || window.setTimeout;
+      highlightCallback(() => {
+        Prism.highlightAll();
+        // Hide loading screen after syntax highlighting is done
+        hideLoadingScreen();
+      });
+    } else {
+      // Hide loading screen if no syntax highlighting needed
+      hideLoadingScreen();
+    }
+  } catch (error) {
+    console.error('Error rendering markdown:', error);
+    viewer.innerHTML = `<div style="color: red; padding: 20px;">
+      <strong>Error rendering markdown:</strong><br>${error.message}
+    </div>`;
+    hideLoadingScreen();
   }
-
-  // Add maximize buttons to tables
-  addTableMaximizeButtons();
-
-  // Build table of contents
-  buildTableOfContents();
-
-  // Scroll to top
-  viewer.parentElement.scrollTop = 0;
 }
 
 // Add maximize buttons to tables for popup view
 function addTableMaximizeButtons() {
   const tables = viewer.querySelectorAll('.markdown-body table, #viewer table');
+
+  // Use DocumentFragment to batch DOM operations
+  const fragment = document.createDocumentFragment();
+  const updates = [];
 
   tables.forEach((table) => {
     // Skip if already wrapped
@@ -919,13 +1036,19 @@ function addTableMaximizeButtons() {
       return;
     }
 
-    // Wrap in container
+    // Check column count and apply compact styling if needed
+    const firstRow = table.querySelector('thead tr, tr:first-child');
+    if (firstRow) {
+      const columnCount = firstRow.querySelectorAll('th, td').length;
+      if (columnCount > 5) {
+        table.classList.add('compact-table');
+      }
+    }
+
+    // Create container and button
     const container = document.createElement('div');
     container.className = 'table-container';
-    table.parentNode.insertBefore(container, table);
-    container.appendChild(table);
 
-    // Add maximize button
     const maxBtn = document.createElement('button');
     maxBtn.className = 'table-maximize-btn';
     maxBtn.title = 'Open in interactive popup';
@@ -941,6 +1064,14 @@ function addTableMaximizeButtons() {
       ipcRenderer.send('open-table-popup', { tableData });
     });
 
+    // Store for batch insertion
+    updates.push({ table, container, maxBtn });
+  });
+
+  // Batch insert all containers and buttons
+  updates.forEach(({ table, container, maxBtn }) => {
+    table.parentNode.insertBefore(container, table);
+    container.appendChild(table);
     container.appendChild(maxBtn);
   });
 }
@@ -1074,6 +1205,11 @@ ipcRenderer.on('external-file-open-request', (event, data) => {
 
   // Proceed with opening the file
   ipcRenderer.send('request-open-file', { filePath });
+});
+
+// Handle error messages from main process
+ipcRenderer.on('show-error', (event, message) => {
+  showNotification(message, 5000);
 });
 
 // Update zoom on load
