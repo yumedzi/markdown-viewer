@@ -3,6 +3,29 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// Setup logging to file for debugging packaged app
+const logFilePath = path.join(app.getPath('userData'), 'debug.log');
+const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+
+function log(...args) {
+  // Only log in development mode to improve performance
+  if (!app.isPackaged) {
+    console.log(...args);
+  }
+
+  // Always write to file for troubleshooting
+  const message = args.map(arg =>
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+  ).join(' ');
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}\n`;
+  logStream.write(logMessage);
+}
+
+log('=== Application started ===');
+log('User data path:', app.getPath('userData'));
+log('Log file:', logFilePath);
+
 let mainWindow;
 let fileToOpen = null;
 let fileWatcher = null; // File watching state
@@ -37,6 +60,8 @@ function createWindow() {
 
   // Load file from command line after window loads
   mainWindow.webContents.on('did-finish-load', () => {
+    log('Window finished loading. fileToOpen:', fileToOpen);
+
     if (fileToOpen) {
       openFile(fileToOpen);
       fileToOpen = null;
@@ -161,26 +186,33 @@ function resumeFileWatching() {
 }
 
 function openFile(filePath) {
+  log('Attempting to open file:', filePath);
+
   if (!fs.existsSync(filePath)) {
-    console.error('File not found:', filePath);
+    log('ERROR: File not found:', filePath);
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('show-error', `File not found: ${filePath}`);
+    }
     return;
   }
 
   // Ensure window is ready
   if (!mainWindow || !mainWindow.webContents) {
-    console.error('Window not ready');
+    log('ERROR: Window not ready');
     return;
   }
 
   fs.readFile(filePath, 'utf8', (err, data) => {
     if (err) {
-      console.error('Error reading file:', err);
+      log('ERROR: Error reading file:', err);
+      mainWindow.webContents.send('show-error', `Error reading file: ${err.message}`);
       return;
     }
     // Remove BOM if present
     if (data.charCodeAt(0) === 0xFEFF) {
       data = data.substring(1);
     }
+    log('File read successfully, sending to renderer');
     mainWindow.webContents.send('file-opened', {
       content: data,
       path: filePath,
@@ -938,21 +970,49 @@ ipcMain.on('open-table-popup', (event, data) => {
 
 // Handle file argument from command line or "Open with"
 function handleFileArgument(argv) {
-  // In packaged app: argv[1] is the file path
-  // In development: argv[2] is the file path (argv[1] is the script)
-  const filePath = app.isPackaged ? argv[1] : argv[2];
+  log('handleFileArgument called with argv:', argv);
+  log('app.isPackaged:', app.isPackaged);
 
-  if (filePath && fs.existsSync(filePath)) {
-    const ext = path.extname(filePath).toLowerCase();
-    if (['.md', '.markdown', '.mdown', '.mkd', '.mkdn'].includes(ext)) {
-      fileToOpen = filePath;
-      return true;
+  // Find the file path in argv - it should be a .md file
+  // Skip the executable path and any electron/chromium flags
+  let filePath = null;
+
+  for (let i = 1; i < argv.length; i++) {
+    const arg = argv[i];
+    // Skip flags (starting with --)
+    if (arg.startsWith('--')) {
+      continue;
     }
+    // Skip '.' (dev mode current directory)
+    if (arg === '.') {
+      continue;
+    }
+    // Check if it's a file path
+    if (fs.existsSync(arg)) {
+      const ext = path.extname(arg).toLowerCase();
+      if (['.md', '.markdown', '.mdown', '.mkd', '.mkdn'].includes(ext)) {
+        filePath = arg;
+        break;
+      }
+    }
+  }
+
+  log('Extracted file path:', filePath);
+
+  if (filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    log('File extension:', ext);
+    fileToOpen = filePath;
+    log('Valid markdown file, setting fileToOpen:', fileToOpen);
+    return true;
+  } else {
+    log('No valid markdown file found in arguments');
   }
   return false;
 }
 
 // Check for file argument on first launch
+log('Initial process.argv:', process.argv);
 handleFileArgument(process.argv);
 
 // Handle request to open a file (with unsaved changes check in renderer)
@@ -971,14 +1031,31 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
     // User opened a file while app is running
+    log('Second instance detected, commandLine:', commandLine);
+
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
 
       // Handle the file from second instance - send to renderer for unsaved changes check
       if (handleFileArgument(commandLine)) {
-        mainWindow.webContents.send('external-file-open-request', { filePath: fileToOpen });
-        fileToOpen = null;
+        log('File to open from second instance:', fileToOpen);
+
+        // Ensure webContents is ready before sending IPC
+        if (mainWindow.webContents.isLoading()) {
+          log('WebContents is loading, waiting for did-finish-load');
+          mainWindow.webContents.once('did-finish-load', () => {
+            log('Sending external-file-open-request after load');
+            mainWindow.webContents.send('external-file-open-request', { filePath: fileToOpen });
+            fileToOpen = null;
+          });
+        } else {
+          log('Sending external-file-open-request immediately');
+          mainWindow.webContents.send('external-file-open-request', { filePath: fileToOpen });
+          fileToOpen = null;
+        }
+      } else {
+        log('No valid file found in command line arguments');
       }
     }
   });
