@@ -33,9 +33,33 @@ let watchedFilePath = null;
 let lastModifiedTime = null;
 
 function createWindow() {
+  const { screen } = require('electron');
+  const stateFilePath = path.join(app.getPath('userData'), 'window-state.json');
+
+  let windowState = {};
+  try {
+    if (fs.existsSync(stateFilePath)) {
+      windowState = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
+    }
+  } catch (e) {
+    log('Failed to load window state:', e);
+  }
+
+  // Default to 65% width if no state exists
+  if (!windowState.width || !windowState.height) {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+    windowState.width = Math.round(width * 0.65);
+    windowState.height = Math.round(height * 0.8);
+    windowState.x = Math.round((width - windowState.width) / 2);
+    windowState.y = Math.round((height - windowState.height) / 2);
+  }
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: windowState.width,
+    height: windowState.height,
+    x: windowState.x,
+    y: windowState.y,
     show: false, // Don't show until ready
     title: 'Omnicore Markdown Viewer',
     backgroundColor: '#f5f5f5',
@@ -54,9 +78,32 @@ function createWindow() {
 
   // Show window only when content is ready (prevents flicker)
   mainWindow.once('ready-to-show', () => {
-    mainWindow.maximize();
+    // Only maximize if it was maximized before, otherwise show with calculated bounds
+    if (windowState.isMaximized) {
+      mainWindow.maximize();
+    }
     mainWindow.show();
   });
+
+  // Save window state on close
+  const saveState = () => {
+    if (!mainWindow) return;
+    const bounds = mainWindow.getBounds();
+    const isMaximized = mainWindow.isMaximized();
+    const state = {
+      ...bounds,
+      isMaximized
+    };
+    try {
+      fs.writeFileSync(stateFilePath, JSON.stringify(state));
+    } catch (e) {
+      log('Failed to save window state:', e);
+    }
+  };
+
+  mainWindow.on('close', saveState);
+  mainWindow.on('resize', saveState);
+  mainWindow.on('move', saveState);
 
   // Load file from command line after window loads
   mainWindow.webContents.on('did-finish-load', () => {
@@ -1080,6 +1127,40 @@ if (!gotTheLock) {
     });
   });
 }
+
+// Handle macOS open-file event (when a file is opened from Finder or set as default app)
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  log('macOS open-file event triggered with path:', filePath);
+
+  // Check if it's a markdown file
+  const ext = path.extname(filePath).toLowerCase();
+  if (!['.md', '.markdown', '.mdown', '.mkd', '.mkdn'].includes(ext)) {
+    log('Not a markdown file, ignoring');
+    return;
+  }
+
+  if (mainWindow && mainWindow.webContents) {
+    // Window already exists, send file open request to renderer for unsaved changes check
+    if (mainWindow.webContents.isLoading()) {
+      log('WebContents is loading, waiting for did-finish-load');
+      mainWindow.webContents.once('did-finish-load', () => {
+        log('Sending external-file-open-request after load');
+        mainWindow.webContents.send('external-file-open-request', { filePath });
+      });
+    } else {
+      log('Sending external-file-open-request immediately');
+      mainWindow.webContents.send('external-file-open-request', { filePath });
+    }
+    // Bring window to front
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  } else {
+    // Window doesn't exist yet, store the file to open after window is ready
+    log('Window not ready yet, storing file to open later');
+    fileToOpen = filePath;
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
