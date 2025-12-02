@@ -139,6 +139,19 @@ body {
   object-fit: contain;
 }
 
+/* Logo toggle for dark mode */
+.logo-dark {
+  display: none !important;
+}
+
+body.dark-mode .logo-light {
+  display: none !important;
+}
+
+body.dark-mode .logo-dark {
+  display: inline-block !important;
+}
+
 .title {
   font-size: 18px;
   font-weight: 600;
@@ -189,6 +202,11 @@ body {
   color: var(--text-secondary);
   animation: slideDown 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+body.dark-mode .file-info-bar {
+  background: linear-gradient(135deg, #2d2d2d 0%, #242424 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes slideDown {

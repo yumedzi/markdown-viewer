@@ -971,7 +971,8 @@ async function renderMarkdown(content) {
 
           maxBtn.addEventListener('click', () => {
             const svgContent = svg.outerHTML;
-            ipcRenderer.send('open-mermaid-popup', { svgContent });
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            ipcRenderer.send('open-mermaid-popup', { svgContent, isDarkMode });
           });
 
           container.appendChild(maxBtn);
@@ -1061,7 +1062,8 @@ function addTableMaximizeButtons() {
     maxBtn.addEventListener('click', () => {
       // Extract table data
       const tableData = extractTableData(table);
-      ipcRenderer.send('open-table-popup', { tableData });
+      const isDarkMode = document.body.classList.contains('dark-mode');
+      ipcRenderer.send('open-table-popup', { tableData, isDarkMode });
     });
 
     // Store for batch insertion

@@ -427,13 +427,13 @@ ipcMain.on('reload-file', (event, data) => {
 
 // Handle Mermaid diagram popup request
 ipcMain.on('open-mermaid-popup', (event, data) => {
-  const { svgContent } = data;
+  const { svgContent, isDarkMode } = data;
 
   // Create popup window
   const popupWindow = new BrowserWindow({
     width: 1200,
     height: 900,
-    backgroundColor: '#ffffff',
+    backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -462,33 +462,34 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #f0f0f0;
+            background-color: ${isDarkMode ? '#1a1a1a' : '#f0f0f0'};
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .ui-overlay {
             position: absolute;
             top: 20px;
             left: 20px;
-            background: white;
+            background: ${isDarkMode ? '#2d2d2d' : 'white'};
             padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,${isDarkMode ? '0.3' : '0.1'});
             pointer-events: auto;
             z-index: 10;
+            border: 1px solid ${isDarkMode ? '#404040' : 'transparent'};
         }
         h1 {
             margin: 0 0 10px 0;
             font-size: 16px;
-            color: #333;
+            color: ${isDarkMode ? '#3DBDC6' : '#333'};
         }
         p {
             margin: 0 0 10px 0;
             font-size: 12px;
-            color: #666;
+            color: ${isDarkMode ? '#a0a0a0' : '#666'};
         }
         button {
             padding: 8px 12px;
-            background-color: #279EA7;
+            background-color: ${isDarkMode ? '#3DBDC6' : '#279EA7'};
             color: white;
             border: none;
             border-radius: 4px;
@@ -497,7 +498,7 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
             transition: background 0.2s;
         }
         button:hover {
-            background-color: #1f8089;
+            background-color: ${isDarkMode ? '#4FCDD6' : '#1f8089'};
         }
         #svg-container-wrapper {
             cursor: grab;
@@ -663,13 +664,13 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
 
 // Handle Table popup request
 ipcMain.on('open-table-popup', (event, data) => {
-  const { tableData } = data;
+  const { tableData, isDarkMode } = data;
 
   // Create popup window
   const popupWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    backgroundColor: '#ffffff',
+    backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -708,7 +709,7 @@ ipcMain.on('open-table-popup', (event, data) => {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #f5f5f5;
+            background-color: ${isDarkMode ? '#1a1a1a' : '#f5f5f5'};
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
@@ -721,20 +722,22 @@ ipcMain.on('open-table-popup', (event, data) => {
         }
 
         .header {
-            background: white;
+            background: ${isDarkMode ? '#2d2d2d' : 'white'};
             padding: 20px;
             border-radius: 8px 8px 0 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,${isDarkMode ? '0.3' : '0.1'});
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0;
+            border: 1px solid ${isDarkMode ? '#404040' : 'transparent'};
+            border-bottom: none;
         }
 
         h1 {
             margin: 0;
             font-size: 20px;
-            color: #279EA7;
+            color: ${isDarkMode ? '#3DBDC6' : '#279EA7'};
         }
 
         .controls {
@@ -744,7 +747,7 @@ ipcMain.on('open-table-popup', (event, data) => {
 
         button {
             padding: 10px 16px;
-            background-color: #279EA7;
+            background-color: ${isDarkMode ? '#3DBDC6' : '#279EA7'};
             color: white;
             border: none;
             border-radius: 6px;
@@ -758,9 +761,9 @@ ipcMain.on('open-table-popup', (event, data) => {
         }
 
         button:hover {
-            background-color: #1f8089;
+            background-color: ${isDarkMode ? '#4FCDD6' : '#1f8089'};
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(39, 158, 167, 0.3);
+            box-shadow: 0 2px 8px rgba(${isDarkMode ? '61, 189, 198' : '39, 158, 167'}, 0.3);
         }
 
         button:active {
@@ -769,12 +772,14 @@ ipcMain.on('open-table-popup', (event, data) => {
 
         .table-wrapper {
             flex: 1;
-            background: white;
+            background: ${isDarkMode ? '#242424' : 'white'};
             border-radius: 0 0 8px 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,${isDarkMode ? '0.3' : '0.1'});
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            border: 1px solid ${isDarkMode ? '#404040' : 'transparent'};
+            border-top: none;
         }
 
         #data-table {
@@ -783,21 +788,23 @@ ipcMain.on('open-table-popup', (event, data) => {
 
         .info {
             padding: 12px 20px;
-            background: #e8e8e8;
-            color: #5a6b7d;
+            background: ${isDarkMode ? '#2d2d2d' : '#e8e8e8'};
+            color: ${isDarkMode ? '#a0a0a0' : '#5a6b7d'};
             font-size: 13px;
-            border-bottom: 1px solid #d0d0d0;
+            border-bottom: 1px solid ${isDarkMode ? '#404040' : '#d0d0d0'};
         }
 
         /* Tabulator theme customization */
         .tabulator {
             font-size: 13px;
             border: none;
+            background-color: ${isDarkMode ? '#242424' : 'white'};
+            color: ${isDarkMode ? '#e8e8e8' : '#1F3244'};
         }
 
         .tabulator .tabulator-header {
             background-color: #1F3244;
-            color: #279EA7;
+            color: ${isDarkMode ? '#3DBDC6' : '#279EA7'};
             border: none;
         }
 
@@ -811,7 +818,7 @@ ipcMain.on('open-table-popup', (event, data) => {
         }
 
         .tabulator .tabulator-header .tabulator-col .tabulator-col-title {
-            color: #279EA7;
+            color: ${isDarkMode ? '#3DBDC6' : '#279EA7'};
             font-weight: 600;
         }
 
@@ -820,32 +827,35 @@ ipcMain.on('open-table-popup', (event, data) => {
         }
 
         .tabulator .tabulator-tableholder .tabulator-table .tabulator-row {
-            border-bottom: 1px solid #d0d0d0;
+            background-color: ${isDarkMode ? '#242424' : 'white'};
+            color: ${isDarkMode ? '#e8e8e8' : '#1F3244'};
+            border-bottom: 1px solid ${isDarkMode ? '#404040' : '#d0d0d0'};
         }
 
         .tabulator .tabulator-tableholder .tabulator-table .tabulator-row:hover {
-            background-color: #f5f5f5;
+            background-color: ${isDarkMode ? '#2d2d2d' : '#f5f5f5'};
         }
 
         .tabulator .tabulator-tableholder .tabulator-table .tabulator-row .tabulator-cell {
             padding: 10px 12px;
-            border-right: 1px solid #e8e8e8;
+            border-right: 1px solid ${isDarkMode ? '#404040' : '#e8e8e8'};
         }
 
         .tabulator .tabulator-footer {
-            background-color: #f5f5f5;
-            border-top: 2px solid #d0d0d0;
+            background-color: ${isDarkMode ? '#2d2d2d' : '#f5f5f5'};
+            border-top: 2px solid ${isDarkMode ? '#404040' : '#d0d0d0'};
             padding: 8px;
+            color: ${isDarkMode ? '#e8e8e8' : '#1F3244'};
         }
 
         .tabulator .tabulator-footer .tabulator-page {
-            background-color: #279EA7;
+            background-color: ${isDarkMode ? '#3DBDC6' : '#279EA7'};
             color: white;
             border: none;
         }
 
         .tabulator .tabulator-footer .tabulator-page:hover {
-            background-color: #1f8089;
+            background-color: ${isDarkMode ? '#4FCDD6' : '#1f8089'};
         }
 
         .tabulator .tabulator-footer .tabulator-page.active {
