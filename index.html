@@ -1,29 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Omnicore Markdown Viewer</title>
+  <title>Markdown Viewer</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="libs/prismjs/themes/prism-solarizedlight.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet"
+    media="print" onload="this.media='all'">
+  <noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet">
+  </noscript>
   <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
   <!-- PrismJS - Bundled Core and Language Components -->
   <script src="libs/prismjs/prism-bundle.js"></script>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
       <div class="header-left">
-        <a href="#" id="logoLink" title="Visit Omnicore">
+        <a href="#" id="logoLink" title="Markdown Viewer">
           <img src="logo.png" alt="Logo" class="app-logo logo-light">
           <img src="logo_dark.png" alt="Logo" class="app-logo logo-dark">
         </a>
+        <span class="app-title">Markdown Viewer</span>
       </div>
       <div class="controls">
         <button class="btn" id="openFile" title="Open File (Ctrl+O)">
@@ -88,7 +95,8 @@
         </button>
         <button class="btn" id="fullscreenToggle" title="Toggle Fullscreen (F11)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3">
+            </path>
           </svg>
         </button>
       </div>
@@ -102,7 +110,8 @@
 
     <!-- File Info Bar -->
     <div id="fileInfoBar" class="file-info-bar" style="display: none;">
-      <svg class="file-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg class="file-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2">
         <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
         <polyline points="13 2 13 9 20 9"></polyline>
       </svg>
@@ -155,65 +164,66 @@
       </div>
 
       <div class="content-wrapper">
-      <!-- Editor Panel -->
-      <div id="editorPanel" class="editor-panel">
-        <div class="editor-header">
-          <span>Raw Markdown</span>
-          <div class="editor-controls">
-            <span id="unsavedIndicator" class="unsaved-indicator" style="display: none;">● Unsaved</span>
-            <button id="saveButton" class="editor-save-btn" title="Save (Ctrl+S)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                <polyline points="7 3 7 8 15 8"></polyline>
-              </svg>
-              Save
-            </button>
+        <!-- Editor Panel -->
+        <div id="editorPanel" class="editor-panel">
+          <div class="editor-header">
+            <span>Raw Markdown</span>
+            <div class="editor-controls">
+              <span id="unsavedIndicator" class="unsaved-indicator" style="display: none;">● Unsaved</span>
+              <button id="saveButton" class="editor-save-btn" title="Save (Ctrl+S)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Save
+              </button>
+            </div>
+          </div>
+          <textarea id="markdownEditor" class="markdown-editor" placeholder="Start typing markdown..."></textarea>
+        </div>
+
+        <div id="viewer" class="markdown-body">
+          <div class="welcome">
+            <h1>Welcome to Markdown Viewer</h1>
+            <p>Press <kbd>Ctrl+O</kbd> to open a markdown file</p>
+            <div class="features">
+              <h2>Features</h2>
+              <ul>
+                <li>Full HTML support in markdown</li>
+                <li>Mermaid diagrams rendering</li>
+                <li>PrismJS syntax highlighting (offline)</li>
+                <li>Live markdown editor with split-view</li>
+                <li>PDF export with full document support</li>
+                <li>Auto-generated Table of Contents</li>
+                <li>Search with highlighting (Ctrl+F)</li>
+                <li>File path display with copy-to-clipboard</li>
+                <li>Zoom controls (50%-200%)</li>
+                <li>Fullscreen mode (F11)</li>
+                <li>Recent files with delete & clear all</li>
+              </ul>
+            </div>
           </div>
         </div>
-        <textarea id="markdownEditor" class="markdown-editor" placeholder="Start typing markdown..."></textarea>
-      </div>
 
-      <div id="viewer" class="markdown-body">
-        <div class="welcome">
-          <h1>Welcome to Omnicore Markdown Viewer</h1>
-          <p>Press <kbd>Ctrl+O</kbd> to open a markdown file</p>
-          <div class="features">
-            <h2>Features</h2>
-            <ul>
-              <li>Full HTML support in markdown</li>
-              <li>Mermaid diagrams rendering</li>
-              <li>PrismJS syntax highlighting (offline)</li>
-              <li>Live markdown editor with split-view</li>
-              <li>PDF export with full document support</li>
-              <li>Auto-generated Table of Contents</li>
-              <li>Search with highlighting (Ctrl+F)</li>
-              <li>File path display with copy-to-clipboard</li>
-              <li>Zoom controls (50%-200%)</li>
-              <li>Fullscreen mode (F11)</li>
-              <li>Recent files with delete & clear all</li>
-            </ul>
+        <div id="indexPanel" class="index-panel">
+          <div class="index-header">
+            <span>Table of Contents</span>
+            <button id="closeIndex" class="close-btn">×</button>
+          </div>
+          <div id="indexList" class="index-list">
+            <div class="index-empty">No headers found</div>
           </div>
         </div>
       </div>
-
-      <div id="indexPanel" class="index-panel">
-        <div class="index-header">
-          <span>Table of Contents</span>
-          <button id="closeIndex" class="close-btn">×</button>
-        </div>
-        <div id="indexList" class="index-list">
-          <div class="index-empty">No headers found</div>
-        </div>
-      </div>
-    </div>
     </div>
   </div>
 
   <!-- Notification Toast -->
   <div id="notificationToast" class="notification-toast">
     <div class="notification-content">
-      <svg class="notification-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg class="notification-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
       <span id="notificationMessage" class="notification-message"></span>
@@ -223,7 +233,8 @@
   <!-- File Update Toast -->
   <div id="fileUpdateToast" class="file-update-toast">
     <div class="file-update-content">
-      <svg class="file-update-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg class="file-update-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        stroke-width="2">
         <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
       </svg>
       <div class="file-update-text">
@@ -246,4 +257,5 @@
 
   <script src="renderer.js"></script>
 </body>
+
 </html>

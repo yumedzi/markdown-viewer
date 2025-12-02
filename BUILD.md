@@ -1,4 +1,4 @@
-# Building Omnicore Markdown Viewer
+# Building Markdown Viewer
 
 This guide explains how to create a standalone executable (.exe) file.
 

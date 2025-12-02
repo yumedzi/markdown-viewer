@@ -1,8 +1,9 @@
-# Omnicore Markdown Viewer
+# Markdown Viewer
 
 <div align="center">
   <img src="logo.png" alt="Omnicore Logo" height="100">
   <p><strong>A sleek, cross-platform markdown viewer with full HTML support and Mermaid diagram rendering</strong></p>
+  <p><em>Forked from <a href="https://github.com/OmniCoreST/omnicore-markdown-viewer">Omnicore Markdown Viewer</a> with the intent of expanding its features</em></p>
 </div>
 
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)

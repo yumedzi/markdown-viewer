@@ -61,7 +61,7 @@ function createWindow() {
     x: windowState.x,
     y: windowState.y,
     show: false, // Don't show until ready
-    title: 'Omnicore Markdown Viewer',
+    title: 'Markdown Viewer',
     backgroundColor: '#f5f5f5',
     webPreferences: {
       nodeIntegration: true,
