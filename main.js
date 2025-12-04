@@ -3,6 +3,18 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// Enable live reload in development
+if (process.env.NODE_ENV === 'development') {
+  try {
+    require('electron-reload')(__dirname, {
+      electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
+      hardResetMethod: 'exit'
+    });
+  } catch (e) {
+    console.log('electron-reload not available');
+  }
+}
+
 // Setup logging to file for debugging packaged app
 const logFilePath = path.join(app.getPath('userData'), 'debug.log');
 const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
@@ -312,6 +324,12 @@ function openFileDialog() {
 // Handle file open request from renderer
 ipcMain.on('open-file-dialog', () => {
   openFileDialog();
+});
+
+// Handle open file by path (from recent files, etc.)
+ipcMain.on('open-file-path', (event, filePath) => {
+  log('Opening file from path:', filePath);
+  openFile(filePath);
 });
 
 // Handle PDF export request from renderer
@@ -1077,6 +1095,34 @@ ipcMain.on('request-open-file', (event, data) => {
   const { filePath } = data;
   if (filePath && fs.existsSync(filePath)) {
     openFile(filePath);
+  }
+});
+
+// Handle restore tabs on startup
+ipcMain.on('restore-tabs', (event, tabsData) => {
+  tabsData.forEach((tabData, index) => {
+    if (fs.existsSync(tabData.filePath)) {
+      fs.readFile(tabData.filePath, 'utf8', (err, data) => {
+        if (!err) {
+          // Remove BOM if present
+          if (data.charCodeAt(0) === 0xFEFF) {
+            data = data.substring(1);
+          }
+          mainWindow.webContents.send('file-opened', {
+            content: data,
+            path: tabData.filePath,
+            allPaths: [tabData.filePath]
+          });
+        }
+      });
+    }
+  });
+});
+
+// Handle active file change
+ipcMain.on('set-active-file', (event, filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    startFileWatching(filePath);
   }
 });
 

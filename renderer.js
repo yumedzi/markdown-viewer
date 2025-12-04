@@ -74,6 +74,13 @@ const unsavedIndicator = document.getElementById('unsavedIndicator');
 const contentWrapper = document.querySelector('.content-wrapper');
 const loadingScreen = document.getElementById('loadingScreen');
 const darkModeToggle = document.getElementById('darkModeToggle');
+const tabsContainer = document.getElementById('tabsContainer');
+const tabsElement = document.getElementById('tabs');
+
+// Tab management
+let tabs = [];
+let activeTabId = null;
+let tabIdCounter = 0;
 
 // Current file tracking
 let currentFilePath = null;
@@ -106,6 +113,209 @@ function updateFileInfo(path) {
   fileName.textContent = name;
   filePath.textContent = directory;
   fileInfoBar.style.display = 'flex';
+}
+
+// Tab Management Functions
+function createTab(filePath, content) {
+  const tabId = ++tabIdCounter;
+  const pathParts = filePath.split(/[\\/]/);
+  const filename = pathParts[pathParts.length - 1];
+
+  const tab = {
+    id: tabId,
+    filePath: filePath,
+    filename: filename,
+    content: content,
+    originalContent: content,
+    hasUnsavedChanges: false,
+    scrollPosition: 0
+  };
+
+  tabs.push(tab);
+  console.log('Total tabs after push:', tabs.length);
+  renderTabs();
+  switchToTab(tabId);
+
+  // Don't save tabs for now to prevent restoration issues
+  // saveTabs();
+
+  return tab;
+}
+
+function renderTabs() {
+  console.log('renderTabs called, tabs.length:', tabs.length);
+  console.log('tabsContainer element:', tabsContainer);
+  console.log('fileInfoBar element:', fileInfoBar);
+
+  if (tabs.length === 0) {
+    tabsContainer.style.display = 'none';
+    fileInfoBar.style.display = 'none';
+    return;
+  }
+
+  // Show tabs only when there are 2 or more files open
+  if (tabs.length >= 2) {
+    console.log('Showing tabs container, hiding file info bar');
+    tabsContainer.style.display = 'flex';
+    fileInfoBar.style.display = 'none';
+  } else {
+    console.log('Showing file info bar, hiding tabs container');
+    // Show file info bar when only 1 file is open
+    tabsContainer.style.display = 'none';
+    fileInfoBar.style.display = 'flex';
+  }
+
+  console.log('After display update - tabsContainer.style.display:', tabsContainer.style.display);
+  console.log('After display update - fileInfoBar.style.display:', fileInfoBar.style.display);
+
+  tabsElement.innerHTML = '';
+
+  tabs.forEach(tab => {
+    console.log('Rendering tab:', tab.filename);
+    const tabElement = document.createElement('div');
+    tabElement.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
+    tabElement.dataset.tabId = tab.id;
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'tab-title';
+    titleSpan.textContent = tab.filename;
+    titleSpan.title = tab.filePath;
+
+    const closeButton = document.createElement('span');
+    closeButton.className = 'tab-close';
+    closeButton.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="4" x2="12" y2="12"></line><line x1="12" y1="4" x2="4" y2="12"></line></svg>';
+    closeButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeTab(tab.id);
+    });
+
+    tabElement.appendChild(titleSpan);
+
+    if (tab.hasUnsavedChanges) {
+      const unsavedDot = document.createElement('span');
+      unsavedDot.className = 'tab-unsaved';
+      tabElement.appendChild(unsavedDot);
+    }
+
+    tabElement.appendChild(closeButton);
+
+    tabElement.addEventListener('click', () => {
+      switchToTab(tab.id);
+    });
+
+    tabsElement.appendChild(tabElement);
+  });
+}
+
+function switchToTab(tabId) {
+  const tab = tabs.find(t => t.id === tabId);
+  if (!tab) return;
+
+  // Save scroll position of current tab
+  if (activeTabId) {
+    const currentTab = tabs.find(t => t.id === activeTabId);
+    if (currentTab) {
+      currentTab.scrollPosition = viewer.scrollTop;
+      if (isEditMode) {
+        currentTab.content = markdownEditor.value;
+      }
+    }
+  }
+
+  activeTabId = tabId;
+
+  // Update UI
+  renderTabs();
+  updateFileInfo(tab.filePath);  // Load content
+  originalMarkdown = tab.originalContent;
+  currentFilePath = tab.filePath;
+
+  if (isEditMode) {
+    markdownEditor.value = tab.content;
+  }
+
+  renderMarkdown(tab.content).then(() => {
+    // Restore scroll position
+    viewer.scrollTop = tab.scrollPosition;
+  });
+
+  hasUnsavedChanges = tab.hasUnsavedChanges;
+  updateUnsavedIndicator();
+
+  // Notify main process about active file change
+  ipcRenderer.send('set-active-file', tab.filePath);
+  // saveTabs();
+}
+
+function closeTab(tabId) {
+  const tabIndex = tabs.findIndex(t => t.id === tabId);
+  if (tabIndex === -1) return;
+
+  const tab = tabs[tabIndex];
+
+  // Check for unsaved changes
+  if (tab.hasUnsavedChanges) {
+    const userConfirmed = confirm(`"${tab.filename}" has unsaved changes. Close anyway?`);
+    if (!userConfirmed) return;
+  }
+
+  tabs.splice(tabIndex, 1);
+
+  // If closing active tab, switch to another
+  if (tab.id === activeTabId) {
+    if (tabs.length > 0) {
+      const newActiveTab = tabs[Math.max(0, tabIndex - 1)];
+      switchToTab(newActiveTab.id);
+    } else {
+      activeTabId = null;
+      viewer.innerHTML = `
+        <div class="welcome">
+          <h1>Welcome to Markdown Viewer</h1>
+          <p>Press <kbd>Ctrl+O</kbd> to open a markdown file</p>
+        </div>
+      `;
+      updateFileInfo(null);
+    }
+  }
+
+  renderTabs();
+  // saveTabs();
+}
+
+function updateTabContent(content, hasChanges) {
+  const tab = tabs.find(t => t.id === activeTabId);
+  if (tab) {
+    tab.content = content;
+    tab.hasUnsavedChanges = hasChanges;
+    renderTabs();
+    saveTabs();
+  }
+}
+
+function saveTabs() {
+  const tabsData = tabs.map(tab => ({
+    filePath: tab.filePath,
+    scrollPosition: tab.scrollPosition
+  }));
+  localStorage.setItem('openTabs', JSON.stringify(tabsData));
+  localStorage.setItem('activeTabId', activeTabId);
+}
+
+function loadSavedTabs() {
+  try {
+    const savedTabs = localStorage.getItem('openTabs');
+    if (savedTabs) {
+      const tabsData = JSON.parse(savedTabs);
+      const savedActiveId = localStorage.getItem('activeTabId');
+
+      // Request to open saved tabs
+      if (tabsData.length > 0) {
+        ipcRenderer.send('restore-tabs', tabsData);
+      }
+    }
+  } catch (e) {
+    console.error('Error loading saved tabs:', e);
+  }
 }
 
 // Copy path to clipboard on click
@@ -216,6 +426,17 @@ function updateMermaidTheme(isDark) {
 
 // Load dark mode on startup
 loadDarkModePreference();
+
+// Clear any stale tab data from localStorage
+// TODO: Properly implement tab restoration in future
+localStorage.removeItem('openTabs');
+localStorage.removeItem('activeTabId');
+tabs = [];
+activeTabId = null;
+tabIdCounter = 0;
+
+// Don't auto-restore tabs for now - causes issues
+// loadSavedTabs();
 
 // Fullscreen toggle
 fullscreenToggle.addEventListener('click', () => {
@@ -375,6 +596,9 @@ markdownEditor.addEventListener('input', () => {
   hasUnsavedChanges = (markdownEditor.value !== originalMarkdown);
   updateUnsavedIndicator();
 
+  // Update tab state
+  updateTabContent(markdownEditor.value, hasUnsavedChanges);
+
   // Pause file tracking when unsaved changes appear
   if (!previousUnsavedState && hasUnsavedChanges) {
     ipcRenderer.send('pause-file-watching');
@@ -421,6 +645,17 @@ ipcRenderer.on('save-markdown-result', (event, data) => {
     originalMarkdown = markdownEditor.value;
     hasUnsavedChanges = false;
     updateUnsavedIndicator();
+
+    // Update tab state
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (tab) {
+      tab.originalContent = markdownEditor.value;
+      tab.content = markdownEditor.value;
+      tab.hasUnsavedChanges = false;
+      renderTabs();
+      saveTabs();
+    }
+
     console.log('File saved successfully');
 
     // Resume file tracking after save
@@ -580,37 +815,9 @@ function updateRecentFilesList() {
         }
       }
 
-      // Send request to main process to open this file
-      const fs = require('fs');
-      fs.readFile(file.path, 'utf8', (err, data) => {
-        if (err) {
-          console.error('Error reading file:', err);
-          // Remove from recent files if it doesn't exist
-          let recentFiles = getRecentFiles();
-          recentFiles = recentFiles.filter(f => f.path !== file.path);
-          localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
-          updateRecentFilesList();
-          return;
-        }
-        // Store original markdown for editor
-        originalMarkdown = data;
-
-        // If in edit mode, update editor content
-        if (isEditMode) {
-          markdownEditor.value = originalMarkdown;
-          hasUnsavedChanges = false;
-          updateUnsavedIndicator();
-        }
-
-        renderMarkdown(data);
-        updateFileInfo(file.path);
-        saveRecentFile(file.path);
-        recentPanel.classList.remove('visible');
-
-        // Start watching the file
-        ipcRenderer.send('start-file-watching', { filePath: file.path });
-        isFileTrackingActive = true;
-      });
+      // Request main process to open the file (this will trigger file-opened event and create tab)
+      ipcRenderer.send('open-file-path', file.path);
+      recentPanel.classList.remove('visible');
     });
 
     item.appendChild(contentDiv);
@@ -651,14 +858,14 @@ function highlightSearchTerm(searchTerm) {
     viewer,
     NodeFilter.SHOW_TEXT,
     {
-      acceptNode: function(node) {
+      acceptNode: function (node) {
         // Skip script, style, svg, mermaid, and already highlighted nodes
         if (node.parentNode.tagName === 'SCRIPT' ||
-            node.parentNode.tagName === 'STYLE' ||
-            node.parentNode.tagName === 'SVG' ||
-            node.parentNode.closest('.mermaid') ||
-            node.parentNode.closest('svg') ||
-            node.parentNode.classList?.contains('search-highlight')) {
+          node.parentNode.tagName === 'STYLE' ||
+          node.parentNode.tagName === 'SVG' ||
+          node.parentNode.closest('.mermaid') ||
+          node.parentNode.closest('svg') ||
+          node.parentNode.classList?.contains('search-highlight')) {
           return NodeFilter.FILTER_REJECT;
         }
         return NodeFilter.FILTER_ACCEPT;
@@ -907,90 +1114,90 @@ async function renderMarkdown(content) {
     const mermaidBlocks = [];
     let mermaidIndex = 0;
 
-  // Replace mermaid code blocks with placeholders (handle both \n and \r\n)
-  content = content.replace(/```mermaid[\r\n]+([\s\S]*?)```/g, (match, code) => {
-    const placeholder = `MERMAID_PLACEHOLDER_${mermaidIndex}`;
-    mermaidBlocks.push({ placeholder, code: code.trim() });
-    mermaidIndex++;
-    return placeholder;
-  });
+    // Replace mermaid code blocks with placeholders (handle both \n and \r\n)
+    content = content.replace(/```mermaid[\r\n]+([\s\S]*?)```/g, (match, code) => {
+      const placeholder = `MERMAID_PLACEHOLDER_${mermaidIndex}`;
+      mermaidBlocks.push({ placeholder, code: code.trim() });
+      mermaidIndex++;
+      return placeholder;
+    });
 
-  // Parse markdown with marked (allows HTML)
-  let html = marked.parse(content);
+    // Parse markdown with marked (allows HTML)
+    let html = marked.parse(content);
 
-  // Sanitize HTML but allow most tags for rich content
-  html = DOMPurify.sanitize(html, {
-    ADD_TAGS: ['iframe', 'style'],
-    ADD_ATTR: ['target', 'style', 'class', 'id']
-  });
+    // Sanitize HTML but allow most tags for rich content
+    html = DOMPurify.sanitize(html, {
+      ADD_TAGS: ['iframe', 'style'],
+      ADD_ATTR: ['target', 'style', 'class', 'id']
+    });
 
-  // Replace placeholders with mermaid divs
-  mermaidBlocks.forEach(({ placeholder, code }) => {
-    const mermaidDiv = `<pre class="mermaid">${code}</pre>`;
-    html = html.replace(placeholder, mermaidDiv);
-  });
+    // Replace placeholders with mermaid divs
+    mermaidBlocks.forEach(({ placeholder, code }) => {
+      const mermaidDiv = `<pre class="mermaid">${code}</pre>`;
+      html = html.replace(placeholder, mermaidDiv);
+    });
 
-  // Set HTML content
-  viewer.innerHTML = html;
+    // Set HTML content
+    viewer.innerHTML = html;
 
-  // Re-run mermaid on the new content
-  try {
-    const mermaidElements = viewer.querySelectorAll('.mermaid');
-    if (mermaidElements.length > 0) {
-      // Clear any existing IDs to prevent conflicts
-      mermaidElements.forEach((el, index) => {
-        el.removeAttribute('data-processed');
-        el.id = `mermaid-${Date.now()}-${index}`;
-      });
+    // Re-run mermaid on the new content
+    try {
+      const mermaidElements = viewer.querySelectorAll('.mermaid');
+      if (mermaidElements.length > 0) {
+        // Clear any existing IDs to prevent conflicts
+        mermaidElements.forEach((el, index) => {
+          el.removeAttribute('data-processed');
+          el.id = `mermaid-${Date.now()}-${index}`;
+        });
 
-      // Render mermaid diagrams
-      await mermaid.run({
-        querySelector: '.mermaid',
-        suppressErrors: false
-      });
+        // Render mermaid diagrams
+        await mermaid.run({
+          querySelector: '.mermaid',
+          suppressErrors: false
+        });
 
-      // Add maximize buttons to rendered diagrams
-      mermaidElements.forEach((el) => {
-        const svg = el.querySelector('svg');
-        if (svg) {
-          // Wrap in container
-          const container = document.createElement('div');
-          container.className = 'mermaid-container';
-          el.parentNode.insertBefore(container, el);
-          container.appendChild(el);
+        // Add maximize buttons to rendered diagrams
+        mermaidElements.forEach((el) => {
+          const svg = el.querySelector('svg');
+          if (svg) {
+            // Wrap in container
+            const container = document.createElement('div');
+            container.className = 'mermaid-container';
+            el.parentNode.insertBefore(container, el);
+            container.appendChild(el);
 
-          // Add maximize button
-          const maxBtn = document.createElement('button');
-          maxBtn.className = 'mermaid-maximize-btn';
-          maxBtn.title = 'Open in new window';
-          maxBtn.innerHTML = `
+            // Add maximize button
+            const maxBtn = document.createElement('button');
+            maxBtn.className = 'mermaid-maximize-btn';
+            maxBtn.title = 'Open in new window';
+            maxBtn.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
             </svg>
           `;
 
-          maxBtn.addEventListener('click', () => {
-            const svgContent = svg.outerHTML;
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            ipcRenderer.send('open-mermaid-popup', { svgContent, isDarkMode });
-          });
+            maxBtn.addEventListener('click', () => {
+              const svgContent = svg.outerHTML;
+              const isDarkMode = document.body.classList.contains('dark-mode');
+              ipcRenderer.send('open-mermaid-popup', { svgContent, isDarkMode });
+            });
 
-          container.appendChild(maxBtn);
+            container.appendChild(maxBtn);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Mermaid rendering error:', error);
+      // Show error in the diagram location
+      const mermaidElements = viewer.querySelectorAll('.mermaid');
+      mermaidElements.forEach(el => {
+        if (!el.querySelector('svg')) {
+          el.innerHTML = `<div style="color: red; padding: 20px; background: #ffe6e6; border: 1px solid #ff0000; border-radius: 4px;">
+          <strong>Mermaid Rendering Error:</strong><br>${error.message}
+        </div>`;
         }
       });
     }
-  } catch (error) {
-    console.error('Mermaid rendering error:', error);
-    // Show error in the diagram location
-    const mermaidElements = viewer.querySelectorAll('.mermaid');
-    mermaidElements.forEach(el => {
-      if (!el.querySelector('svg')) {
-        el.innerHTML = `<div style="color: red; padding: 20px; background: #ffe6e6; border: 1px solid #ff0000; border-radius: 4px;">
-          <strong>Mermaid Rendering Error:</strong><br>${error.message}
-        </div>`;
-      }
-    });
-  }
 
     // Add maximize buttons to tables
     addTableMaximizeButtons();
@@ -1123,6 +1330,23 @@ function extractTableData(table) {
 
 // Handle file opened
 ipcRenderer.on('file-opened', async (event, data) => {
+  console.log('file-opened event received:', data.path);
+  console.log('Current tabs count:', tabs.length);
+
+  // Check if file is already open in a tab
+  const existingTab = tabs.find(t => t.filePath === data.path);
+
+  if (existingTab) {
+    console.log('Switching to existing tab:', existingTab.id);
+    // Switch to existing tab
+    switchToTab(existingTab.id);
+  } else {
+    console.log('Creating new tab for:', data.path);
+    // Create new tab
+    createTab(data.path, data.content);
+    console.log('Tabs after creation:', tabs.length);
+  }
+
   // Store original markdown for editor
   originalMarkdown = data.content;
 
@@ -1135,7 +1359,7 @@ ipcRenderer.on('file-opened', async (event, data) => {
 
   await renderMarkdown(data.content);
 
-  // Update file info bar
+  // Always update file info - renderTabs() controls visibility
   updateFileInfo(data.path);
 
   // Enable file tracking
