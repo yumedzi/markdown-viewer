@@ -4,42 +4,6 @@
   box-sizing: border-box;
 }
 
-/* Local font declarations - fallback to Google Fonts if not available */
-@font-face {
-  font-family: 'Fira Code Local';
-  src: url('fonts/FiraCode-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Fira Code Local';
-  src: url('fonts/FiraCode-Bold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Fira Code Local';
-  src: url('fonts/FiraCode-Light.ttf') format('truetype');
-  font-weight: 300;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Fira Code Local';
-  src: url('fonts/FiraCode-Medium.ttf') format('truetype');
-  font-weight: 500;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Fira Code Local';
-  src: url('fonts/FiraCode-SemiBold.ttf') format('truetype');
-  font-weight: 600;
-  font-style: normal;
-}
-
 :root {
   --primary-color: #279EA7;
   --secondary-color: #1F3244;
@@ -92,7 +56,7 @@ body.dark-mode .header {
 }
 
 body {
-  font-family: 'Fira Code Local', 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
+  font-family: 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
@@ -114,6 +78,7 @@ body {
   border-bottom: 2px solid var(--border-color);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 100;
+  position: relative;
 }
 
 .header-left {
@@ -163,13 +128,15 @@ body.dark-mode .logo-dark {
 .tabs-container {
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
-  padding: 0 12px;
+  padding: 0 12px 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
 }
 
 .main-container {
@@ -191,24 +158,26 @@ body.dark-mode .logo-dark {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
-  border-bottom: none;
+  border-bottom: 1px solid var(--border-color);
   border-radius: 6px 6px 0 0;
   cursor: pointer;
-  max-width: 200px;
+  max-width: 300px;
   transition: background 0.2s ease;
   position: relative;
-  top: 1px;
+  margin-bottom: -7px;
 }
 
 .tab:hover {
-  background: var(--hover-color);
+  background: var(--bg-tertiary);
 }
 
 .tab.active {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   border-bottom: 2px solid var(--primary-color);
+  margin-bottom: -4px;
+  z-index: 1;
 }
 
 .tab-title {
@@ -276,7 +245,7 @@ body.dark-mode .tab-close:hover {
   border: 1px solid var(--border-color);
   padding: 4px 10px;
   border-radius: 4px;
-  font-family: 'Fira Code Local', 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
+  font-family: 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
   font-size: 11px;
   cursor: pointer;
   display: flex;
@@ -314,6 +283,9 @@ body.dark-mode .tab-close:hover {
   color: var(--text-secondary);
   animation: slideDown 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 body.dark-mode .file-info-bar {
@@ -413,7 +385,8 @@ body.dark-mode .file-info-bar {
 .content-wrapper {
   flex: 1;
   width: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -479,7 +452,7 @@ body.dark-mode .file-info-bar {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Fira Code Local', 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
+  font-family: 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
   font-size: 12px;
   transition: all 0.2s ease;
 }
@@ -501,7 +474,7 @@ body.dark-mode .file-info-bar {
   border: none;
   outline: none;
   resize: none;
-  font-family: 'Fira Code Local', 'Fira Code', 'Consolas', 'Courier New', monospace;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.6;
   background: var(--bg-secondary);
@@ -515,17 +488,17 @@ body.dark-mode .file-info-bar {
 }
 
 #viewer {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 40px 20px;
-  line-height: 1.8;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  width: 100%;
+  padding: 0;
 }
 
 .markdown-body {
   font-size: 10.4px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  line-height: 1.8;
+  min-height: 100%;
 }
 
 .markdown-body h1 {
@@ -601,7 +574,7 @@ body.dark-mode .file-info-bar {
   color: var(--secondary-color);
   padding: 2px 6px;
   border-radius: 3px;
-  font-family: 'Fira Code Local', 'Fira Code', 'Consolas', 'Courier New', monospace;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
   font-size: 0.9em;
 }
 
@@ -622,7 +595,7 @@ body.dark-mode .file-info-bar {
 /* Ensure PrismJS uses Fira Code font */
 .markdown-body pre[class*="language-"],
 .markdown-body code[class*="language-"] {
-  font-family: 'Fira Code Local', 'Fira Code', 'Consolas', 'Courier New', monospace !important;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace !important;
 }
 
 .markdown-body blockquote {
@@ -713,7 +686,7 @@ body.dark-mode .file-info-bar {
   border: 1px solid var(--border-color);
   border-radius: 4px;
   padding: 2px 8px;
-  font-family: 'Fira Code Local', 'Fira Code', 'Consolas', 'Courier New', monospace;
+  font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
   font-size: 0.9em;
   color: var(--text-primary);
   box-shadow: 0 2px 0 var(--border-color);
@@ -732,6 +705,8 @@ body.dark-mode .file-info-bar {
 .welcome {
   text-align: center;
   padding: 40px 20px;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .welcome h1 {
@@ -774,22 +749,38 @@ body.dark-mode .file-info-bar {
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 24px;
+  width: 16px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: transparent;
+  border: none;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 12px;
-  border: 4px solid var(--bg-primary);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
   min-height: 60px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-color);
+  background: rgba(0, 0, 0, 0.3);
+  background-clip: padding-box;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: padding-box;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+  background-clip: padding-box;
+}
+
+background: var(--primary-color);
 }
 
 /* Selection styling */
@@ -837,7 +828,7 @@ html {
   padding: 8px 12px;
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  font-family: 'Fira Code Local', 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
+  font-family: 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
   font-size: 14px;
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -1073,7 +1064,6 @@ html {
   transform: translateX(100%);
   transition: transform 0.3s ease;
   z-index: 50;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .index-panel.visible {
@@ -1253,7 +1243,7 @@ html {
 .notification-message {
   font-size: 14px;
   font-weight: 500;
-  font-family: 'Fira Code Local', 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
+  font-family: 'Fira Code', 'Segoe UI', Calibri, Arial, sans-serif;
 }
 
 /* File Update Toast */

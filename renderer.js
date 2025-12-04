@@ -244,7 +244,7 @@ function switchToTab(tabId) {
 
   // Notify main process about active file change
   ipcRenderer.send('set-active-file', tab.filePath);
-  // saveTabs();
+  saveTabs();
 }
 
 function closeTab(tabId) {
@@ -279,7 +279,7 @@ function closeTab(tabId) {
   }
 
   renderTabs();
-  // saveTabs();
+  saveTabs();
 }
 
 function updateTabContent(content, hasChanges) {
@@ -427,16 +427,8 @@ function updateMermaidTheme(isDark) {
 // Load dark mode on startup
 loadDarkModePreference();
 
-// Clear any stale tab data from localStorage
-// TODO: Properly implement tab restoration in future
-localStorage.removeItem('openTabs');
-localStorage.removeItem('activeTabId');
-tabs = [];
-activeTabId = null;
-tabIdCounter = 0;
-
-// Don't auto-restore tabs for now - causes issues
-// loadSavedTabs();
+// Load saved tabs on startup
+loadSavedTabs();
 
 // Fullscreen toggle
 fullscreenToggle.addEventListener('click', () => {
