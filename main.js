@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -317,6 +317,14 @@ ipcMain.on('open-file-path', (event, filePath) => {
   }
 });
 
+// Handle open folder in file explorer request
+ipcMain.on('open-folder-in-explorer', (event, filePath) => {
+  if (filePath) {
+    // shell.showItemInFolder will open the folder and select the file
+    shell.showItemInFolder(filePath);
+  }
+});
+
 // Handle PDF export request from renderer
 ipcMain.on('export-pdf', async (event, data) => {
   try {
@@ -400,6 +408,18 @@ ipcMain.on('save-markdown-file', (event, data) => {
         });
       } else {
         console.log('File saved successfully:', filePath);
+
+        // Update lastModifiedTime to prevent false "external change" detection
+        if (watchedFilePath === filePath) {
+          try {
+            const stats = fs.statSync(filePath);
+            lastModifiedTime = stats.mtimeMs;
+            console.log('Updated lastModifiedTime after save:', lastModifiedTime);
+          } catch (statErr) {
+            console.error('Error updating file stats after save:', statErr);
+          }
+        }
+
         mainWindow.webContents.send('save-markdown-result', {
           success: true,
           path: filePath

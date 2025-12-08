@@ -88,6 +88,7 @@ const indexList = document.getElementById('indexList');
 const fileInfoBar = document.getElementById('fileInfoBar');
 const fileName = document.getElementById('fileName');
 const filePath = document.getElementById('filePath');
+const refreshBtn = document.getElementById('refreshBtn');
 const exportPdfBtn = document.getElementById('exportPdf');
 const toggleEditBtn = document.getElementById('toggleEdit');
 const editorPanel = document.getElementById('editorPanel');
@@ -359,6 +360,56 @@ viewer.addEventListener('click', (e) => {
   if (link && link.href) {
     const url = link.href;
 
+    // Get the href attribute directly to handle relative paths and anchors
+    const hrefAttr = link.getAttribute('href');
+
+    // Check if it's an internal anchor link (starts with #)
+    if (hrefAttr && hrefAttr.startsWith('#')) {
+      e.preventDefault();
+      const targetId = hrefAttr.substring(1); // Remove the # symbol
+
+      // Try to find the target element by ID
+      let targetElement = document.getElementById(targetId);
+
+      // If not found by ID, try to find by searching all headers
+      if (!targetElement) {
+        const headers = viewer.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+        for (const header of headers) {
+          // Check if the header's ID matches (case-insensitive)
+          if (header.id && header.id.toLowerCase() === targetId.toLowerCase()) {
+            targetElement = header;
+            break;
+          }
+          // Also check if the generated ID from text matches
+          const headerText = header.textContent.trim().toLowerCase()
+            .replace(/[^\w\s-]/g, '') // Remove punctuation
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+          if (headerText === targetId.toLowerCase()) {
+            targetElement = header;
+            break;
+          }
+        }
+      }
+
+      if (targetElement) {
+        // Calculate the scroll position relative to contentWrapper
+        const contentRect = contentWrapper.getBoundingClientRect();
+        const targetRect = targetElement.getBoundingClientRect();
+        const scrollOffset = targetRect.top - contentRect.top + contentWrapper.scrollTop - 20; // 20px padding from top
+
+        // Scroll the content wrapper to the target
+        contentWrapper.scrollTo({
+          top: scrollOffset,
+          behavior: 'smooth'
+        });
+      } else {
+        showNotification(`Section not found: ${targetId}`, 3000);
+      }
+      return;
+    }
+
     // Check if it's an external web link (http or https)
     if (url.startsWith('http://') || url.startsWith('https://')) {
       e.preventDefault();
@@ -367,8 +418,6 @@ viewer.addEventListener('click', (e) => {
     }
 
     // Check if it's a local file link (file:// or relative path)
-    // Get the href attribute directly to handle relative paths
-    const hrefAttr = link.getAttribute('href');
     if (hrefAttr && !hrefAttr.startsWith('#') && !hrefAttr.startsWith('http')) {
       e.preventDefault();
 
@@ -418,6 +467,23 @@ openFileBtn.addEventListener('click', () => {
   }
 
   ipcRenderer.send('open-file-dialog');
+});
+
+// Refresh button
+refreshBtn.addEventListener('click', () => {
+  if (!currentFilePath) {
+    return;
+  }
+
+  // Check for unsaved changes before refreshing
+  if (isEditMode && hasUnsavedChanges) {
+    if (!confirm('You have unsaved changes. Discard changes and refresh from disk?')) {
+      return;
+    }
+  }
+
+  // Reload the file from disk
+  reloadCurrentFile();
 });
 
 // Export to PDF button
@@ -591,6 +657,23 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Ctrl+R keyboard shortcut for refresh
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+    e.preventDefault();
+    if (currentFilePath) {
+      // Check for unsaved changes
+      if (isEditMode && hasUnsavedChanges) {
+        if (confirm('You have unsaved changes. Discard changes and refresh from disk?')) {
+          reloadCurrentFile();
+        }
+      } else {
+        reloadCurrentFile();
+      }
+    }
+  }
+});
+
 // Handle save result
 ipcRenderer.on('save-markdown-result', (event, data) => {
   if (data.success) {
@@ -619,34 +702,6 @@ function updateUnsavedIndicator() {
   }
 }
 
-// Pin functionality for recent panel
-const pinRecentPanelBtn = document.getElementById('pinRecentPanel');
-let isRecentPanelPinned = localStorage.getItem('recentPanelPinned') === 'true';
-
-// Initialize pinned state on load
-function initPinnedState() {
-  if (isRecentPanelPinned) {
-    pinRecentPanelBtn.classList.add('pinned');
-    pinRecentPanelBtn.title = 'Unpin panel';
-    recentPanel.classList.add('visible');
-  }
-}
-initPinnedState();
-
-// Toggle pin state
-pinRecentPanelBtn.addEventListener('click', () => {
-  isRecentPanelPinned = !isRecentPanelPinned;
-  localStorage.setItem('recentPanelPinned', isRecentPanelPinned);
-
-  if (isRecentPanelPinned) {
-    pinRecentPanelBtn.classList.add('pinned');
-    pinRecentPanelBtn.title = 'Unpin panel';
-  } else {
-    pinRecentPanelBtn.classList.remove('pinned');
-    pinRecentPanelBtn.title = 'Pin panel open';
-  }
-});
-
 // Recent files panel toggle
 toggleRecentBtn.addEventListener('click', () => {
   recentPanel.classList.toggle('visible');
@@ -654,13 +709,6 @@ toggleRecentBtn.addEventListener('click', () => {
 
 closeRecentBtn.addEventListener('click', () => {
   recentPanel.classList.remove('visible');
-  // Also unpin when manually closing
-  if (isRecentPanelPinned) {
-    isRecentPanelPinned = false;
-    localStorage.setItem('recentPanelPinned', 'false');
-    pinRecentPanelBtn.classList.remove('pinned');
-    pinRecentPanelBtn.title = 'Pin panel open';
-  }
 });
 
 // Clear all recent files
@@ -679,8 +727,16 @@ const HOVER_TRIGGER_ZONE = 10; // pixels from left edge
 const HOVER_DELAY = 500; // milliseconds
 
 document.addEventListener('mousemove', (e) => {
-  // Don't auto-show if panel is pinned (it's already visible)
-  if (isRecentPanelPinned) return;
+  // Don't trigger hover panel in edit mode to avoid interference while editing
+  if (isEditMode) {
+    // Clear any pending timeout if we enter edit mode
+    isMouseInTriggerZone = false;
+    if (mouseHoverTimeout) {
+      clearTimeout(mouseHoverTimeout);
+      mouseHoverTimeout = null;
+    }
+    return;
+  }
 
   // Check if mouse is near the left edge
   if (e.clientX <= HOVER_TRIGGER_ZONE) {
@@ -705,9 +761,9 @@ document.addEventListener('mousemove', (e) => {
   }
 });
 
-// Close recent panel when clicking outside (unless pinned)
+// Close recent panel when clicking outside
 document.addEventListener('click', (e) => {
-  if (recentPanel.classList.contains('visible') && !isRecentPanelPinned) {
+  if (recentPanel.classList.contains('visible')) {
     // Check if click is outside the recent panel
     if (!recentPanel.contains(e.target) && e.target !== toggleRecentBtn) {
       recentPanel.classList.remove('visible');
@@ -797,6 +853,13 @@ function updateRecentFilesList() {
       // Use the standard file opening path via IPC
       ipcRenderer.send('open-file-path', file.path);
       recentPanel.classList.remove('visible');
+    });
+
+    // Add context menu (right-click) handler
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showRecentContextMenu(e.clientX, e.clientY, file.path);
     });
 
     item.appendChild(contentDiv);
@@ -997,7 +1060,16 @@ function buildTableOfContents() {
     item.addEventListener('click', () => {
       const targetHeader = document.getElementById(header.id);
       if (targetHeader) {
-        targetHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Calculate the scroll position relative to contentWrapper
+        const contentRect = contentWrapper.getBoundingClientRect();
+        const headerRect = targetHeader.getBoundingClientRect();
+        const scrollOffset = headerRect.top - contentRect.top + contentWrapper.scrollTop - 20; // 20px padding from top
+
+        // Scroll the content wrapper to the header
+        contentWrapper.scrollTo({
+          top: scrollOffset,
+          behavior: 'smooth'
+        });
 
         // Update active state
         document.querySelectorAll('.index-item').forEach(i => i.classList.remove('active'));
@@ -1628,12 +1700,35 @@ closeUpdateToast.addEventListener('click', () => {
 const contextMenu = document.getElementById('contextMenu');
 const ctxCopy = document.getElementById('ctxCopy');
 const ctxCopyPlain = document.getElementById('ctxCopyPlain');
+const ctxBold = document.getElementById('ctxBold');
+const ctxItalic = document.getElementById('ctxItalic');
+const ctxCode = document.getElementById('ctxCode');
+const ctxList = document.getElementById('ctxList');
+const ctxRemoveFormat = document.getElementById('ctxRemoveFormat');
 const ctxSelectAll = document.getElementById('ctxSelectAll');
 
+// Store selection when context menu opens
+let savedSelection = null;
+let savedSelectionHtml = null;
+
 function showContextMenu(x, y) {
-  // Get selected text
+  // Get and save selected text
   const selection = window.getSelection();
   const hasSelection = selection && selection.toString().trim().length > 0;
+
+  // Save the selection text and HTML
+  if (hasSelection && selection.rangeCount > 0) {
+    savedSelection = selection.toString();
+
+    // Save HTML version
+    const range = selection.getRangeAt(0);
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(range.cloneContents());
+    savedSelectionHtml = tempDiv.innerHTML;
+  } else {
+    savedSelection = null;
+    savedSelectionHtml = null;
+  }
 
   // Enable/disable copy items based on selection
   if (hasSelection) {
@@ -1642,6 +1737,21 @@ function showContextMenu(x, y) {
   } else {
     ctxCopy.classList.add('disabled');
     ctxCopyPlain.classList.add('disabled');
+  }
+
+  // Enable/disable formatting options (enabled when text is selected in any mode)
+  if (hasSelection) {
+    ctxBold.classList.remove('disabled');
+    ctxItalic.classList.remove('disabled');
+    ctxCode.classList.remove('disabled');
+    ctxList.classList.remove('disabled');
+    ctxRemoveFormat.classList.remove('disabled');
+  } else {
+    ctxBold.classList.add('disabled');
+    ctxItalic.classList.add('disabled');
+    ctxCode.classList.add('disabled');
+    ctxList.classList.add('disabled');
+    ctxRemoveFormat.classList.add('disabled');
   }
 
   // Position the menu
@@ -1699,29 +1809,62 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Copy with formatting (HTML)
-ctxCopy.addEventListener('click', () => {
-  if (ctxCopy.classList.contains('disabled')) return;
+ctxCopy.addEventListener('click', async (e) => {
+  console.log('Copy clicked!');
+  e.stopPropagation();
 
-  const selection = window.getSelection();
-  if (selection && selection.toString().trim()) {
-    // Use document.execCommand for copy with formatting
-    document.execCommand('copy');
-    showNotification('Copied to clipboard', 1500);
+  if (ctxCopy.classList.contains('disabled')) {
+    console.log('Copy is disabled');
+    return;
   }
+
   hideContextMenu();
+
+  if (!savedSelection || !savedSelection.trim()) {
+    showNotification('No text selected', 1500);
+    return;
+  }
+
+  console.log('Attempting to copy:', savedSelection.substring(0, 50));
+
+  try {
+    // Try simple plain text first
+    await navigator.clipboard.writeText(savedSelection);
+    console.log('Copy successful');
+    showNotification('Copied to clipboard', 1500);
+  } catch (err) {
+    console.error('Copy failed:', err);
+    showNotification('Failed to copy: ' + err.message, 3000);
+  }
 });
 
 // Copy as plain text
-ctxCopyPlain.addEventListener('click', () => {
-  if (ctxCopyPlain.classList.contains('disabled')) return;
+ctxCopyPlain.addEventListener('click', async (e) => {
+  console.log('Copy plain clicked!');
+  e.stopPropagation();
 
-  const selection = window.getSelection();
-  if (selection && selection.toString().trim()) {
-    const plainText = selection.toString();
-    clipboard.writeText(plainText);
-    showNotification('Copied as plain text', 1500);
+  if (ctxCopyPlain.classList.contains('disabled')) {
+    console.log('Copy plain is disabled');
+    return;
   }
+
   hideContextMenu();
+
+  if (!savedSelection || !savedSelection.trim()) {
+    showNotification('No text selected', 1500);
+    return;
+  }
+
+  console.log('Attempting to copy plain:', savedSelection.substring(0, 50));
+
+  try {
+    await navigator.clipboard.writeText(savedSelection);
+    console.log('Copy plain successful');
+    showNotification('Copied as plain text', 1500);
+  } catch (err) {
+    console.error('Copy plain failed:', err);
+    showNotification('Failed to copy: ' + err.message, 3000);
+  }
 });
 
 // Select all
@@ -1738,4 +1881,362 @@ ctxSelectAll.addEventListener('click', () => {
     selection.addRange(range);
   }
   hideContextMenu();
+});
+
+// Formatting functions - work in both view and edit mode
+function applyMarkdownFormat(wrapper, multiline = false) {
+  if (!savedSelection || !currentFilePath) return;
+
+  let formattedText;
+  if (multiline) {
+    // For lists - apply to each line
+    const lines = savedSelection.split('\n');
+    formattedText = lines.map(line => line.trim() ? wrapper + line : line).join('\n');
+  } else {
+    // For inline formatting - wrap the text
+    formattedText = wrapper + savedSelection + wrapper;
+  }
+
+  if (isEditMode) {
+    // Edit mode: Replace in editor
+    const start = markdownEditor.selectionStart;
+    const end = markdownEditor.selectionEnd;
+
+    markdownEditor.value =
+      markdownEditor.value.substring(0, start) +
+      formattedText +
+      markdownEditor.value.substring(end);
+
+    // Restore selection
+    markdownEditor.focus();
+    markdownEditor.selectionStart = start;
+    markdownEditor.selectionEnd = start + formattedText.length;
+
+    // Mark as unsaved
+    hasUnsavedChanges = true;
+    updateUnsavedIndicator();
+
+    // Trigger preview update
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      renderMarkdown(markdownEditor.value);
+    }, PREVIEW_DEBOUNCE_DELAY);
+  } else {
+    // View mode: Apply formatting to original markdown and re-render
+    const markdownContent = originalMarkdown;
+
+    // Find the selected text in the markdown (first occurrence)
+    const textIndex = markdownContent.indexOf(savedSelection);
+
+    if (textIndex !== -1) {
+      // Save current scroll position
+      const scrollPosition = contentWrapper.scrollTop;
+
+      // Replace the text with formatted version
+      const newContent =
+        markdownContent.substring(0, textIndex) +
+        formattedText +
+        markdownContent.substring(textIndex + savedSelection.length);
+
+      // Update the markdown
+      originalMarkdown = newContent;
+
+      // Re-render
+      renderMarkdown(newContent).then(() => {
+        // Restore scroll position after render
+        contentWrapper.scrollTop = scrollPosition;
+      });
+
+      // Mark as unsaved
+      hasUnsavedChanges = true;
+
+      // If in edit mode, update editor too
+      if (isEditMode) {
+        markdownEditor.value = newContent;
+        updateUnsavedIndicator();
+      }
+    } else {
+      showNotification('Could not find text in source', 2000);
+    }
+  }
+}
+
+// Bold
+ctxBold.addEventListener('click', () => {
+  hideContextMenu();
+  applyMarkdownFormat('**');
+  if (isEditMode) {
+    showNotification('Applied bold formatting', 1500);
+  }
+});
+
+// Italic
+ctxItalic.addEventListener('click', () => {
+  hideContextMenu();
+  applyMarkdownFormat('*');
+  if (isEditMode) {
+    showNotification('Applied italic formatting', 1500);
+  }
+});
+
+// Code block
+ctxCode.addEventListener('click', () => {
+  if (!savedSelection || !currentFilePath) return;
+  hideContextMenu();
+
+  // Check if it's multiline or single line
+  const isMultiline = savedSelection.includes('\n');
+  let formattedText;
+
+  if (isMultiline) {
+    // Use code block with ```
+    formattedText = '```\n' + savedSelection + '\n```';
+  } else {
+    // Use inline code with backticks
+    formattedText = '`' + savedSelection + '`';
+  }
+
+  if (isEditMode) {
+    // Edit mode: Replace in editor
+    const start = markdownEditor.selectionStart;
+    const end = markdownEditor.selectionEnd;
+
+    markdownEditor.value =
+      markdownEditor.value.substring(0, start) +
+      formattedText +
+      markdownEditor.value.substring(end);
+
+    // Restore selection
+    markdownEditor.focus();
+    markdownEditor.selectionStart = start;
+    markdownEditor.selectionEnd = start + formattedText.length;
+
+    // Mark as unsaved
+    hasUnsavedChanges = true;
+    updateUnsavedIndicator();
+
+    // Trigger preview update
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      renderMarkdown(markdownEditor.value);
+    }, PREVIEW_DEBOUNCE_DELAY);
+
+    showNotification('Applied code formatting', 1500);
+  } else {
+    // View mode: Apply formatting to original markdown and re-render
+    const markdownContent = originalMarkdown;
+    const textIndex = markdownContent.indexOf(savedSelection);
+
+    if (textIndex !== -1) {
+      // Save current scroll position
+      const scrollPosition = contentWrapper.scrollTop;
+
+      const newContent =
+        markdownContent.substring(0, textIndex) +
+        formattedText +
+        markdownContent.substring(textIndex + savedSelection.length);
+
+      originalMarkdown = newContent;
+      renderMarkdown(newContent).then(() => {
+        // Restore scroll position after render
+        contentWrapper.scrollTop = scrollPosition;
+      });
+      hasUnsavedChanges = true;
+
+      showNotification('Applied code formatting', 1500);
+    } else {
+      showNotification('Could not find text in source', 2000);
+    }
+  }
+});
+
+// Make list
+ctxList.addEventListener('click', () => {
+  hideContextMenu();
+  applyMarkdownFormat('- ', true);
+  if (isEditMode) {
+    showNotification('Applied list formatting', 1500);
+  }
+});
+
+// Remove formatting
+ctxRemoveFormat.addEventListener('click', () => {
+  if (!savedSelection || !currentFilePath) return;
+  hideContextMenu();
+
+  if (isEditMode) {
+    // Edit mode: Remove formatting from selected markdown text
+    const start = markdownEditor.selectionStart;
+    const end = markdownEditor.selectionEnd;
+    const selectedText = markdownEditor.value.substring(start, end);
+
+    let cleanText = selectedText
+      .replace(/\*\*([^*]+)\*\*/g, '$1')  // Bold
+      .replace(/\*([^*]+)\*/g, '$1')      // Italic
+      .replace(/`([^`]+)`/g, '$1')        // Inline code
+      .replace(/^```\n?/gm, '')           // Code block start
+      .replace(/\n?```$/gm, '')           // Code block end
+      .replace(/^- /gm, '')               // List items
+      .replace(/^> /gm, '')               // Blockquotes
+      .replace(/^#+\s/gm, '');            // Headers
+
+    markdownEditor.value =
+      markdownEditor.value.substring(0, start) +
+      cleanText +
+      markdownEditor.value.substring(end);
+
+    // Restore selection
+    markdownEditor.focus();
+    markdownEditor.selectionStart = start;
+    markdownEditor.selectionEnd = start + cleanText.length;
+
+    // Mark as unsaved
+    hasUnsavedChanges = true;
+    updateUnsavedIndicator();
+
+    // Trigger preview update
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      renderMarkdown(markdownEditor.value);
+    }, PREVIEW_DEBOUNCE_DELAY);
+
+    showNotification('Removed formatting', 1500);
+  } else {
+    // View mode: Find text with various markdown formatting patterns
+    const markdownContent = originalMarkdown;
+    const plainText = savedSelection;
+
+    // Try to find the text with different markdown formatting
+    const patterns = [
+      `**${plainText}**`,     // Bold
+      `*${plainText}*`,       // Italic
+      `\`${plainText}\``,     // Inline code
+      `***${plainText}***`,   // Bold + Italic
+    ];
+
+    let foundIndex = -1;
+    let foundPattern = null;
+
+    // Try each pattern
+    for (const pattern of patterns) {
+      const idx = markdownContent.indexOf(pattern);
+      if (idx !== -1) {
+        foundIndex = idx;
+        foundPattern = pattern;
+        break;
+      }
+    }
+
+    // Also try the plain text
+    if (foundIndex === -1) {
+      foundIndex = markdownContent.indexOf(plainText);
+      foundPattern = plainText;
+    }
+
+    if (foundIndex !== -1) {
+      // Save current scroll position
+      const scrollPosition = contentWrapper.scrollTop;
+
+      const newContent =
+        markdownContent.substring(0, foundIndex) +
+        plainText +
+        markdownContent.substring(foundIndex + foundPattern.length);
+
+      originalMarkdown = newContent;
+      renderMarkdown(newContent).then(() => {
+        // Restore scroll position after render
+        contentWrapper.scrollTop = scrollPosition;
+      });
+      hasUnsavedChanges = true;
+
+      showNotification('Removed formatting', 1500);
+    } else {
+      showNotification('Could not find text in source', 2000);
+    }
+  }
+});
+
+// ============================================
+// Recent Files Context Menu
+// ============================================
+
+const recentContextMenu = document.getElementById('recentContextMenu');
+const ctxOpenFolder = document.getElementById('ctxOpenFolder');
+const ctxRemoveRecent = document.getElementById('ctxRemoveRecent');
+const ctxCopyPath = document.getElementById('ctxCopyPath');
+
+let recentContextFilePath = null;
+
+function showRecentContextMenu(x, y, filePath) {
+  recentContextFilePath = filePath;
+
+  // Position the menu
+  recentContextMenu.style.left = `${x}px`;
+  recentContextMenu.style.top = `${y}px`;
+
+  // Show the menu
+  recentContextMenu.classList.add('visible');
+
+  // Adjust position if menu goes off screen
+  const menuRect = recentContextMenu.getBoundingClientRect();
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+
+  if (menuRect.right > windowWidth) {
+    recentContextMenu.style.left = `${windowWidth - menuRect.width - 10}px`;
+  }
+  if (menuRect.bottom > windowHeight) {
+    recentContextMenu.style.top = `${windowHeight - menuRect.height - 10}px`;
+  }
+}
+
+function hideRecentContextMenu() {
+  recentContextMenu.classList.remove('visible');
+  recentContextFilePath = null;
+}
+
+// Hide recent context menu when clicking elsewhere
+document.addEventListener('click', (e) => {
+  if (!recentContextMenu.contains(e.target)) {
+    hideRecentContextMenu();
+  }
+});
+
+// Hide on scroll or resize
+document.addEventListener('scroll', hideRecentContextMenu, true);
+window.addEventListener('resize', hideRecentContextMenu);
+
+// Hide on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    hideRecentContextMenu();
+  }
+});
+
+// Open containing folder
+ctxOpenFolder.addEventListener('click', () => {
+  if (recentContextFilePath) {
+    ipcRenderer.send('open-folder-in-explorer', recentContextFilePath);
+  }
+  hideRecentContextMenu();
+});
+
+// Remove from recent files
+ctxRemoveRecent.addEventListener('click', () => {
+  if (recentContextFilePath) {
+    let recentFiles = getRecentFiles();
+    recentFiles = recentFiles.filter(f => f.path !== recentContextFilePath);
+    localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+    updateRecentFilesList();
+  }
+  hideRecentContextMenu();
+});
+
+// Copy file path
+ctxCopyPath.addEventListener('click', () => {
+  if (recentContextFilePath) {
+    clipboard.writeText(recentContextFilePath);
+    showNotification('Path copied to clipboard', 1500);
+  }
+  hideRecentContextMenu();
 });
