@@ -112,6 +112,11 @@
           <path d="M5 12h14M12 5l7 7-7 7"></path>
         </svg>
       </button>
+      <button id="refreshBtn" class="nav-btn" title="Refresh Document (Ctrl+R)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+        </svg>
+      </button>
       <span class="nav-separator"></span>
       <svg class="file-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
@@ -151,15 +156,6 @@
         <div class="recent-header">
           <span>Recent Files</span>
           <div class="recent-header-buttons">
-            <button id="pinRecentPanel" class="pin-btn" title="Pin panel open">
-              <svg class="pin-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
-              </svg>
-              <svg class="pinned-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" style="display: none;">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
-                <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
-              </svg>
-            </button>
             <button id="clearAllRecent" class="clear-all-btn" title="Clear All Recent Files">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -330,6 +326,52 @@
       <span>Copy as Plain Text</span>
     </div>
     <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="ctxBold">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+        <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
+      </svg>
+      <span>Bold</span>
+      <span class="shortcut">Ctrl+B</span>
+    </div>
+    <div class="context-menu-item" id="ctxItalic">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="4" x2="10" y2="4"></line>
+        <line x1="14" y1="20" x2="5" y2="20"></line>
+        <line x1="15" y1="4" x2="9" y2="20"></line>
+      </svg>
+      <span>Italic</span>
+      <span class="shortcut">Ctrl+I</span>
+    </div>
+    <div class="context-menu-item" id="ctxCode">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="16 18 22 12 16 6"></polyline>
+        <polyline points="8 6 2 12 8 18"></polyline>
+      </svg>
+      <span>Code Block</span>
+      <span class="shortcut">Ctrl+`</span>
+    </div>
+    <div class="context-menu-item" id="ctxList">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+      </svg>
+      <span>Make List</span>
+    </div>
+    <div class="context-menu-item" id="ctxRemoveFormat">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 7V4h16v3"></path>
+        <path d="M5 20h6"></path>
+        <path d="M13 4L9 20"></path>
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+      </svg>
+      <span>Remove Formatting</span>
+    </div>
+    <div class="context-menu-separator"></div>
     <div class="context-menu-item" id="ctxSelectAll">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -337,6 +379,31 @@
       </svg>
       <span>Select All</span>
       <span class="shortcut">Ctrl+A</span>
+    </div>
+  </div>
+
+  <!-- Recent Files Context Menu -->
+  <div id="recentContextMenu" class="context-menu">
+    <div class="context-menu-item" id="ctxOpenFolder">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span>Open Containing Folder</span>
+    </div>
+    <div class="context-menu-item" id="ctxCopyPath">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>Copy Path</span>
+    </div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="ctxRemoveRecent">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      <span>Remove from Recent</span>
     </div>
   </div>
 
