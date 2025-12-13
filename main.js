@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const HTMLtoDOCX = require('html-to-docx');
 
 // Conditionally load electron-updater (may not be available in dev or if not installed)
 let autoUpdater = null;
@@ -379,6 +380,108 @@ ipcMain.on('export-pdf', async (event, data) => {
   } catch (error) {
     console.error('Error exporting PDF:', error);
     mainWindow.webContents.send('pdf-export-result', {
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Handle Word export request from renderer
+ipcMain.on('export-word', async (event, data) => {
+  console.log('Received export-word request');
+  try {
+    const { currentFileName, htmlContent } = data;
+    console.log('Processing Word export for:', currentFileName, 'HTML length:', htmlContent?.length);
+
+    // Determine default filename
+    let defaultFilename = 'document.docx';
+    if (currentFileName) {
+      const nameWithoutExt = currentFileName.replace(/\.[^/.]+$/, '');
+      defaultFilename = `${nameWithoutExt}.docx`;
+    }
+
+    // Show save dialog
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export to Word',
+      defaultPath: defaultFilename,
+      filters: [
+        { name: 'Word Documents', extensions: ['docx'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return;
+    }
+
+    // Create a complete HTML document with styling
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.6; color: #333; }
+          h1 { font-size: 24pt; color: #1F3244; margin-top: 24pt; margin-bottom: 12pt; }
+          h2 { font-size: 18pt; color: #1F3244; margin-top: 18pt; margin-bottom: 10pt; }
+          h3 { font-size: 14pt; color: #1F3244; margin-top: 14pt; margin-bottom: 8pt; }
+          h4, h5, h6 { font-size: 12pt; color: #1F3244; margin-top: 12pt; margin-bottom: 6pt; }
+          p { margin-bottom: 10pt; }
+          code { font-family: 'Consolas', 'Courier New', monospace; background-color: #f5f5f5; padding: 2pt 4pt; font-size: 10pt; }
+          pre { font-family: 'Consolas', 'Courier New', monospace; background-color: #f5f5f5; padding: 10pt; font-size: 10pt; border: 1pt solid #ddd; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 12pt; }
+          th, td { border: 1pt solid #ddd; padding: 8pt; text-align: left; }
+          th { background-color: #1F3244; color: white; }
+          blockquote { border-left: 3pt solid #279EA7; padding-left: 12pt; margin-left: 0; color: #666; }
+          a { color: #279EA7; }
+          ul, ol { margin-bottom: 10pt; }
+          li { margin-bottom: 4pt; }
+          img { max-width: 100%; height: auto; }
+        </style>
+      </head>
+      <body>
+        ${htmlContent}
+      </body>
+      </html>
+    `;
+
+    // Convert HTML to DOCX
+    const docxBuffer = await HTMLtoDOCX(fullHtml, null, {
+      table: { row: { cantSplit: true } },
+      footer: true,
+      pageNumber: true,
+      font: 'Calibri',
+      fontSize: 22, // In half-points (22 = 11pt)
+      margins: {
+        top: 1440,    // 1 inch in twips
+        right: 1440,
+        bottom: 1440,
+        left: 1440,
+        header: 720,  // 0.5 inch
+        footer: 720,  // 0.5 inch
+        gutter: 0
+      }
+    });
+
+    // Write DOCX to file
+    fs.writeFile(result.filePath, docxBuffer, (err) => {
+      if (err) {
+        console.error('Error saving Word document:', err);
+        mainWindow.webContents.send('word-export-result', {
+          success: false,
+          error: err.message
+        });
+      } else {
+        console.log('Word document saved successfully:', result.filePath);
+        mainWindow.webContents.send('word-export-result', {
+          success: true,
+          path: result.filePath
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error exporting Word document:', error);
+    mainWindow.webContents.send('word-export-result', {
       success: false,
       error: error.message
     });
