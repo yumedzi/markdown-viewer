@@ -1,6 +1,7 @@
 const { ipcRenderer, shell, clipboard } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const html2canvas = require('html2canvas');
 
 // Libraries loaded from CDN in index.html
 // marked, mermaid, and DOMPurify are available globally
@@ -90,6 +91,7 @@ const fileName = document.getElementById('fileName');
 const filePath = document.getElementById('filePath');
 const refreshBtn = document.getElementById('refreshBtn');
 const exportPdfBtn = document.getElementById('exportPdf');
+const exportWordBtn = document.getElementById('exportWord');
 const toggleEditBtn = document.getElementById('toggleEdit');
 const editorPanel = document.getElementById('editorPanel');
 const markdownEditor = document.getElementById('markdownEditor');
@@ -499,6 +501,231 @@ exportPdfBtn.addEventListener('click', () => {
   ipcRenderer.send('export-pdf', { currentFileName });
 });
 
+// Convert Mermaid element to base64 PNG using native browser rendering
+async function mermaidToBase64Png(mermaidElement) {
+  return new Promise((resolve, reject) => {
+    try {
+      const svg = mermaidElement.querySelector('svg');
+      if (!svg) {
+        reject(new Error('No SVG found in mermaid element'));
+        return;
+      }
+
+      // Get SVG dimensions
+      const bbox = svg.getBBox();
+      const width = bbox.width || svg.clientWidth || 800;
+      const height = bbox.height || svg.clientHeight || 600;
+
+      // Clone SVG
+      const svgClone = svg.cloneNode(true);
+
+      // Set explicit dimensions
+      svgClone.setAttribute('width', width);
+      svgClone.setAttribute('height', height);
+
+      // Ensure viewBox is set
+      if (!svgClone.getAttribute('viewBox')) {
+        svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      }
+
+      // Get all computed styles and inline them
+      const allElements = svg.querySelectorAll('*');
+      const clonedElements = svgClone.querySelectorAll('*');
+
+      allElements.forEach((el, i) => {
+        if (clonedElements[i]) {
+          const computedStyle = window.getComputedStyle(el);
+          const importantStyles = ['fill', 'stroke', 'stroke-width', 'font-family', 'font-size', 'font-weight', 'opacity', 'transform'];
+          importantStyles.forEach(prop => {
+            const value = computedStyle.getPropertyValue(prop);
+            if (value && value !== 'none' && value !== '') {
+              clonedElements[i].style[prop] = value;
+            }
+          });
+        }
+      });
+
+      // Handle foreignObject - extract text and convert to SVG text
+      svgClone.querySelectorAll('foreignObject').forEach(fo => {
+        const text = fo.textContent?.trim() || '';
+        const x = fo.getAttribute('x') || '0';
+        const y = fo.getAttribute('y') || '0';
+        const foWidth = parseFloat(fo.getAttribute('width')) || 100;
+        const foHeight = parseFloat(fo.getAttribute('height')) || 20;
+
+        // Create SVG text element
+        const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textEl.setAttribute('x', parseFloat(x) + foWidth / 2);
+        textEl.setAttribute('y', parseFloat(y) + foHeight / 2 + 4);
+        textEl.setAttribute('text-anchor', 'middle');
+        textEl.setAttribute('dominant-baseline', 'middle');
+        textEl.setAttribute('font-family', 'Arial, sans-serif');
+        textEl.setAttribute('font-size', '14');
+        textEl.setAttribute('fill', '#333');
+        textEl.textContent = text;
+
+        fo.parentNode.replaceChild(textEl, fo);
+      });
+
+      // Serialize SVG
+      const serializer = new XMLSerializer();
+      let svgString = serializer.serializeToString(svgClone);
+
+      // Add XML declaration and namespace
+      if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+        svgString = svgString.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+
+      // Create image from SVG
+      const img = new Image();
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        try {
+          // Create high-res canvas
+          const scale = 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = width * scale;
+          canvas.height = height * scale;
+
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const base64 = canvas.toDataURL('image/png');
+          URL.revokeObjectURL(url);
+          resolve({ base64, width, height });
+        } catch (err) {
+          URL.revokeObjectURL(url);
+          reject(err);
+        }
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load SVG image'));
+      };
+
+      img.src = url;
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// Export to Word button
+exportWordBtn.addEventListener('click', async () => {
+  if (!currentFilePath) {
+    alert('Please open a markdown file first before exporting to Word.');
+    return;
+  }
+
+  try {
+    // Show loading notification
+    showNotification('Preparing Word export...', 10000);
+
+    const pathParts = currentFilePath.split(/[\\/]/);
+    const currentFileName = pathParts.pop();
+
+    // Get the HTML content from the viewer, but clean it up for Word export
+    // Remove UI elements like maximize buttons, code copy buttons, etc.
+    const viewerClone = viewer.cloneNode(true);
+
+    // Remove maximize buttons from tables and mermaid diagrams
+    viewerClone.querySelectorAll('.mermaid-maximize-btn, .table-maximize-btn, .code-copy-btn').forEach(el => el.remove());
+
+    // Convert mermaid diagrams to PNG images for Word compatibility
+    const mermaidContainers = viewer.querySelectorAll('.mermaid-container');
+    const clonedContainers = viewerClone.querySelectorAll('.mermaid-container');
+
+    console.log('Found', mermaidContainers.length, 'mermaid containers');
+
+    for (let i = 0; i < mermaidContainers.length; i++) {
+      const originalContainer = mermaidContainers[i];
+      const clonedContainer = clonedContainers[i];
+      const mermaidElement = originalContainer.querySelector('.mermaid');
+
+      if (mermaidElement && clonedContainer) {
+        try {
+          console.log('Converting mermaid diagram', i + 1);
+
+          // Scroll element into view to ensure it's visible
+          mermaidElement.scrollIntoView({ block: 'center' });
+          await new Promise(resolve => setTimeout(resolve, 100)); // Wait for scroll
+
+          // Capture using html2canvas
+          const canvas = await html2canvas(mermaidElement, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            allowTaint: true,
+            foreignObjectRendering: false, // Disable to avoid issues
+            onclone: (clonedDoc) => {
+              // In the cloned document, find the mermaid element and ensure visibility
+              const clonedMermaid = clonedDoc.querySelector('.mermaid');
+              if (clonedMermaid) {
+                clonedMermaid.style.display = 'block';
+                clonedMermaid.style.visibility = 'visible';
+              }
+            }
+          });
+
+          const base64 = canvas.toDataURL('image/png');
+          const width = canvas.width / 2; // Account for scale
+          const height = canvas.height / 2;
+
+          console.log('Converted diagram', i + 1, 'size:', width, 'x', height);
+
+          // Create an img element with the base64 PNG
+          const imgElement = document.createElement('img');
+          imgElement.src = base64;
+          imgElement.style.cssText = `max-width: 100%; height: auto; display: block; margin: 10px auto;`;
+          imgElement.setAttribute('width', Math.min(width, 600)); // Limit max width for Word
+          imgElement.setAttribute('height', Math.round(height * (Math.min(width, 600) / width)));
+
+          // Replace the container with the image
+          clonedContainer.parentNode.replaceChild(imgElement, clonedContainer);
+        } catch (err) {
+          console.error('Error converting Mermaid diagram:', err);
+          // Fallback to placeholder if conversion fails
+          const placeholder = document.createElement('div');
+          placeholder.style.cssText = 'padding: 20px; background: #f5f5f5; border: 1px solid #ddd; text-align: center; color: #666; margin: 10px 0;';
+          placeholder.innerHTML = '<strong>[Mermaid Diagram]</strong><br><em>Could not convert diagram to image.</em>';
+          clonedContainer.parentNode.replaceChild(placeholder, clonedContainer);
+        }
+      }
+    }
+
+    // Remove code block containers wrapper divs but keep content
+    viewerClone.querySelectorAll('.code-block-container').forEach(container => {
+      const pre = container.querySelector('pre');
+      if (pre) {
+        container.parentNode.replaceChild(pre.cloneNode(true), container);
+      }
+    });
+
+    // Remove table containers wrapper divs but keep tables
+    viewerClone.querySelectorAll('.table-container').forEach(container => {
+      const table = container.querySelector('table');
+      if (table) {
+        container.parentNode.replaceChild(table.cloneNode(true), container);
+      }
+    });
+
+    const htmlContent = viewerClone.innerHTML;
+    console.log('Sending export-word IPC, HTML length:', htmlContent.length);
+
+    ipcRenderer.send('export-word', { currentFileName, htmlContent });
+  } catch (err) {
+    console.error('Word export error:', err);
+    alert('Error preparing Word export: ' + err.message);
+  }
+});
+
 // Show notification toast
 function showNotification(message, duration = 3000) {
   const toast = document.getElementById('notificationToast');
@@ -573,6 +800,18 @@ ipcRenderer.on('pdf-export-result', (event, data) => {
   } else {
     console.error('PDF export failed:', data.error);
     alert(`Failed to export PDF: ${data.error}`);
+  }
+});
+
+// Handle Word export result
+ipcRenderer.on('word-export-result', (event, data) => {
+  if (data.success) {
+    console.log('Word document exported successfully to:', data.path);
+    const fileName = data.path.split(/[\\/]/).pop();
+    showNotification(`Word exported: ${fileName}`);
+  } else {
+    console.error('Word export failed:', data.error);
+    alert(`Failed to export Word document: ${data.error}`);
   }
 });
 

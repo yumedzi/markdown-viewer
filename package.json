@@ -38,6 +38,8 @@
   "dependencies": {
     "dompurify": "^3.0.6",
     "electron-updater": "^6.1.7",
+    "html-to-docx": "^1.8.0",
+    "html2canvas": "^1.4.1",
     "marked": "^9.1.6",
     "mermaid": "^10.6.1",
     "prismjs": "^1.30.0"
