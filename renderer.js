@@ -109,6 +109,13 @@ const darkModeToggle = document.getElementById('darkModeToggle');
 // Current file tracking
 let currentFilePath = null;
 
+// Export currentFilePath reference for custom-tabs.js
+Object.defineProperty(window, 'currentFilePath', {
+  get() { return currentFilePath; },
+  set(value) { currentFilePath = value; },
+  enumerable: true
+});
+
 // File watching state
 let isFileTrackingActive = false;
 let fileUpdateNotificationShown = false;
