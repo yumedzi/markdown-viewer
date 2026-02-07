@@ -17,6 +17,9 @@ This approach means after an upstream merge, you only need to ensure these files
 
 ### 1. Compact Header (custom-styles.css)
 - Reduced header padding from `12px 20px` to `6px 16px`
+- Logo reduced from 32px to 24px height
+- Button padding reduced from 8px 16px to 3px 8px
+- Tighter spacing (gap reduced from 12px to 8px)
 - Makes the header more compact while remaining usable
 
 ### 2. Enhanced Scrollbar (custom-styles.css)
@@ -33,6 +36,11 @@ This approach means after an upstream merge, you only need to ensure these files
 - Tabs persist across app restarts (saved to localStorage)
 - Switching tabs preserves scroll position
 - Shows file info bar when only 1 file open, tabs when 2+ files
+
+### 4. Fixed EPIPE Error (main.js)
+- Replaced `console.log/error` with safe `log()` function in file operations
+- Prevents crashes when app is launched by double-clicking .md files (no terminal attached)
+- Fixes "write EPIPE" errors in stopFileWatching and other functions
 
 ## How to Maintain After Upstream Merge
 
