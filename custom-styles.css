@@ -5,15 +5,23 @@
  */
 
 /* ============================================
-   CUSTOM: Compact Header (FORCE with high specificity)
+   CUSTOM: Compact Header (FORCE with multiple selectors)
    ============================================ */
+html body .container .header,
+body .container .header,
 .container .header,
+div.container div.header,
 .header {
   padding: 6px 16px !important;  /* Reduced from upstream's 12px 20px */
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
   background: #e8f4f5 !important;  /* Temp: Light blue to verify loading */
   border-bottom: 3px solid #279EA7 !important;  /* Temp: Thick border to verify */
   min-height: auto !important;
   height: auto !important;
+  max-height: none !important;
 }
 
 body.dark-mode .container .header,
