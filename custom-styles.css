@@ -5,7 +5,7 @@
  */
 
 /* ============================================
-   CUSTOM: Compact Header - Additional height reductions
+   CUSTOM: Compact Header
    ============================================ */
 html body .container .header,
 body .container .header,
@@ -17,8 +17,6 @@ div.container div.header,
   padding-bottom: 6px !important;
   padding-left: 16px !important;
   padding-right: 16px !important;
-  background: #e8f4f5 !important;  /* Temp: Light blue to verify loading */
-  border-bottom: 3px solid #279EA7 !important;
   min-height: auto !important;
   height: auto !important;
   max-height: none !important;
@@ -49,11 +47,6 @@ div.container div.header,
 
 .app-title {
   font-size: 14px !important;  /* Slightly smaller */
-}
-
-body.dark-mode .container .header,
-body.dark-mode .header {
-  background: #1a3a3e !important;
 }
 
 /* ============================================
