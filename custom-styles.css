@@ -188,3 +188,61 @@ body.dark-mode .tab-close:hover {
   position: relative;
   overflow: hidden;
 }
+
+/* ============================================
+   CUSTOM: Hide Header and Tabs in PDF Export
+   ============================================ */
+@media print {
+  /* Hide header with all controls */
+  .header {
+    display: none !important;
+  }
+  
+  /* Hide tabs container */
+  .tabs-container {
+    display: none !important;
+  }
+  
+  /* Hide file info bar */
+  .file-info-bar {
+    display: none !important;
+  }
+  
+  /* Make content take full page */
+  .container {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .main-container {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .content-wrapper {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Ensure viewer content is visible and takes full page */
+  #viewer {
+    display: block !important;
+    padding: 20px !important;
+    margin: 0 !important;
+  }
+  
+  /* Hide editor in split view during print */
+  #markdownEditor {
+    display: none !important;
+  }
+  
+  /* Remove split view styles during print */
+  .content-wrapper.split-view {
+    display: block !important;
+  }
+  
+  .content-wrapper.split-view #viewer {
+    width: 100% !important;
+    border-right: none !important;
+  }
+}
