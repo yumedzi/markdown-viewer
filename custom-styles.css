@@ -245,4 +245,75 @@ body.dark-mode .tab-close:hover {
     width: 100% !important;
     border-right: none !important;
   }
+  
+  /* Force light mode for PDF exports (good for printing) */
+  body,
+  body.dark-mode {
+    background: white !important;
+    color: #333 !important;
+  }
+  
+  #viewer,
+  body.dark-mode #viewer {
+    background: white !important;
+    color: #333 !important;
+  }
+  
+  /* Ensure text elements use dark color for readability */
+  body.dark-mode #viewer h1,
+  body.dark-mode #viewer h2,
+  body.dark-mode #viewer h3,
+  body.dark-mode #viewer h4,
+  body.dark-mode #viewer h5,
+  body.dark-mode #viewer h6,
+  body.dark-mode #viewer p,
+  body.dark-mode #viewer li,
+  body.dark-mode #viewer td,
+  body.dark-mode #viewer th,
+  body.dark-mode #viewer blockquote,
+  body.dark-mode #viewer code,
+  body.dark-mode #viewer pre {
+    color: #333 !important;
+    background: white !important;
+  }
+  
+  /* Code blocks with light background */
+  body.dark-mode #viewer pre {
+    background: #f5f5f5 !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  body.dark-mode #viewer code {
+    background: #f5f5f5 !important;
+    color: #333 !important;
+  }
+  
+  /* Tables with light theme */
+  body.dark-mode #viewer table {
+    border-color: #ddd !important;
+  }
+  
+  body.dark-mode #viewer th {
+    background: #f0f0f0 !important;
+    color: #333 !important;
+    border-color: #ddd !important;
+  }
+  
+  body.dark-mode #viewer td {
+    background: white !important;
+    color: #333 !important;
+    border-color: #ddd !important;
+  }
+  
+  /* Blockquotes with light theme */
+  body.dark-mode #viewer blockquote {
+    border-left-color: #279EA7 !important;
+    color: #666 !important;
+    background: #f9f9f9 !important;
+  }
+  
+  /* Links */
+  body.dark-mode #viewer a {
+    color: #279EA7 !important;
+  }
 }
