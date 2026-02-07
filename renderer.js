@@ -1,29 +1,53 @@
-const { ipcRenderer, shell } = require('electron');
+const { ipcRenderer, shell, clipboard } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const html2canvas = require('html2canvas');
 
 // Libraries loaded from CDN in index.html
 // marked, mermaid, and DOMPurify are available globally
 
-// Initialize Mermaid
-mermaid.initialize({
-  startOnLoad: true,
-  theme: 'default',
-  themeVariables: {
-    primaryColor: '#279EA7',
-    primaryTextColor: '#1F3244',
-    primaryBorderColor: '#279EA7',
-    lineColor: '#279EA7',
-    secondaryColor: '#1F3244',
-    tertiaryColor: '#f5f5f5',
-    background: '#ffffff',
-    mainBkg: '#ffffff',
-    secondBkg: '#f5f5f5',
-    textColor: '#1F3244',
-    border1: '#d0d0d0',
-    border2: '#d0d0d0',
-    fontSize: '13px',
-    fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
-  }
-});
+// Initialize Mermaid with theme based on dark mode preference
+function initializeMermaidWithTheme() {
+  const isDark = localStorage.getItem('darkMode') === 'enabled';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDark ? 'dark' : 'default',
+    themeVariables: isDark ? {
+      primaryColor: '#3DBDC6',
+      primaryTextColor: '#e8e8e8',
+      primaryBorderColor: '#3DBDC6',
+      lineColor: '#3DBDC6',
+      secondaryColor: '#2d2d2d',
+      tertiaryColor: '#1a1a1a',
+      background: '#242424',
+      mainBkg: '#242424',
+      secondBkg: '#2d2d2d',
+      textColor: '#e8e8e8',
+      border1: '#404040',
+      border2: '#404040',
+      fontSize: '13px',
+      fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
+    } : {
+      primaryColor: '#279EA7',
+      primaryTextColor: '#1F3244',
+      primaryBorderColor: '#279EA7',
+      lineColor: '#279EA7',
+      secondaryColor: '#1F3244',
+      tertiaryColor: '#f5f5f5',
+      background: '#ffffff',
+      mainBkg: '#ffffff',
+      secondBkg: '#f5f5f5',
+      textColor: '#1F3244',
+      border1: '#d0d0d0',
+      border2: '#d0d0d0',
+      fontSize: '13px',
+      fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
+    }
+  });
+}
+
+// Initial mermaid setup
+initializeMermaidWithTheme();
 
 // Configure marked
 marked.setOptions({
@@ -65,7 +89,9 @@ const indexList = document.getElementById('indexList');
 const fileInfoBar = document.getElementById('fileInfoBar');
 const fileName = document.getElementById('fileName');
 const filePath = document.getElementById('filePath');
+const refreshBtn = document.getElementById('refreshBtn');
 const exportPdfBtn = document.getElementById('exportPdf');
+const exportWordBtn = document.getElementById('exportWord');
 const toggleEditBtn = document.getElementById('toggleEdit');
 const editorPanel = document.getElementById('editorPanel');
 const markdownEditor = document.getElementById('markdownEditor');
@@ -74,13 +100,6 @@ const unsavedIndicator = document.getElementById('unsavedIndicator');
 const contentWrapper = document.querySelector('.content-wrapper');
 const loadingScreen = document.getElementById('loadingScreen');
 const darkModeToggle = document.getElementById('darkModeToggle');
-const tabsContainer = document.getElementById('tabsContainer');
-const tabsElement = document.getElementById('tabs');
-
-// Tab management
-let tabs = [];
-let activeTabId = null;
-let tabIdCounter = 0;
 
 // Current file tracking
 let currentFilePath = null;
@@ -96,6 +115,11 @@ let hasUnsavedChanges = false;
 let originalMarkdown = '';
 let previewDebounceTimer = null;
 const PREVIEW_DEBOUNCE_DELAY = 3000; // 3 seconds
+
+// Navigation history (for back/forward)
+let navigationHistory = [];
+let navigationIndex = -1;
+let isNavigating = false; // Flag to prevent adding to history during back/forward
 
 // Update file info display
 function updateFileInfo(path) {
@@ -115,209 +139,6 @@ function updateFileInfo(path) {
   fileInfoBar.style.display = 'flex';
 }
 
-// Tab Management Functions
-function createTab(filePath, content) {
-  const tabId = ++tabIdCounter;
-  const pathParts = filePath.split(/[\\/]/);
-  const filename = pathParts[pathParts.length - 1];
-
-  const tab = {
-    id: tabId,
-    filePath: filePath,
-    filename: filename,
-    content: content,
-    originalContent: content,
-    hasUnsavedChanges: false,
-    scrollPosition: 0
-  };
-
-  tabs.push(tab);
-  console.log('Total tabs after push:', tabs.length);
-  renderTabs();
-  switchToTab(tabId);
-
-  // Don't save tabs for now to prevent restoration issues
-  // saveTabs();
-
-  return tab;
-}
-
-function renderTabs() {
-  console.log('renderTabs called, tabs.length:', tabs.length);
-  console.log('tabsContainer element:', tabsContainer);
-  console.log('fileInfoBar element:', fileInfoBar);
-
-  if (tabs.length === 0) {
-    tabsContainer.style.display = 'none';
-    fileInfoBar.style.display = 'none';
-    return;
-  }
-
-  // Show tabs only when there are 2 or more files open
-  if (tabs.length >= 2) {
-    console.log('Showing tabs container, hiding file info bar');
-    tabsContainer.style.display = 'flex';
-    fileInfoBar.style.display = 'none';
-  } else {
-    console.log('Showing file info bar, hiding tabs container');
-    // Show file info bar when only 1 file is open
-    tabsContainer.style.display = 'none';
-    fileInfoBar.style.display = 'flex';
-  }
-
-  console.log('After display update - tabsContainer.style.display:', tabsContainer.style.display);
-  console.log('After display update - fileInfoBar.style.display:', fileInfoBar.style.display);
-
-  tabsElement.innerHTML = '';
-
-  tabs.forEach(tab => {
-    console.log('Rendering tab:', tab.filename);
-    const tabElement = document.createElement('div');
-    tabElement.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
-    tabElement.dataset.tabId = tab.id;
-
-    const titleSpan = document.createElement('span');
-    titleSpan.className = 'tab-title';
-    titleSpan.textContent = tab.filename;
-    titleSpan.title = tab.filePath;
-
-    const closeButton = document.createElement('span');
-    closeButton.className = 'tab-close';
-    closeButton.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="4" x2="12" y2="12"></line><line x1="12" y1="4" x2="4" y2="12"></line></svg>';
-    closeButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeTab(tab.id);
-    });
-
-    tabElement.appendChild(titleSpan);
-
-    if (tab.hasUnsavedChanges) {
-      const unsavedDot = document.createElement('span');
-      unsavedDot.className = 'tab-unsaved';
-      tabElement.appendChild(unsavedDot);
-    }
-
-    tabElement.appendChild(closeButton);
-
-    tabElement.addEventListener('click', () => {
-      switchToTab(tab.id);
-    });
-
-    tabsElement.appendChild(tabElement);
-  });
-}
-
-function switchToTab(tabId) {
-  const tab = tabs.find(t => t.id === tabId);
-  if (!tab) return;
-
-  // Save scroll position of current tab
-  if (activeTabId) {
-    const currentTab = tabs.find(t => t.id === activeTabId);
-    if (currentTab) {
-      currentTab.scrollPosition = viewer.scrollTop;
-      if (isEditMode) {
-        currentTab.content = markdownEditor.value;
-      }
-    }
-  }
-
-  activeTabId = tabId;
-
-  // Update UI
-  renderTabs();
-  updateFileInfo(tab.filePath);  // Load content
-  originalMarkdown = tab.originalContent;
-  currentFilePath = tab.filePath;
-
-  if (isEditMode) {
-    markdownEditor.value = tab.content;
-  }
-
-  renderMarkdown(tab.content).then(() => {
-    // Restore scroll position
-    viewer.scrollTop = tab.scrollPosition;
-  });
-
-  hasUnsavedChanges = tab.hasUnsavedChanges;
-  updateUnsavedIndicator();
-
-  // Notify main process about active file change
-  ipcRenderer.send('set-active-file', tab.filePath);
-  saveTabs();
-}
-
-function closeTab(tabId) {
-  const tabIndex = tabs.findIndex(t => t.id === tabId);
-  if (tabIndex === -1) return;
-
-  const tab = tabs[tabIndex];
-
-  // Check for unsaved changes
-  if (tab.hasUnsavedChanges) {
-    const userConfirmed = confirm(`"${tab.filename}" has unsaved changes. Close anyway?`);
-    if (!userConfirmed) return;
-  }
-
-  tabs.splice(tabIndex, 1);
-
-  // If closing active tab, switch to another
-  if (tab.id === activeTabId) {
-    if (tabs.length > 0) {
-      const newActiveTab = tabs[Math.max(0, tabIndex - 1)];
-      switchToTab(newActiveTab.id);
-    } else {
-      activeTabId = null;
-      viewer.innerHTML = `
-        <div class="welcome">
-          <h1>Welcome to Markdown Viewer</h1>
-          <p>Press <kbd>Ctrl+O</kbd> to open a markdown file</p>
-        </div>
-      `;
-      updateFileInfo(null);
-    }
-  }
-
-  renderTabs();
-  saveTabs();
-}
-
-function updateTabContent(content, hasChanges) {
-  const tab = tabs.find(t => t.id === activeTabId);
-  if (tab) {
-    tab.content = content;
-    tab.hasUnsavedChanges = hasChanges;
-    renderTabs();
-    saveTabs();
-  }
-}
-
-function saveTabs() {
-  const tabsData = tabs.map(tab => ({
-    filePath: tab.filePath,
-    scrollPosition: tab.scrollPosition
-  }));
-  localStorage.setItem('openTabs', JSON.stringify(tabsData));
-  localStorage.setItem('activeTabId', activeTabId);
-}
-
-function loadSavedTabs() {
-  try {
-    const savedTabs = localStorage.getItem('openTabs');
-    if (savedTabs) {
-      const tabsData = JSON.parse(savedTabs);
-      const savedActiveId = localStorage.getItem('activeTabId');
-
-      // Request to open saved tabs
-      if (tabsData.length > 0) {
-        ipcRenderer.send('restore-tabs', tabsData);
-      }
-    }
-  } catch (e) {
-    console.error('Error loading saved tabs:', e);
-  }
-}
-
 // Copy path to clipboard on click
 filePath.addEventListener('click', () => {
   if (currentFilePath) {
@@ -335,6 +156,93 @@ filePath.addEventListener('click', () => {
     }).catch(err => {
       console.error('Failed to copy path:', err);
     });
+  }
+});
+
+// Navigation history functions
+const navBackBtn = document.getElementById('navBackBtn');
+const navForwardBtn = document.getElementById('navForwardBtn');
+
+function updateNavButtons() {
+  if (navBackBtn) navBackBtn.disabled = navigationIndex <= 0;
+  if (navForwardBtn) navForwardBtn.disabled = navigationIndex >= navigationHistory.length - 1;
+}
+
+function addToNavigationHistory(filePath, scrollPosition = 0) {
+  if (isNavigating) return; // Don't add during back/forward navigation
+
+  // Update scroll position of current entry before navigating away
+  if (navigationIndex >= 0 && navigationHistory[navigationIndex]) {
+    navigationHistory[navigationIndex].scrollPosition = contentWrapper.scrollTop;
+  }
+
+  // Remove any forward history when navigating to new file
+  if (navigationIndex < navigationHistory.length - 1) {
+    navigationHistory = navigationHistory.slice(0, navigationIndex + 1);
+  }
+
+  // Don't add if it's the same file
+  if (navigationHistory.length > 0 && navigationHistory[navigationHistory.length - 1].filePath === filePath) {
+    return;
+  }
+
+  navigationHistory.push({ filePath, scrollPosition });
+  navigationIndex = navigationHistory.length - 1;
+  updateNavButtons();
+}
+
+function navigateBack() {
+  if (navigationIndex <= 0) return;
+
+  // Save current scroll position
+  if (navigationHistory[navigationIndex]) {
+    navigationHistory[navigationIndex].scrollPosition = contentWrapper.scrollTop;
+  }
+
+  navigationIndex--;
+  const entry = navigationHistory[navigationIndex];
+  if (entry) {
+    isNavigating = true;
+    ipcRenderer.send('open-file-path', entry.filePath);
+    // Scroll position will be restored when file loads
+  }
+  updateNavButtons();
+}
+
+function navigateForward() {
+  if (navigationIndex >= navigationHistory.length - 1) return;
+
+  // Save current scroll position
+  if (navigationHistory[navigationIndex]) {
+    navigationHistory[navigationIndex].scrollPosition = contentWrapper.scrollTop;
+  }
+
+  navigationIndex++;
+  const entry = navigationHistory[navigationIndex];
+  if (entry) {
+    isNavigating = true;
+    ipcRenderer.send('open-file-path', entry.filePath);
+    // Scroll position will be restored when file loads
+  }
+  updateNavButtons();
+}
+
+// Navigation button click handlers
+if (navBackBtn) navBackBtn.addEventListener('click', navigateBack);
+if (navForwardBtn) navForwardBtn.addEventListener('click', navigateForward);
+
+// Keyboard navigation (left/right arrows)
+document.addEventListener('keydown', (e) => {
+  // Don't trigger if typing in input/textarea or if modifier keys are pressed
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    navigateBack();
+  } else if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    navigateForward();
   }
 });
 
@@ -385,8 +293,8 @@ function loadDarkModePreference() {
   }
 }
 
-// Update Mermaid theme based on dark mode
-function updateMermaidTheme(isDark) {
+// Update Mermaid theme based on dark mode and re-render diagrams
+async function updateMermaidTheme(isDark) {
   mermaid.initialize({
     startOnLoad: true,
     theme: isDark ? 'dark' : 'default',
@@ -422,13 +330,15 @@ function updateMermaidTheme(isDark) {
       fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
     }
   });
+
+  // Re-render existing content if there's markdown loaded
+  if (originalMarkdown) {
+    await renderMarkdown(originalMarkdown);
+  }
 }
 
 // Load dark mode on startup
 loadDarkModePreference();
-
-// Load saved tabs on startup
-loadSavedTabs();
 
 // Fullscreen toggle
 fullscreenToggle.addEventListener('click', () => {
@@ -445,6 +355,110 @@ logoLink.addEventListener('click', (e) => {
   shell.openExternal('https://www.omnicore.com.tr');
 });
 
+// Handle links in rendered markdown
+viewer.addEventListener('click', (e) => {
+  // Find the closest anchor tag (in case click was on child element)
+  const link = e.target.closest('a');
+  if (link && link.href) {
+    const url = link.href;
+
+    // Get the href attribute directly to handle relative paths and anchors
+    const hrefAttr = link.getAttribute('href');
+
+    // Check if it's an internal anchor link (starts with #)
+    if (hrefAttr && hrefAttr.startsWith('#')) {
+      e.preventDefault();
+      const targetId = hrefAttr.substring(1); // Remove the # symbol
+
+      // Try to find the target element by ID
+      let targetElement = document.getElementById(targetId);
+
+      // If not found by ID, try to find by searching all headers
+      if (!targetElement) {
+        const headers = viewer.querySelectorAll('h1, h2, h3, h4, h5, h6');
+
+        for (const header of headers) {
+          // Check if the header's ID matches (case-insensitive)
+          if (header.id && header.id.toLowerCase() === targetId.toLowerCase()) {
+            targetElement = header;
+            break;
+          }
+          // Also check if the generated ID from text matches
+          const headerText = header.textContent.trim().toLowerCase()
+            .replace(/[^\w\s-]/g, '') // Remove punctuation
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+          if (headerText === targetId.toLowerCase()) {
+            targetElement = header;
+            break;
+          }
+        }
+      }
+
+      if (targetElement) {
+        // Calculate the scroll position relative to contentWrapper
+        const contentRect = contentWrapper.getBoundingClientRect();
+        const targetRect = targetElement.getBoundingClientRect();
+        const scrollOffset = targetRect.top - contentRect.top + contentWrapper.scrollTop - 20; // 20px padding from top
+
+        // Scroll the content wrapper to the target
+        contentWrapper.scrollTo({
+          top: scrollOffset,
+          behavior: 'smooth'
+        });
+      } else {
+        showNotification(`Section not found: ${targetId}`, 3000);
+      }
+      return;
+    }
+
+    // Check if it's an external web link (http or https)
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      e.preventDefault();
+      shell.openExternal(url);
+      return;
+    }
+
+    // Check if it's a local file link (file:// or relative path)
+    if (hrefAttr && !hrefAttr.startsWith('#') && !hrefAttr.startsWith('http')) {
+      e.preventDefault();
+
+      // Resolve the path relative to current file
+      let targetPath = hrefAttr;
+
+      // Handle file:// protocol
+      if (targetPath.startsWith('file://')) {
+        targetPath = targetPath.replace('file://', '');
+        // Handle Windows paths like file:///C:/...
+        if (targetPath.startsWith('/') && targetPath[2] === ':') {
+          targetPath = targetPath.substring(1);
+        }
+      }
+
+      // If it's a relative path, resolve it against current file's directory
+      if (currentFilePath && !path.isAbsolute(targetPath)) {
+        const currentDir = path.dirname(currentFilePath);
+        targetPath = path.resolve(currentDir, targetPath);
+      }
+
+      // Check if the file exists
+      if (fs.existsSync(targetPath)) {
+        // Check if it's a markdown or mermaid file
+        const ext = path.extname(targetPath).toLowerCase();
+        if (['.md', '.markdown', '.mmd', '.mermaid'].includes(ext)) {
+          // Open the markdown file in this app
+          ipcRenderer.send('open-file-path', targetPath);
+        } else {
+          // Open other files with system default app
+          shell.openPath(targetPath);
+        }
+      } else {
+        showNotification(`File not found: ${path.basename(targetPath)}`, 4000);
+      }
+    }
+  }
+});
+
 // Open file button
 openFileBtn.addEventListener('click', () => {
   // Check for unsaved changes before opening file dialog
@@ -455,6 +469,23 @@ openFileBtn.addEventListener('click', () => {
   }
 
   ipcRenderer.send('open-file-dialog');
+});
+
+// Refresh button
+refreshBtn.addEventListener('click', () => {
+  if (!currentFilePath) {
+    return;
+  }
+
+  // Check for unsaved changes before refreshing
+  if (isEditMode && hasUnsavedChanges) {
+    if (!confirm('You have unsaved changes. Discard changes and refresh from disk?')) {
+      return;
+    }
+  }
+
+  // Reload the file from disk
+  reloadCurrentFile();
 });
 
 // Export to PDF button
@@ -468,6 +499,231 @@ exportPdfBtn.addEventListener('click', () => {
   const currentFileName = pathParts.pop();
 
   ipcRenderer.send('export-pdf', { currentFileName });
+});
+
+// Convert Mermaid element to base64 PNG using native browser rendering
+async function mermaidToBase64Png(mermaidElement) {
+  return new Promise((resolve, reject) => {
+    try {
+      const svg = mermaidElement.querySelector('svg');
+      if (!svg) {
+        reject(new Error('No SVG found in mermaid element'));
+        return;
+      }
+
+      // Get SVG dimensions
+      const bbox = svg.getBBox();
+      const width = bbox.width || svg.clientWidth || 800;
+      const height = bbox.height || svg.clientHeight || 600;
+
+      // Clone SVG
+      const svgClone = svg.cloneNode(true);
+
+      // Set explicit dimensions
+      svgClone.setAttribute('width', width);
+      svgClone.setAttribute('height', height);
+
+      // Ensure viewBox is set
+      if (!svgClone.getAttribute('viewBox')) {
+        svgClone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      }
+
+      // Get all computed styles and inline them
+      const allElements = svg.querySelectorAll('*');
+      const clonedElements = svgClone.querySelectorAll('*');
+
+      allElements.forEach((el, i) => {
+        if (clonedElements[i]) {
+          const computedStyle = window.getComputedStyle(el);
+          const importantStyles = ['fill', 'stroke', 'stroke-width', 'font-family', 'font-size', 'font-weight', 'opacity', 'transform'];
+          importantStyles.forEach(prop => {
+            const value = computedStyle.getPropertyValue(prop);
+            if (value && value !== 'none' && value !== '') {
+              clonedElements[i].style[prop] = value;
+            }
+          });
+        }
+      });
+
+      // Handle foreignObject - extract text and convert to SVG text
+      svgClone.querySelectorAll('foreignObject').forEach(fo => {
+        const text = fo.textContent?.trim() || '';
+        const x = fo.getAttribute('x') || '0';
+        const y = fo.getAttribute('y') || '0';
+        const foWidth = parseFloat(fo.getAttribute('width')) || 100;
+        const foHeight = parseFloat(fo.getAttribute('height')) || 20;
+
+        // Create SVG text element
+        const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textEl.setAttribute('x', parseFloat(x) + foWidth / 2);
+        textEl.setAttribute('y', parseFloat(y) + foHeight / 2 + 4);
+        textEl.setAttribute('text-anchor', 'middle');
+        textEl.setAttribute('dominant-baseline', 'middle');
+        textEl.setAttribute('font-family', 'Arial, sans-serif');
+        textEl.setAttribute('font-size', '14');
+        textEl.setAttribute('fill', '#333');
+        textEl.textContent = text;
+
+        fo.parentNode.replaceChild(textEl, fo);
+      });
+
+      // Serialize SVG
+      const serializer = new XMLSerializer();
+      let svgString = serializer.serializeToString(svgClone);
+
+      // Add XML declaration and namespace
+      if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+        svgString = svgString.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+      }
+
+      // Create image from SVG
+      const img = new Image();
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        try {
+          // Create high-res canvas
+          const scale = 2;
+          const canvas = document.createElement('canvas');
+          canvas.width = width * scale;
+          canvas.height = height * scale;
+
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const base64 = canvas.toDataURL('image/png');
+          URL.revokeObjectURL(url);
+          resolve({ base64, width, height });
+        } catch (err) {
+          URL.revokeObjectURL(url);
+          reject(err);
+        }
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Failed to load SVG image'));
+      };
+
+      img.src = url;
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// Export to Word button
+exportWordBtn.addEventListener('click', async () => {
+  if (!currentFilePath) {
+    alert('Please open a markdown file first before exporting to Word.');
+    return;
+  }
+
+  try {
+    // Show loading notification
+    showNotification('Preparing Word export...', 10000);
+
+    const pathParts = currentFilePath.split(/[\\/]/);
+    const currentFileName = pathParts.pop();
+
+    // Get the HTML content from the viewer, but clean it up for Word export
+    // Remove UI elements like maximize buttons, code copy buttons, etc.
+    const viewerClone = viewer.cloneNode(true);
+
+    // Remove maximize buttons from tables and mermaid diagrams
+    viewerClone.querySelectorAll('.mermaid-maximize-btn, .table-maximize-btn, .code-copy-btn').forEach(el => el.remove());
+
+    // Convert mermaid diagrams to PNG images for Word compatibility
+    const mermaidContainers = viewer.querySelectorAll('.mermaid-container');
+    const clonedContainers = viewerClone.querySelectorAll('.mermaid-container');
+
+    console.log('Found', mermaidContainers.length, 'mermaid containers');
+
+    for (let i = 0; i < mermaidContainers.length; i++) {
+      const originalContainer = mermaidContainers[i];
+      const clonedContainer = clonedContainers[i];
+      const mermaidElement = originalContainer.querySelector('.mermaid');
+
+      if (mermaidElement && clonedContainer) {
+        try {
+          console.log('Converting mermaid diagram', i + 1);
+
+          // Scroll element into view to ensure it's visible
+          mermaidElement.scrollIntoView({ block: 'center' });
+          await new Promise(resolve => setTimeout(resolve, 100)); // Wait for scroll
+
+          // Capture using html2canvas
+          const canvas = await html2canvas(mermaidElement, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            logging: false,
+            useCORS: true,
+            allowTaint: true,
+            foreignObjectRendering: false, // Disable to avoid issues
+            onclone: (clonedDoc) => {
+              // In the cloned document, find the mermaid element and ensure visibility
+              const clonedMermaid = clonedDoc.querySelector('.mermaid');
+              if (clonedMermaid) {
+                clonedMermaid.style.display = 'block';
+                clonedMermaid.style.visibility = 'visible';
+              }
+            }
+          });
+
+          const base64 = canvas.toDataURL('image/png');
+          const width = canvas.width / 2; // Account for scale
+          const height = canvas.height / 2;
+
+          console.log('Converted diagram', i + 1, 'size:', width, 'x', height);
+
+          // Create an img element with the base64 PNG
+          const imgElement = document.createElement('img');
+          imgElement.src = base64;
+          imgElement.style.cssText = `max-width: 100%; height: auto; display: block; margin: 10px auto;`;
+          imgElement.setAttribute('width', Math.min(width, 600)); // Limit max width for Word
+          imgElement.setAttribute('height', Math.round(height * (Math.min(width, 600) / width)));
+
+          // Replace the container with the image
+          clonedContainer.parentNode.replaceChild(imgElement, clonedContainer);
+        } catch (err) {
+          console.error('Error converting Mermaid diagram:', err);
+          // Fallback to placeholder if conversion fails
+          const placeholder = document.createElement('div');
+          placeholder.style.cssText = 'padding: 20px; background: #f5f5f5; border: 1px solid #ddd; text-align: center; color: #666; margin: 10px 0;';
+          placeholder.innerHTML = '<strong>[Mermaid Diagram]</strong><br><em>Could not convert diagram to image.</em>';
+          clonedContainer.parentNode.replaceChild(placeholder, clonedContainer);
+        }
+      }
+    }
+
+    // Remove code block containers wrapper divs but keep content
+    viewerClone.querySelectorAll('.code-block-container').forEach(container => {
+      const pre = container.querySelector('pre');
+      if (pre) {
+        container.parentNode.replaceChild(pre.cloneNode(true), container);
+      }
+    });
+
+    // Remove table containers wrapper divs but keep tables
+    viewerClone.querySelectorAll('.table-container').forEach(container => {
+      const table = container.querySelector('table');
+      if (table) {
+        container.parentNode.replaceChild(table.cloneNode(true), container);
+      }
+    });
+
+    const htmlContent = viewerClone.innerHTML;
+    console.log('Sending export-word IPC, HTML length:', htmlContent.length);
+
+    ipcRenderer.send('export-word', { currentFileName, htmlContent });
+  } catch (err) {
+    console.error('Word export error:', err);
+    alert('Error preparing Word export: ' + err.message);
+  }
 });
 
 // Show notification toast
@@ -547,6 +803,18 @@ ipcRenderer.on('pdf-export-result', (event, data) => {
   }
 });
 
+// Handle Word export result
+ipcRenderer.on('word-export-result', (event, data) => {
+  if (data.success) {
+    console.log('Word document exported successfully to:', data.path);
+    const fileName = data.path.split(/[\\/]/).pop();
+    showNotification(`Word exported: ${fileName}`);
+  } else {
+    console.error('Word export failed:', data.error);
+    alert(`Failed to export Word document: ${data.error}`);
+  }
+});
+
 // Toggle edit mode
 toggleEditBtn.addEventListener('click', () => {
   if (isEditMode && hasUnsavedChanges) {
@@ -588,9 +856,6 @@ markdownEditor.addEventListener('input', () => {
   hasUnsavedChanges = (markdownEditor.value !== originalMarkdown);
   updateUnsavedIndicator();
 
-  // Update tab state
-  updateTabContent(markdownEditor.value, hasUnsavedChanges);
-
   // Pause file tracking when unsaved changes appear
   if (!previousUnsavedState && hasUnsavedChanges) {
     ipcRenderer.send('pause-file-watching');
@@ -631,23 +896,29 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Ctrl+R keyboard shortcut for refresh
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+    e.preventDefault();
+    if (currentFilePath) {
+      // Check for unsaved changes
+      if (isEditMode && hasUnsavedChanges) {
+        if (confirm('You have unsaved changes. Discard changes and refresh from disk?')) {
+          reloadCurrentFile();
+        }
+      } else {
+        reloadCurrentFile();
+      }
+    }
+  }
+});
+
 // Handle save result
 ipcRenderer.on('save-markdown-result', (event, data) => {
   if (data.success) {
     originalMarkdown = markdownEditor.value;
     hasUnsavedChanges = false;
     updateUnsavedIndicator();
-
-    // Update tab state
-    const tab = tabs.find(t => t.id === activeTabId);
-    if (tab) {
-      tab.originalContent = markdownEditor.value;
-      tab.content = markdownEditor.value;
-      tab.hasUnsavedChanges = false;
-      renderTabs();
-      saveTabs();
-    }
-
     console.log('File saved successfully');
 
     // Resume file tracking after save
@@ -695,6 +966,17 @@ const HOVER_TRIGGER_ZONE = 10; // pixels from left edge
 const HOVER_DELAY = 500; // milliseconds
 
 document.addEventListener('mousemove', (e) => {
+  // Don't trigger hover panel in edit mode to avoid interference while editing
+  if (isEditMode) {
+    // Clear any pending timeout if we enter edit mode
+    isMouseInTriggerZone = false;
+    if (mouseHoverTimeout) {
+      clearTimeout(mouseHoverTimeout);
+      mouseHoverTimeout = null;
+    }
+    return;
+  }
+
   // Check if mouse is near the left edge
   if (e.clientX <= HOVER_TRIGGER_ZONE) {
     // Start timeout if not already started
@@ -807,9 +1089,16 @@ function updateRecentFilesList() {
         }
       }
 
-      // Request main process to open the file (this will trigger file-opened event and create tab)
+      // Use the standard file opening path via IPC
       ipcRenderer.send('open-file-path', file.path);
       recentPanel.classList.remove('visible');
+    });
+
+    // Add context menu (right-click) handler
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showRecentContextMenu(e.clientX, e.clientY, file.path);
     });
 
     item.appendChild(contentDiv);
@@ -850,14 +1139,14 @@ function highlightSearchTerm(searchTerm) {
     viewer,
     NodeFilter.SHOW_TEXT,
     {
-      acceptNode: function (node) {
+      acceptNode: function(node) {
         // Skip script, style, svg, mermaid, and already highlighted nodes
         if (node.parentNode.tagName === 'SCRIPT' ||
-          node.parentNode.tagName === 'STYLE' ||
-          node.parentNode.tagName === 'SVG' ||
-          node.parentNode.closest('.mermaid') ||
-          node.parentNode.closest('svg') ||
-          node.parentNode.classList?.contains('search-highlight')) {
+            node.parentNode.tagName === 'STYLE' ||
+            node.parentNode.tagName === 'SVG' ||
+            node.parentNode.closest('.mermaid') ||
+            node.parentNode.closest('svg') ||
+            node.parentNode.classList?.contains('search-highlight')) {
           return NodeFilter.FILTER_REJECT;
         }
         return NodeFilter.FILTER_ACCEPT;
@@ -1010,7 +1299,16 @@ function buildTableOfContents() {
     item.addEventListener('click', () => {
       const targetHeader = document.getElementById(header.id);
       if (targetHeader) {
-        targetHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Calculate the scroll position relative to contentWrapper
+        const contentRect = contentWrapper.getBoundingClientRect();
+        const headerRect = targetHeader.getBoundingClientRect();
+        const scrollOffset = headerRect.top - contentRect.top + contentWrapper.scrollTop - 20; // 20px padding from top
+
+        // Scroll the content wrapper to the header
+        contentWrapper.scrollTo({
+          top: scrollOffset,
+          behavior: 'smooth'
+        });
 
         // Update active state
         document.querySelectorAll('.index-item').forEach(i => i.classList.remove('active'));
@@ -1106,90 +1404,90 @@ async function renderMarkdown(content) {
     const mermaidBlocks = [];
     let mermaidIndex = 0;
 
-    // Replace mermaid code blocks with placeholders (handle both \n and \r\n)
-    content = content.replace(/```mermaid[\r\n]+([\s\S]*?)```/g, (match, code) => {
-      const placeholder = `MERMAID_PLACEHOLDER_${mermaidIndex}`;
-      mermaidBlocks.push({ placeholder, code: code.trim() });
-      mermaidIndex++;
-      return placeholder;
-    });
+  // Replace mermaid code blocks with placeholders (handle both \n and \r\n)
+  content = content.replace(/```mermaid[\r\n]+([\s\S]*?)```/g, (match, code) => {
+    const placeholder = `MERMAID_PLACEHOLDER_${mermaidIndex}`;
+    mermaidBlocks.push({ placeholder, code: code.trim() });
+    mermaidIndex++;
+    return placeholder;
+  });
 
-    // Parse markdown with marked (allows HTML)
-    let html = marked.parse(content);
+  // Parse markdown with marked (allows HTML)
+  let html = marked.parse(content);
 
-    // Sanitize HTML but allow most tags for rich content
-    html = DOMPurify.sanitize(html, {
-      ADD_TAGS: ['iframe', 'style'],
-      ADD_ATTR: ['target', 'style', 'class', 'id']
-    });
+  // Sanitize HTML but allow most tags for rich content
+  html = DOMPurify.sanitize(html, {
+    ADD_TAGS: ['iframe', 'style'],
+    ADD_ATTR: ['target', 'style', 'class', 'id']
+  });
 
-    // Replace placeholders with mermaid divs
-    mermaidBlocks.forEach(({ placeholder, code }) => {
-      const mermaidDiv = `<pre class="mermaid">${code}</pre>`;
-      html = html.replace(placeholder, mermaidDiv);
-    });
+  // Replace placeholders with mermaid divs
+  mermaidBlocks.forEach(({ placeholder, code }) => {
+    const mermaidDiv = `<pre class="mermaid">${code}</pre>`;
+    html = html.replace(placeholder, mermaidDiv);
+  });
 
-    // Set HTML content
-    viewer.innerHTML = html;
+  // Set HTML content
+  viewer.innerHTML = html;
 
-    // Re-run mermaid on the new content
-    try {
-      const mermaidElements = viewer.querySelectorAll('.mermaid');
-      if (mermaidElements.length > 0) {
-        // Clear any existing IDs to prevent conflicts
-        mermaidElements.forEach((el, index) => {
-          el.removeAttribute('data-processed');
-          el.id = `mermaid-${Date.now()}-${index}`;
-        });
+  // Re-run mermaid on the new content
+  try {
+    const mermaidElements = viewer.querySelectorAll('.mermaid');
+    if (mermaidElements.length > 0) {
+      // Clear any existing IDs to prevent conflicts
+      mermaidElements.forEach((el, index) => {
+        el.removeAttribute('data-processed');
+        el.id = `mermaid-${Date.now()}-${index}`;
+      });
 
-        // Render mermaid diagrams
-        await mermaid.run({
-          querySelector: '.mermaid',
-          suppressErrors: false
-        });
+      // Render mermaid diagrams
+      await mermaid.run({
+        querySelector: '.mermaid',
+        suppressErrors: false
+      });
 
-        // Add maximize buttons to rendered diagrams
-        mermaidElements.forEach((el) => {
-          const svg = el.querySelector('svg');
-          if (svg) {
-            // Wrap in container
-            const container = document.createElement('div');
-            container.className = 'mermaid-container';
-            el.parentNode.insertBefore(container, el);
-            container.appendChild(el);
+      // Add maximize buttons to rendered diagrams
+      mermaidElements.forEach((el) => {
+        const svg = el.querySelector('svg');
+        if (svg) {
+          // Wrap in container
+          const container = document.createElement('div');
+          container.className = 'mermaid-container';
+          el.parentNode.insertBefore(container, el);
+          container.appendChild(el);
 
-            // Add maximize button
-            const maxBtn = document.createElement('button');
-            maxBtn.className = 'mermaid-maximize-btn';
-            maxBtn.title = 'Open in new window';
-            maxBtn.innerHTML = `
+          // Add maximize button
+          const maxBtn = document.createElement('button');
+          maxBtn.className = 'mermaid-maximize-btn';
+          maxBtn.title = 'Open in new window';
+          maxBtn.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
             </svg>
           `;
 
-            maxBtn.addEventListener('click', () => {
-              const svgContent = svg.outerHTML;
-              const isDarkMode = document.body.classList.contains('dark-mode');
-              ipcRenderer.send('open-mermaid-popup', { svgContent, isDarkMode });
-            });
+          maxBtn.addEventListener('click', () => {
+            const svgContent = svg.outerHTML;
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            ipcRenderer.send('open-mermaid-popup', { svgContent, isDarkMode });
+          });
 
-            container.appendChild(maxBtn);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Mermaid rendering error:', error);
-      // Show error in the diagram location
-      const mermaidElements = viewer.querySelectorAll('.mermaid');
-      mermaidElements.forEach(el => {
-        if (!el.querySelector('svg')) {
-          el.innerHTML = `<div style="color: red; padding: 20px; background: #ffe6e6; border: 1px solid #ff0000; border-radius: 4px;">
-          <strong>Mermaid Rendering Error:</strong><br>${error.message}
-        </div>`;
+          container.appendChild(maxBtn);
         }
       });
     }
+  } catch (error) {
+    console.error('Mermaid rendering error:', error);
+    // Show error in the diagram location
+    const mermaidElements = viewer.querySelectorAll('.mermaid');
+    mermaidElements.forEach(el => {
+      if (!el.querySelector('svg')) {
+        el.innerHTML = `<div style="color: red; padding: 20px; background: #ffe6e6; border: 1px solid #ff0000; border-radius: 4px;">
+          <strong>Mermaid Rendering Error:</strong><br>${error.message}
+        </div>`;
+      }
+    });
+  }
 
     // Add maximize buttons to tables
     addTableMaximizeButtons();
@@ -1206,10 +1504,14 @@ async function renderMarkdown(content) {
       const highlightCallback = window.requestIdleCallback || window.setTimeout;
       highlightCallback(() => {
         Prism.highlightAll();
+        // Add copy buttons to code blocks after syntax highlighting
+        addCodeBlockCopyButtons();
         // Hide loading screen after syntax highlighting is done
         hideLoadingScreen();
       });
     } else {
+      // Add copy buttons even without Prism
+      addCodeBlockCopyButtons();
       // Hide loading screen if no syntax highlighting needed
       hideLoadingScreen();
     }
@@ -1277,6 +1579,71 @@ function addTableMaximizeButtons() {
   });
 }
 
+// Add copy buttons to code blocks
+function addCodeBlockCopyButtons() {
+  const codeBlocks = viewer.querySelectorAll('.markdown-body pre, #viewer pre');
+
+  codeBlocks.forEach((pre) => {
+    // Skip if already wrapped
+    if (pre.parentNode.classList?.contains('code-block-container')) {
+      return;
+    }
+
+    // Get the code element inside pre
+    const codeElement = pre.querySelector('code');
+    if (!codeElement) return;
+
+    // Create container
+    const container = document.createElement('div');
+    container.className = 'code-block-container';
+
+    // Create copy button
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'code-copy-btn';
+    copyBtn.title = 'Copy to clipboard';
+    copyBtn.innerHTML = `
+      <svg class="copy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    `;
+
+    copyBtn.addEventListener('click', async () => {
+      // Get the raw text content (without formatting)
+      const textContent = codeElement.textContent;
+
+      try {
+        await navigator.clipboard.writeText(textContent);
+
+        // Show success feedback
+        const copyIcon = copyBtn.querySelector('.copy-icon');
+        const checkIcon = copyBtn.querySelector('.check-icon');
+        copyIcon.style.display = 'none';
+        checkIcon.style.display = 'block';
+        copyBtn.classList.add('copied');
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+          copyIcon.style.display = 'block';
+          checkIcon.style.display = 'none';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        showNotification('Failed to copy to clipboard', 2000);
+      }
+    });
+
+    // Wrap pre in container and add button
+    pre.parentNode.insertBefore(container, pre);
+    container.appendChild(pre);
+    container.appendChild(copyBtn);
+  });
+}
+
 // Extract table data as structured JSON for Tabulator
 function extractTableData(table) {
   const data = [];
@@ -1322,23 +1689,6 @@ function extractTableData(table) {
 
 // Handle file opened
 ipcRenderer.on('file-opened', async (event, data) => {
-  console.log('file-opened event received:', data.path);
-  console.log('Current tabs count:', tabs.length);
-
-  // Check if file is already open in a tab
-  const existingTab = tabs.find(t => t.filePath === data.path);
-
-  if (existingTab) {
-    console.log('Switching to existing tab:', existingTab.id);
-    // Switch to existing tab
-    switchToTab(existingTab.id);
-  } else {
-    console.log('Creating new tab for:', data.path);
-    // Create new tab
-    createTab(data.path, data.content);
-    console.log('Tabs after creation:', tabs.length);
-  }
-
   // Store original markdown for editor
   originalMarkdown = data.content;
 
@@ -1351,8 +1701,26 @@ ipcRenderer.on('file-opened', async (event, data) => {
 
   await renderMarkdown(data.content);
 
-  // Always update file info - renderTabs() controls visibility
+  // Update file info bar
   updateFileInfo(data.path);
+
+  // Handle navigation history and scroll position
+  if (isNavigating) {
+    // Restore scroll position for back/forward navigation
+    const entry = navigationHistory[navigationIndex];
+    if (entry && entry.scrollPosition) {
+      // Small delay to ensure content is rendered
+      setTimeout(() => {
+        contentWrapper.scrollTop = entry.scrollPosition;
+      }, 100);
+    }
+    isNavigating = false;
+  } else {
+    // Add to navigation history for normal file opens
+    addToNavigationHistory(data.path, 0);
+    // Scroll to top for new files
+    contentWrapper.scrollTop = 0;
+  }
 
   // Enable file tracking
   isFileTrackingActive = true;
@@ -1386,6 +1754,20 @@ ipcRenderer.on('file-deleted', (event, data) => {
   console.log('File deleted:', data.path);
   showNotification('Warning: The opened file has been deleted from disk', 5000);
   isFileTrackingActive = false;
+});
+
+// Handle file not found (from recent files or links)
+ipcRenderer.on('file-not-found', (event, data) => {
+  console.log('File not found:', data.path);
+  showNotification(`File not found: ${path.basename(data.path)}`, 4000);
+
+  // Remove from recent files if it exists there
+  let recentFiles = getRecentFiles();
+  const filtered = recentFiles.filter(f => f.path !== data.path);
+  if (filtered.length !== recentFiles.length) {
+    localStorage.setItem('recentFiles', JSON.stringify(filtered));
+    updateRecentFilesList();
+  }
 });
 
 // Handle file reload result
@@ -1432,3 +1814,668 @@ ipcRenderer.on('show-error', (event, message) => {
 
 // Update zoom on load
 updateZoom();
+
+// ============================================
+// Auto-Update UI Handler
+// ============================================
+
+const appUpdateToast = document.getElementById('appUpdateToast');
+const updateTitle = document.getElementById('updateTitle');
+const updateMessage = document.getElementById('updateMessage');
+const updateProgress = document.getElementById('updateProgress');
+const progressFill = document.getElementById('progressFill');
+const progressText = document.getElementById('progressText');
+const updateActions = document.getElementById('updateActions');
+const downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
+const installUpdateBtn = document.getElementById('installUpdateBtn');
+const laterUpdateBtn = document.getElementById('laterUpdateBtn');
+const closeUpdateToast = document.getElementById('closeUpdateToast');
+
+let pendingUpdateVersion = null;
+
+function showUpdateToast() {
+  appUpdateToast.classList.add('show');
+}
+
+function hideUpdateToast() {
+  appUpdateToast.classList.remove('show');
+}
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// Update status handler
+ipcRenderer.on('update-status', (event, data) => {
+  switch (data.status) {
+    case 'checking':
+      // Silent check, don't show UI
+      break;
+
+    case 'available':
+      pendingUpdateVersion = data.version;
+      updateTitle.textContent = 'Update Available';
+      updateMessage.textContent = `Version ${data.version} is ready to download`;
+      updateProgress.style.display = 'none';
+      downloadUpdateBtn.style.display = 'flex';
+      installUpdateBtn.style.display = 'none';
+      laterUpdateBtn.style.display = 'block';
+      updateActions.style.display = 'flex';
+      showUpdateToast();
+      break;
+
+    case 'not-available':
+      // Silent, no update available
+      break;
+
+    case 'downloading':
+      updateTitle.textContent = 'Downloading Update';
+      updateMessage.textContent = `${formatBytes(data.transferred)} / ${formatBytes(data.total)}`;
+      updateProgress.style.display = 'flex';
+      progressFill.style.width = `${data.percent}%`;
+      progressText.textContent = `${Math.round(data.percent)}%`;
+      downloadUpdateBtn.style.display = 'none';
+      laterUpdateBtn.style.display = 'none';
+      updateActions.style.display = 'none';
+      break;
+
+    case 'downloaded':
+      updateTitle.textContent = 'Update Ready';
+      updateMessage.textContent = `Version ${data.version} is ready to install`;
+      updateProgress.style.display = 'none';
+      downloadUpdateBtn.style.display = 'none';
+      installUpdateBtn.style.display = 'flex';
+      laterUpdateBtn.style.display = 'block';
+      updateActions.style.display = 'flex';
+      showUpdateToast();
+      break;
+
+    case 'error':
+      updateTitle.textContent = 'Update Error';
+      updateMessage.textContent = data.error || 'Failed to check for updates';
+      updateProgress.style.display = 'none';
+      downloadUpdateBtn.style.display = 'none';
+      installUpdateBtn.style.display = 'none';
+      laterUpdateBtn.style.display = 'block';
+      laterUpdateBtn.textContent = 'Dismiss';
+      updateActions.style.display = 'flex';
+      showUpdateToast();
+      break;
+
+    case 'dev-mode':
+      // Silent in dev mode
+      console.log('Auto-updater:', data.message);
+      break;
+  }
+});
+
+// Update button handlers
+downloadUpdateBtn.addEventListener('click', () => {
+  ipcRenderer.send('download-update');
+});
+
+installUpdateBtn.addEventListener('click', () => {
+  ipcRenderer.send('install-update');
+});
+
+laterUpdateBtn.addEventListener('click', () => {
+  hideUpdateToast();
+  laterUpdateBtn.textContent = 'Later'; // Reset text
+});
+
+closeUpdateToast.addEventListener('click', () => {
+  hideUpdateToast();
+  laterUpdateBtn.textContent = 'Later'; // Reset text
+});
+
+// ============================================
+// Context Menu
+// ============================================
+
+const contextMenu = document.getElementById('contextMenu');
+const ctxCopy = document.getElementById('ctxCopy');
+const ctxCopyPlain = document.getElementById('ctxCopyPlain');
+const ctxBold = document.getElementById('ctxBold');
+const ctxItalic = document.getElementById('ctxItalic');
+const ctxCode = document.getElementById('ctxCode');
+const ctxList = document.getElementById('ctxList');
+const ctxRemoveFormat = document.getElementById('ctxRemoveFormat');
+const ctxSelectAll = document.getElementById('ctxSelectAll');
+
+// Store selection when context menu opens
+let savedSelection = null;
+let savedSelectionHtml = null;
+
+function showContextMenu(x, y) {
+  // Get and save selected text
+  const selection = window.getSelection();
+  const hasSelection = selection && selection.toString().trim().length > 0;
+
+  // Save the selection text and HTML
+  if (hasSelection && selection.rangeCount > 0) {
+    savedSelection = selection.toString();
+
+    // Save HTML version
+    const range = selection.getRangeAt(0);
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(range.cloneContents());
+    savedSelectionHtml = tempDiv.innerHTML;
+  } else {
+    savedSelection = null;
+    savedSelectionHtml = null;
+  }
+
+  // Enable/disable copy items based on selection
+  if (hasSelection) {
+    ctxCopy.classList.remove('disabled');
+    ctxCopyPlain.classList.remove('disabled');
+  } else {
+    ctxCopy.classList.add('disabled');
+    ctxCopyPlain.classList.add('disabled');
+  }
+
+  // Enable/disable formatting options (enabled when text is selected in any mode)
+  if (hasSelection) {
+    ctxBold.classList.remove('disabled');
+    ctxItalic.classList.remove('disabled');
+    ctxCode.classList.remove('disabled');
+    ctxList.classList.remove('disabled');
+    ctxRemoveFormat.classList.remove('disabled');
+  } else {
+    ctxBold.classList.add('disabled');
+    ctxItalic.classList.add('disabled');
+    ctxCode.classList.add('disabled');
+    ctxList.classList.add('disabled');
+    ctxRemoveFormat.classList.add('disabled');
+  }
+
+  // Position the menu
+  contextMenu.style.left = `${x}px`;
+  contextMenu.style.top = `${y}px`;
+
+  // Show the menu
+  contextMenu.classList.add('visible');
+
+  // Adjust position if menu goes off screen
+  const menuRect = contextMenu.getBoundingClientRect();
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+
+  if (menuRect.right > windowWidth) {
+    contextMenu.style.left = `${windowWidth - menuRect.width - 10}px`;
+  }
+  if (menuRect.bottom > windowHeight) {
+    contextMenu.style.top = `${windowHeight - menuRect.height - 10}px`;
+  }
+}
+
+function hideContextMenu() {
+  contextMenu.classList.remove('visible');
+}
+
+// Show context menu on right-click in viewer area
+viewer.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  showContextMenu(e.clientX, e.clientY);
+});
+
+// Also allow context menu in editor
+markdownEditor.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  showContextMenu(e.clientX, e.clientY);
+});
+
+// Hide context menu when clicking elsewhere
+document.addEventListener('click', (e) => {
+  if (!contextMenu.contains(e.target)) {
+    hideContextMenu();
+  }
+});
+
+// Hide context menu on scroll or resize
+document.addEventListener('scroll', hideContextMenu, true);
+window.addEventListener('resize', hideContextMenu);
+
+// Hide context menu on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    hideContextMenu();
+  }
+});
+
+// Copy with formatting (HTML)
+ctxCopy.addEventListener('click', async (e) => {
+  console.log('Copy clicked!');
+  e.stopPropagation();
+
+  if (ctxCopy.classList.contains('disabled')) {
+    console.log('Copy is disabled');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!savedSelection || !savedSelection.trim()) {
+    showNotification('No text selected', 1500);
+    return;
+  }
+
+  console.log('Attempting to copy:', savedSelection.substring(0, 50));
+
+  try {
+    // Try simple plain text first
+    await navigator.clipboard.writeText(savedSelection);
+    console.log('Copy successful');
+    showNotification('Copied to clipboard', 1500);
+  } catch (err) {
+    console.error('Copy failed:', err);
+    showNotification('Failed to copy: ' + err.message, 3000);
+  }
+});
+
+// Copy as plain text
+ctxCopyPlain.addEventListener('click', async (e) => {
+  console.log('Copy plain clicked!');
+  e.stopPropagation();
+
+  if (ctxCopyPlain.classList.contains('disabled')) {
+    console.log('Copy plain is disabled');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!savedSelection || !savedSelection.trim()) {
+    showNotification('No text selected', 1500);
+    return;
+  }
+
+  console.log('Attempting to copy plain:', savedSelection.substring(0, 50));
+
+  try {
+    await navigator.clipboard.writeText(savedSelection);
+    console.log('Copy plain successful');
+    showNotification('Copied as plain text', 1500);
+  } catch (err) {
+    console.error('Copy plain failed:', err);
+    showNotification('Failed to copy: ' + err.message, 3000);
+  }
+});
+
+// Select all
+ctxSelectAll.addEventListener('click', () => {
+  // Determine which element to select based on focus
+  if (isEditMode && document.activeElement === markdownEditor) {
+    markdownEditor.select();
+  } else {
+    // Select all content in viewer
+    const range = document.createRange();
+    range.selectNodeContents(viewer);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  hideContextMenu();
+});
+
+// Formatting functions - work in both view and edit mode
+function applyMarkdownFormat(wrapper, multiline = false) {
+  if (!savedSelection || !currentFilePath) return;
+
+  let formattedText;
+  if (multiline) {
+    // For lists - apply to each line
+    const lines = savedSelection.split('\n');
+    formattedText = lines.map(line => line.trim() ? wrapper + line : line).join('\n');
+  } else {
+    // For inline formatting - wrap the text
+    formattedText = wrapper + savedSelection + wrapper;
+  }
+
+  if (isEditMode) {
+    // Edit mode: Replace in editor
+    const start = markdownEditor.selectionStart;
+    const end = markdownEditor.selectionEnd;
+
+    markdownEditor.value =
+      markdownEditor.value.substring(0, start) +
+      formattedText +
+      markdownEditor.value.substring(end);
+
+    // Restore selection
+    markdownEditor.focus();
+    markdownEditor.selectionStart = start;
+    markdownEditor.selectionEnd = start + formattedText.length;
+
+    // Mark as unsaved
+    hasUnsavedChanges = true;
+    updateUnsavedIndicator();
+
+    // Trigger preview update
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      renderMarkdown(markdownEditor.value);
+    }, PREVIEW_DEBOUNCE_DELAY);
+  } else {
+    // View mode: Apply formatting to original markdown and re-render
+    const markdownContent = originalMarkdown;
+
+    // Find the selected text in the markdown (first occurrence)
+    const textIndex = markdownContent.indexOf(savedSelection);
+
+    if (textIndex !== -1) {
+      // Save current scroll position
+      const scrollPosition = contentWrapper.scrollTop;
+
+      // Replace the text with formatted version
+      const newContent =
+        markdownContent.substring(0, textIndex) +
+        formattedText +
+        markdownContent.substring(textIndex + savedSelection.length);
+
+      // Update the markdown
+      originalMarkdown = newContent;
+
+      // Re-render
+      renderMarkdown(newContent).then(() => {
+        // Restore scroll position after render
+        contentWrapper.scrollTop = scrollPosition;
+      });
+
+      // Mark as unsaved
+      hasUnsavedChanges = true;
+
+      // If in edit mode, update editor too
+      if (isEditMode) {
+        markdownEditor.value = newContent;
+        updateUnsavedIndicator();
+      }
+    } else {
+      showNotification('Could not find text in source', 2000);
+    }
+  }
+}
+
+// Bold
+ctxBold.addEventListener('click', () => {
+  hideContextMenu();
+  applyMarkdownFormat('**');
+  if (isEditMode) {
+    showNotification('Applied bold formatting', 1500);
+  }
+});
+
+// Italic
+ctxItalic.addEventListener('click', () => {
+  hideContextMenu();
+  applyMarkdownFormat('*');
+  if (isEditMode) {
+    showNotification('Applied italic formatting', 1500);
+  }
+});
+
+// Code block
+ctxCode.addEventListener('click', () => {
+  if (!savedSelection || !currentFilePath) return;
+  hideContextMenu();
+
+  // Check if it's multiline or single line
+  const isMultiline = savedSelection.includes('\n');
+  let formattedText;
+
+  if (isMultiline) {
+    // Use code block with ```
+    formattedText = '```\n' + savedSelection + '\n```';
+  } else {
+    // Use inline code with backticks
+    formattedText = '`' + savedSelection + '`';
+  }
+
+  if (isEditMode) {
+    // Edit mode: Replace in editor
+    const start = markdownEditor.selectionStart;
+    const end = markdownEditor.selectionEnd;
+
+    markdownEditor.value =
+      markdownEditor.value.substring(0, start) +
+      formattedText +
+      markdownEditor.value.substring(end);
+
+    // Restore selection
+    markdownEditor.focus();
+    markdownEditor.selectionStart = start;
+    markdownEditor.selectionEnd = start + formattedText.length;
+
+    // Mark as unsaved
+    hasUnsavedChanges = true;
+    updateUnsavedIndicator();
+
+    // Trigger preview update
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      renderMarkdown(markdownEditor.value);
+    }, PREVIEW_DEBOUNCE_DELAY);
+
+    showNotification('Applied code formatting', 1500);
+  } else {
+    // View mode: Apply formatting to original markdown and re-render
+    const markdownContent = originalMarkdown;
+    const textIndex = markdownContent.indexOf(savedSelection);
+
+    if (textIndex !== -1) {
+      // Save current scroll position
+      const scrollPosition = contentWrapper.scrollTop;
+
+      const newContent =
+        markdownContent.substring(0, textIndex) +
+        formattedText +
+        markdownContent.substring(textIndex + savedSelection.length);
+
+      originalMarkdown = newContent;
+      renderMarkdown(newContent).then(() => {
+        // Restore scroll position after render
+        contentWrapper.scrollTop = scrollPosition;
+      });
+      hasUnsavedChanges = true;
+
+      showNotification('Applied code formatting', 1500);
+    } else {
+      showNotification('Could not find text in source', 2000);
+    }
+  }
+});
+
+// Make list
+ctxList.addEventListener('click', () => {
+  hideContextMenu();
+  applyMarkdownFormat('- ', true);
+  if (isEditMode) {
+    showNotification('Applied list formatting', 1500);
+  }
+});
+
+// Remove formatting
+ctxRemoveFormat.addEventListener('click', () => {
+  if (!savedSelection || !currentFilePath) return;
+  hideContextMenu();
+
+  if (isEditMode) {
+    // Edit mode: Remove formatting from selected markdown text
+    const start = markdownEditor.selectionStart;
+    const end = markdownEditor.selectionEnd;
+    const selectedText = markdownEditor.value.substring(start, end);
+
+    let cleanText = selectedText
+      .replace(/\*\*([^*]+)\*\*/g, '$1')  // Bold
+      .replace(/\*([^*]+)\*/g, '$1')      // Italic
+      .replace(/`([^`]+)`/g, '$1')        // Inline code
+      .replace(/^```\n?/gm, '')           // Code block start
+      .replace(/\n?```$/gm, '')           // Code block end
+      .replace(/^- /gm, '')               // List items
+      .replace(/^> /gm, '')               // Blockquotes
+      .replace(/^#+\s/gm, '');            // Headers
+
+    markdownEditor.value =
+      markdownEditor.value.substring(0, start) +
+      cleanText +
+      markdownEditor.value.substring(end);
+
+    // Restore selection
+    markdownEditor.focus();
+    markdownEditor.selectionStart = start;
+    markdownEditor.selectionEnd = start + cleanText.length;
+
+    // Mark as unsaved
+    hasUnsavedChanges = true;
+    updateUnsavedIndicator();
+
+    // Trigger preview update
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      renderMarkdown(markdownEditor.value);
+    }, PREVIEW_DEBOUNCE_DELAY);
+
+    showNotification('Removed formatting', 1500);
+  } else {
+    // View mode: Find text with various markdown formatting patterns
+    const markdownContent = originalMarkdown;
+    const plainText = savedSelection;
+
+    // Try to find the text with different markdown formatting
+    const patterns = [
+      `**${plainText}**`,     // Bold
+      `*${plainText}*`,       // Italic
+      `\`${plainText}\``,     // Inline code
+      `***${plainText}***`,   // Bold + Italic
+    ];
+
+    let foundIndex = -1;
+    let foundPattern = null;
+
+    // Try each pattern
+    for (const pattern of patterns) {
+      const idx = markdownContent.indexOf(pattern);
+      if (idx !== -1) {
+        foundIndex = idx;
+        foundPattern = pattern;
+        break;
+      }
+    }
+
+    // Also try the plain text
+    if (foundIndex === -1) {
+      foundIndex = markdownContent.indexOf(plainText);
+      foundPattern = plainText;
+    }
+
+    if (foundIndex !== -1) {
+      // Save current scroll position
+      const scrollPosition = contentWrapper.scrollTop;
+
+      const newContent =
+        markdownContent.substring(0, foundIndex) +
+        plainText +
+        markdownContent.substring(foundIndex + foundPattern.length);
+
+      originalMarkdown = newContent;
+      renderMarkdown(newContent).then(() => {
+        // Restore scroll position after render
+        contentWrapper.scrollTop = scrollPosition;
+      });
+      hasUnsavedChanges = true;
+
+      showNotification('Removed formatting', 1500);
+    } else {
+      showNotification('Could not find text in source', 2000);
+    }
+  }
+});
+
+// ============================================
+// Recent Files Context Menu
+// ============================================
+
+const recentContextMenu = document.getElementById('recentContextMenu');
+const ctxOpenFolder = document.getElementById('ctxOpenFolder');
+const ctxRemoveRecent = document.getElementById('ctxRemoveRecent');
+const ctxCopyPath = document.getElementById('ctxCopyPath');
+
+let recentContextFilePath = null;
+
+function showRecentContextMenu(x, y, filePath) {
+  recentContextFilePath = filePath;
+
+  // Position the menu
+  recentContextMenu.style.left = `${x}px`;
+  recentContextMenu.style.top = `${y}px`;
+
+  // Show the menu
+  recentContextMenu.classList.add('visible');
+
+  // Adjust position if menu goes off screen
+  const menuRect = recentContextMenu.getBoundingClientRect();
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+
+  if (menuRect.right > windowWidth) {
+    recentContextMenu.style.left = `${windowWidth - menuRect.width - 10}px`;
+  }
+  if (menuRect.bottom > windowHeight) {
+    recentContextMenu.style.top = `${windowHeight - menuRect.height - 10}px`;
+  }
+}
+
+function hideRecentContextMenu() {
+  recentContextMenu.classList.remove('visible');
+  recentContextFilePath = null;
+}
+
+// Hide recent context menu when clicking elsewhere
+document.addEventListener('click', (e) => {
+  if (!recentContextMenu.contains(e.target)) {
+    hideRecentContextMenu();
+  }
+});
+
+// Hide on scroll or resize
+document.addEventListener('scroll', hideRecentContextMenu, true);
+window.addEventListener('resize', hideRecentContextMenu);
+
+// Hide on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    hideRecentContextMenu();
+  }
+});
+
+// Open containing folder
+ctxOpenFolder.addEventListener('click', () => {
+  if (recentContextFilePath) {
+    ipcRenderer.send('open-folder-in-explorer', recentContextFilePath);
+  }
+  hideRecentContextMenu();
+});
+
+// Remove from recent files
+ctxRemoveRecent.addEventListener('click', () => {
+  if (recentContextFilePath) {
+    let recentFiles = getRecentFiles();
+    recentFiles = recentFiles.filter(f => f.path !== recentContextFilePath);
+    localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+    updateRecentFilesList();
+  }
+  hideRecentContextMenu();
+});
+
+// Copy file path
+ctxCopyPath.addEventListener('click', () => {
+  if (recentContextFilePath) {
+    clipboard.writeText(recentContextFilePath);
+    showNotification('Path copied to clipboard', 1500);
+  }
+  hideRecentContextMenu();
+});

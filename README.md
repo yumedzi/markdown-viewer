@@ -43,6 +43,30 @@
 
 ## Installation
 
+### Download Pre-built Releases
+
+Download the latest release from the [Releases page](https://github.com/OmniCoreST/omnicore-markdown-viewer/releases):
+
+| Platform | File | Description |
+|----------|------|-------------|
+| Windows | `Omnicore-Markdown-Viewer-Setup-X.X.X.exe` | Windows installer |
+| Linux | `Omnicore.Markdown.Viewer-X.X.X.AppImage` | Portable AppImage |
+| Linux | `omnicore-markdown-viewer_X.X.X_amd64.deb` | Debian/Ubuntu package |
+
+### Windows Installation Note
+
+> **"Windows protected your PC" Warning**
+>
+> On first run, Windows SmartScreen may show a warning because the app is not code-signed.
+>
+> **To proceed:**
+> 1. Click **"More info"**
+> 2. Click **"Run anyway"**
+>
+> This is safe - you can verify the source code in this repository.
+
+### Build from Source
+
 1. Install dependencies:
 ```bash
 npm install

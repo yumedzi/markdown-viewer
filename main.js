@@ -1,7 +1,16 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const HTMLtoDOCX = require('html-to-docx');
+
+// Conditionally load electron-updater (may not be available in dev or if not installed)
+let autoUpdater = null;
+try {
+  autoUpdater = require('electron-updater').autoUpdater;
+} catch (err) {
+  console.log('electron-updater not available:', err.message);
+}
 
 // Enable live reload in development
 if (process.env.NODE_ENV === 'development') {
@@ -127,7 +136,7 @@ function createWindow() {
     }
   });
 
-  // Open DevTools in development
+  // Open DevTools in development (F12 to toggle)
   // mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', () => {
@@ -146,7 +155,10 @@ function createWindow() {
       }
     }
 
-    if (input.key === 'F11' && input.type === 'keyDown') {
+    if (input.key === 'F12' && input.type === 'keyDown') {
+      event.preventDefault();
+      mainWindow.webContents.toggleDevTools();
+    } else if (input.key === 'F11' && input.type === 'keyDown') {
       event.preventDefault();
       mainWindow.setFullScreen(!mainWindow.isFullScreen());
     } else if (input.key === 'Escape' && input.type === 'keyDown') {
@@ -244,6 +256,26 @@ function resumeFileWatching() {
   }
 }
 
+// Check if file is a Mermaid diagram file
+function isMermaidFile(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return ['.mmd', '.mermaid'].includes(ext);
+}
+
+// Wrap content in mermaid code block if it's a mermaid file
+function wrapMermaidContent(content, filePath) {
+  if (isMermaidFile(filePath)) {
+    // Check if already wrapped in mermaid code block
+    const trimmed = content.trim();
+    if (trimmed.startsWith('```mermaid') || trimmed.startsWith('~~~mermaid')) {
+      return content; // Already wrapped
+    }
+    // Wrap in mermaid code block
+    return '```mermaid\n' + content + '\n```';
+  }
+  return content;
+}
+
 function openFile(filePath) {
   log('Attempting to open file:', filePath);
 
@@ -271,6 +303,10 @@ function openFile(filePath) {
     if (data.charCodeAt(0) === 0xFEFF) {
       data = data.substring(1);
     }
+
+    // Wrap mermaid files in code block for rendering
+    data = wrapMermaidContent(data, filePath);
+
     log('File read successfully, sending to renderer');
     mainWindow.webContents.send('file-opened', {
       content: data,
@@ -288,6 +324,7 @@ function openFileDialog() {
     properties: ['openFile', 'multiSelections'],
     filters: [
       { name: 'Markdown Files', extensions: ['md', 'markdown', 'mdown', 'mkd', 'mkdn'] },
+      { name: 'Mermaid Files', extensions: ['mmd', 'mermaid'] },
       { name: 'All Files', extensions: ['*'] }
     ]
   }).then(result => {
@@ -305,6 +342,10 @@ function openFileDialog() {
         if (data.charCodeAt(0) === 0xFEFF) {
           data = data.substring(1);
         }
+
+        // Wrap mermaid files in code block for rendering
+        data = wrapMermaidContent(data, firstFilePath);
+
         // Send first file content and all selected paths
         mainWindow.webContents.send('file-opened', {
           content: data,
@@ -326,10 +367,22 @@ ipcMain.on('open-file-dialog', () => {
   openFileDialog();
 });
 
-// Handle open file by path (from recent files, etc.)
+// Handle direct file path open request from renderer (for markdown links)
 ipcMain.on('open-file-path', (event, filePath) => {
-  log('Opening file from path:', filePath);
-  openFile(filePath);
+  if (filePath && fs.existsSync(filePath)) {
+    openFile(filePath);
+  } else if (filePath) {
+    // File doesn't exist - notify renderer to update recent files
+    mainWindow.webContents.send('file-not-found', { path: filePath });
+  }
+});
+
+// Handle open folder in file explorer request
+ipcMain.on('open-folder-in-explorer', (event, filePath) => {
+  if (filePath) {
+    // shell.showItemInFolder will open the folder and select the file
+    shell.showItemInFolder(filePath);
+  }
 });
 
 // Handle PDF export request from renderer
@@ -392,6 +445,108 @@ ipcMain.on('export-pdf', async (event, data) => {
   }
 });
 
+// Handle Word export request from renderer
+ipcMain.on('export-word', async (event, data) => {
+  console.log('Received export-word request');
+  try {
+    const { currentFileName, htmlContent } = data;
+    console.log('Processing Word export for:', currentFileName, 'HTML length:', htmlContent?.length);
+
+    // Determine default filename
+    let defaultFilename = 'document.docx';
+    if (currentFileName) {
+      const nameWithoutExt = currentFileName.replace(/\.[^/.]+$/, '');
+      defaultFilename = `${nameWithoutExt}.docx`;
+    }
+
+    // Show save dialog
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export to Word',
+      defaultPath: defaultFilename,
+      filters: [
+        { name: 'Word Documents', extensions: ['docx'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return;
+    }
+
+    // Create a complete HTML document with styling
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.6; color: #333; }
+          h1 { font-size: 24pt; color: #1F3244; margin-top: 24pt; margin-bottom: 12pt; }
+          h2 { font-size: 18pt; color: #1F3244; margin-top: 18pt; margin-bottom: 10pt; }
+          h3 { font-size: 14pt; color: #1F3244; margin-top: 14pt; margin-bottom: 8pt; }
+          h4, h5, h6 { font-size: 12pt; color: #1F3244; margin-top: 12pt; margin-bottom: 6pt; }
+          p { margin-bottom: 10pt; }
+          code { font-family: 'Consolas', 'Courier New', monospace; background-color: #f5f5f5; padding: 2pt 4pt; font-size: 10pt; }
+          pre { font-family: 'Consolas', 'Courier New', monospace; background-color: #f5f5f5; padding: 10pt; font-size: 10pt; border: 1pt solid #ddd; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 12pt; }
+          th, td { border: 1pt solid #ddd; padding: 8pt; text-align: left; }
+          th { background-color: #1F3244; color: white; }
+          blockquote { border-left: 3pt solid #279EA7; padding-left: 12pt; margin-left: 0; color: #666; }
+          a { color: #279EA7; }
+          ul, ol { margin-bottom: 10pt; }
+          li { margin-bottom: 4pt; }
+          img { max-width: 100%; height: auto; }
+        </style>
+      </head>
+      <body>
+        ${htmlContent}
+      </body>
+      </html>
+    `;
+
+    // Convert HTML to DOCX
+    const docxBuffer = await HTMLtoDOCX(fullHtml, null, {
+      table: { row: { cantSplit: true } },
+      footer: true,
+      pageNumber: true,
+      font: 'Calibri',
+      fontSize: 22, // In half-points (22 = 11pt)
+      margins: {
+        top: 1440,    // 1 inch in twips
+        right: 1440,
+        bottom: 1440,
+        left: 1440,
+        header: 720,  // 0.5 inch
+        footer: 720,  // 0.5 inch
+        gutter: 0
+      }
+    });
+
+    // Write DOCX to file
+    fs.writeFile(result.filePath, docxBuffer, (err) => {
+      if (err) {
+        console.error('Error saving Word document:', err);
+        mainWindow.webContents.send('word-export-result', {
+          success: false,
+          error: err.message
+        });
+      } else {
+        console.log('Word document saved successfully:', result.filePath);
+        mainWindow.webContents.send('word-export-result', {
+          success: true,
+          path: result.filePath
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error exporting Word document:', error);
+    mainWindow.webContents.send('word-export-result', {
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Handle markdown file save request from renderer
 ipcMain.on('save-markdown-file', (event, data) => {
   try {
@@ -415,6 +570,18 @@ ipcMain.on('save-markdown-file', (event, data) => {
         });
       } else {
         console.log('File saved successfully:', filePath);
+
+        // Update lastModifiedTime to prevent false "external change" detection
+        if (watchedFilePath === filePath) {
+          try {
+            const stats = fs.statSync(filePath);
+            lastModifiedTime = stats.mtimeMs;
+            console.log('Updated lastModifiedTime after save:', lastModifiedTime);
+          } catch (statErr) {
+            console.error('Error updating file stats after save:', statErr);
+          }
+        }
+
         mainWindow.webContents.send('save-markdown-result', {
           success: true,
           path: filePath
@@ -473,6 +640,9 @@ ipcMain.on('reload-file', (event, data) => {
         content = content.substring(1);
       }
 
+      // Wrap mermaid files in code block for rendering
+      content = wrapMermaidContent(content, filePath);
+
       // Update the last modified time after successful reload
       try {
         const stats = fs.statSync(filePath);
@@ -501,8 +671,8 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
     backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
     autoHideMenuBar: true,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true
+      nodeIntegration: true,
+      contextIsolation: false
     },
     title: 'Mermaid Diagram - Zoom with mouse wheel, Pan by dragging',
     icon: path.join(__dirname, 'logo.ico')
@@ -561,9 +731,18 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
             cursor: pointer;
             font-weight: bold;
             transition: background 0.2s;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        button:last-child {
+            margin-bottom: 0;
         }
         button:hover {
             background-color: ${isDarkMode ? '#4FCDD6' : '#1f8089'};
+        }
+        button:disabled {
+            background-color: ${isDarkMode ? '#555' : '#ccc'};
+            cursor: not-allowed;
         }
         #svg-container-wrapper {
             cursor: grab;
@@ -582,6 +761,7 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
         <h1>Mermaid Diagram</h1>
         <p>• Scroll to Zoom (at cursor)<br>• Click & Drag to Pan</p>
         <button onclick="resetView()">Reset View</button>
+        <button id="pdfBtn" onclick="savePDF()">Save as PDF</button>
     </div>
     <div id="svg-container-wrapper" style="width: 100%; height: 100%; position: relative;">
         <div id="viewport" style="transform-origin: 0 0;">
@@ -705,6 +885,85 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
             };
             updateTransform();
         }
+
+        window.savePDF = async function() {
+            const { ipcRenderer } = require('electron');
+
+            const pdfBtn = document.getElementById('pdfBtn');
+            const originalText = pdfBtn.textContent;
+            pdfBtn.textContent = 'Saving...';
+            pdfBtn.disabled = true;
+
+            // Hide UI overlay for PDF
+            const overlay = document.querySelector('.ui-overlay');
+            overlay.style.display = 'none';
+
+            // Hide the normal view
+            svgWrapper.style.display = 'none';
+
+            // Create a clean PDF container with the SVG at proper size
+            const pdfContainer = document.createElement('div');
+            pdfContainer.id = 'pdf-export-container';
+            pdfContainer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:${isDarkMode ? '#1a1a1a' : '#f0f0f0'};';
+
+            // Clone the SVG
+            const svgClone = mermaidSvg.cloneNode(true);
+
+            // Get viewport dimensions
+            const pageWidth = window.innerWidth;
+            const pageHeight = window.innerHeight;
+
+            // Get SVG natural dimensions
+            const viewBox = mermaidSvg.viewBox?.baseVal;
+            const naturalWidth = viewBox?.width || parseFloat(mermaidSvg.getAttribute('width')) || 800;
+            const naturalHeight = viewBox?.height || parseFloat(mermaidSvg.getAttribute('height')) || 600;
+
+            // Calculate size to fit 85% of page while maintaining aspect ratio
+            const maxWidth = pageWidth * 0.85;
+            const maxHeight = pageHeight * 0.85;
+            const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight);
+
+            const finalWidth = naturalWidth * scale;
+            const finalHeight = naturalHeight * scale;
+
+            // Set SVG to calculated size (not using CSS transform)
+            svgClone.setAttribute('width', finalWidth);
+            svgClone.setAttribute('height', finalHeight);
+            svgClone.style.maxWidth = 'none';
+            svgClone.style.width = finalWidth + 'px';
+            svgClone.style.height = finalHeight + 'px';
+
+            pdfContainer.appendChild(svgClone);
+            document.body.appendChild(pdfContainer);
+
+            // Small delay to ensure rendering
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Request PDF export from main process
+            ipcRenderer.send('mermaid-export-pdf');
+
+            // Listen for result
+            ipcRenderer.once('mermaid-pdf-result', (event, result) => {
+                // Remove PDF container and restore normal view
+                pdfContainer.remove();
+                svgWrapper.style.display = '';
+                overlay.style.display = 'block';
+
+                if (result.success) {
+                    pdfBtn.textContent = 'Saved!';
+                } else if (result.canceled) {
+                    pdfBtn.textContent = originalText;
+                    pdfBtn.disabled = false;
+                    return;
+                } else {
+                    pdfBtn.textContent = 'Error!';
+                }
+                setTimeout(() => {
+                    pdfBtn.textContent = originalText;
+                    pdfBtn.disabled = false;
+                }, 1500);
+            });
+        }
     </script>
 </body>
 </html>`;
@@ -723,6 +982,36 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
       }
     } catch (err) {
       console.error('Error cleaning up temp file:', err);
+    }
+  });
+
+  // Handle PDF export request from this popup window
+  ipcMain.once('mermaid-export-pdf', async (event) => {
+    try {
+      // Generate PDF from current window view
+      const pdfData = await popupWindow.webContents.printToPDF({
+        printBackground: true,
+        landscape: true,
+        pageSize: 'A4',
+        margins: { top: 0, bottom: 0, left: 0, right: 0 }
+      });
+
+      // Show save dialog
+      const result = await dialog.showSaveDialog(popupWindow, {
+        title: 'Save Mermaid Diagram as PDF',
+        defaultPath: path.join(os.homedir(), 'mermaid-diagram.pdf'),
+        filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+      });
+
+      if (!result.canceled && result.filePath) {
+        fs.writeFileSync(result.filePath, pdfData);
+        popupWindow.webContents.send('mermaid-pdf-result', { success: true });
+      } else {
+        popupWindow.webContents.send('mermaid-pdf-result', { canceled: true });
+      }
+    } catch (err) {
+      console.error('Mermaid PDF export error:', err);
+      popupWindow.webContents.send('mermaid-pdf-result', { success: false, error: err.message });
     }
   });
 });
@@ -1065,7 +1354,7 @@ function handleFileArgument(argv) {
     // Check if it's a file path
     if (fs.existsSync(arg)) {
       const ext = path.extname(arg).toLowerCase();
-      if (['.md', '.markdown', '.mdown', '.mkd', '.mkdn'].includes(ext)) {
+      if (['.md', '.markdown', '.mdown', '.mkd', '.mkdn', '.mmd', '.mermaid'].includes(ext)) {
         filePath = arg;
         break;
       }
@@ -1212,4 +1501,132 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// ============================================
+// Auto-Updater Configuration
+// ============================================
+
+// Only configure auto-updater if it's available
+if (autoUpdater) {
+  // Configure auto-updater
+  autoUpdater.autoDownload = false; // Don't download automatically, let user decide
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  // Auto-updater event handlers
+  autoUpdater.on('checking-for-update', () => {
+    log('Auto-updater: Checking for updates...');
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('update-status', { status: 'checking' });
+    }
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    log('Auto-updater: Update available:', info.version);
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('update-status', {
+        status: 'available',
+        version: info.version,
+        releaseNotes: info.releaseNotes,
+        releaseDate: info.releaseDate
+      });
+    }
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    log('Auto-updater: No updates available. Current version:', app.getVersion());
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('update-status', {
+        status: 'not-available',
+        currentVersion: app.getVersion()
+      });
+    }
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    log(`Auto-updater: Download progress: ${progressObj.percent.toFixed(1)}%`);
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('update-status', {
+        status: 'downloading',
+        percent: progressObj.percent,
+        bytesPerSecond: progressObj.bytesPerSecond,
+        transferred: progressObj.transferred,
+        total: progressObj.total
+      });
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    log('Auto-updater: Update downloaded:', info.version);
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('update-status', {
+        status: 'downloaded',
+        version: info.version
+      });
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    // Silently log errors - don't show to user
+    // Common errors: no release on GitHub, network issues, etc.
+    log('Auto-updater error (silent):', err.message);
+  });
+}
+
+// IPC handlers for update actions
+ipcMain.on('check-for-updates', () => {
+  log('Manual update check requested');
+  if (!autoUpdater) {
+    log('Auto-updater not available');
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('update-status', {
+        status: 'error',
+        error: 'Auto-updater not available'
+      });
+    }
+    return;
+  }
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates();
+  } else {
+    log('Skipping update check in development mode');
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('update-status', {
+        status: 'dev-mode',
+        message: 'Update check is disabled in development mode'
+      });
+    }
+  }
+});
+
+ipcMain.on('download-update', () => {
+  log('Download update requested');
+  if (autoUpdater) {
+    autoUpdater.downloadUpdate();
+  }
+});
+
+ipcMain.on('install-update', () => {
+  log('Install update requested');
+  if (autoUpdater) {
+    autoUpdater.quitAndInstall(false, true);
+  }
+});
+
+// Check for updates after app is ready (only in production)
+function checkForUpdatesOnStartup() {
+  if (app.isPackaged && autoUpdater) {
+    // Wait a few seconds after app starts before checking for updates
+    setTimeout(() => {
+      log('Checking for updates on startup...');
+      autoUpdater.checkForUpdates().catch(err => {
+        log('Error checking for updates:', err.message);
+      });
+    }, 5000);
+  }
+}
+
+// Call update check after window is ready
+app.on('ready', () => {
+  checkForUpdatesOnStartup();
 });
