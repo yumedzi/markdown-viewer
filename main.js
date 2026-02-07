@@ -137,7 +137,7 @@ function createWindow() {
   });
 
   // Open DevTools in development (F12 to toggle)
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -175,7 +175,7 @@ function startFileWatching(filePath) {
   stopFileWatching();
 
   if (!fs.existsSync(filePath)) {
-    console.error('Cannot watch non-existent file:', filePath);
+    log('Cannot watch non-existent file:', filePath);
     return;
   }
 
@@ -186,7 +186,7 @@ function startFileWatching(filePath) {
     const stats = fs.statSync(filePath);
     lastModifiedTime = stats.mtimeMs;
   } catch (err) {
-    console.error('Error getting file stats:', err);
+    log('Error getting file stats:', err);
     return;
   }
 
@@ -195,7 +195,7 @@ function startFileWatching(filePath) {
     checkFileChanges();
   }, 5000);
 
-  console.log('Started watching file:', filePath);
+  log('Started watching file:', filePath);
 }
 
 function checkFileChanges() {
@@ -214,7 +214,7 @@ function checkFileChanges() {
 
     // Check if file has been modified
     if (currentModTime > lastModifiedTime) {
-      console.log('File modified externally:', watchedFilePath);
+      log('File modified externally:', watchedFilePath);
       lastModifiedTime = currentModTime;
 
       // Notify renderer about file change
@@ -224,7 +224,7 @@ function checkFileChanges() {
       });
     }
   } catch (err) {
-    console.error('Error checking file changes:', err);
+    log('Error checking file changes:', err);
   }
 }
 
@@ -234,7 +234,7 @@ function stopFileWatching() {
     fileWatcher = null;
     watchedFilePath = null;
     lastModifiedTime = null;
-    console.log('Stopped file watching');
+    // Use log() instead of console.log to avoid EPIPE errors when no terminal
   }
 }
 
@@ -242,7 +242,7 @@ function pauseFileWatching() {
   if (fileWatcher) {
     clearInterval(fileWatcher);
     fileWatcher = null;
-    console.log('Paused file watching');
+    log('Paused file watching');
   }
 }
 
@@ -252,7 +252,7 @@ function resumeFileWatching() {
     fileWatcher = setInterval(() => {
       checkFileChanges();
     }, 5000);
-    console.log('Resumed file watching');
+    log('Resumed file watching');
   }
 }
 
@@ -335,7 +335,7 @@ function openFileDialog() {
       const firstFilePath = filePaths[0];
       fs.readFile(firstFilePath, 'utf8', (err, data) => {
         if (err) {
-          console.error('Error reading file:', err);
+          log('Error reading file:', err);
           return;
         }
         // Remove BOM if present
@@ -358,7 +358,7 @@ function openFileDialog() {
       });
     }
   }).catch(err => {
-    console.error('Error opening file:', err);
+    log('Error opening file:', err);
   });
 }
 
@@ -423,13 +423,13 @@ ipcMain.on('export-pdf', async (event, data) => {
     // Write PDF to file
     fs.writeFile(result.filePath, pdfData, (err) => {
       if (err) {
-        console.error('Error saving PDF:', err);
+        log('Error saving PDF:', err);
         mainWindow.webContents.send('pdf-export-result', {
           success: false,
           error: err.message
         });
       } else {
-        console.log('PDF saved successfully:', result.filePath);
+        log('PDF saved successfully:', result.filePath);
         mainWindow.webContents.send('pdf-export-result', {
           success: true,
           path: result.filePath
@@ -437,7 +437,7 @@ ipcMain.on('export-pdf', async (event, data) => {
       }
     });
   } catch (error) {
-    console.error('Error exporting PDF:', error);
+    log('Error exporting PDF:', error);
     mainWindow.webContents.send('pdf-export-result', {
       success: false,
       error: error.message
@@ -447,10 +447,10 @@ ipcMain.on('export-pdf', async (event, data) => {
 
 // Handle Word export request from renderer
 ipcMain.on('export-word', async (event, data) => {
-  console.log('Received export-word request');
+  log('Received export-word request');
   try {
     const { currentFileName, htmlContent } = data;
-    console.log('Processing Word export for:', currentFileName, 'HTML length:', htmlContent?.length);
+    log('Processing Word export for:', currentFileName, 'HTML length:', htmlContent?.length);
 
     // Determine default filename
     let defaultFilename = 'document.docx';
@@ -525,13 +525,13 @@ ipcMain.on('export-word', async (event, data) => {
     // Write DOCX to file
     fs.writeFile(result.filePath, docxBuffer, (err) => {
       if (err) {
-        console.error('Error saving Word document:', err);
+        log('Error saving Word document:', err);
         mainWindow.webContents.send('word-export-result', {
           success: false,
           error: err.message
         });
       } else {
-        console.log('Word document saved successfully:', result.filePath);
+        log('Word document saved successfully:', result.filePath);
         mainWindow.webContents.send('word-export-result', {
           success: true,
           path: result.filePath
@@ -539,7 +539,7 @@ ipcMain.on('export-word', async (event, data) => {
       }
     });
   } catch (error) {
-    console.error('Error exporting Word document:', error);
+    log('Error exporting Word document:', error);
     mainWindow.webContents.send('word-export-result', {
       success: false,
       error: error.message
@@ -563,22 +563,22 @@ ipcMain.on('save-markdown-file', (event, data) => {
     // Write file to disk
     fs.writeFile(filePath, content, 'utf8', (err) => {
       if (err) {
-        console.error('Error saving file:', err);
+        log('Error saving file:', err);
         mainWindow.webContents.send('save-markdown-result', {
           success: false,
           error: err.message
         });
       } else {
-        console.log('File saved successfully:', filePath);
+        log('File saved successfully:', filePath);
 
         // Update lastModifiedTime to prevent false "external change" detection
         if (watchedFilePath === filePath) {
           try {
             const stats = fs.statSync(filePath);
             lastModifiedTime = stats.mtimeMs;
-            console.log('Updated lastModifiedTime after save:', lastModifiedTime);
+            log('Updated lastModifiedTime after save:', lastModifiedTime);
           } catch (statErr) {
-            console.error('Error updating file stats after save:', statErr);
+            log('Error updating file stats after save:', statErr);
           }
         }
 
@@ -589,7 +589,7 @@ ipcMain.on('save-markdown-file', (event, data) => {
       }
     });
   } catch (error) {
-    console.error('Error in save handler:', error);
+    log('Error in save handler:', error);
     mainWindow.webContents.send('save-markdown-result', {
       success: false,
       error: error.message
@@ -629,7 +629,7 @@ ipcMain.on('reload-file', (event, data) => {
 
   fs.readFile(filePath, 'utf8', (err, content) => {
     if (err) {
-      console.error('Error reloading file:', err);
+      log('Error reloading file:', err);
       mainWindow.webContents.send('file-reload-result', {
         success: false,
         error: err.message
@@ -648,7 +648,7 @@ ipcMain.on('reload-file', (event, data) => {
         const stats = fs.statSync(filePath);
         lastModifiedTime = stats.mtimeMs;
       } catch (statErr) {
-        console.error('Error updating file stats:', statErr);
+        log('Error updating file stats:', statErr);
       }
 
       mainWindow.webContents.send('file-reload-result', {
@@ -1010,7 +1010,7 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
         popupWindow.webContents.send('mermaid-pdf-result', { canceled: true });
       }
     } catch (err) {
-      console.error('Mermaid PDF export error:', err);
+      log('Mermaid PDF export error:', err);
       popupWindow.webContents.send('mermaid-pdf-result', { success: false, error: err.message });
     }
   });
@@ -1327,7 +1327,7 @@ ipcMain.on('open-table-popup', (event, data) => {
         fs.unlinkSync(tempHtmlPath);
       }
     } catch (err) {
-      console.error('Error cleaning up temp file:', err);
+      log('Error cleaning up temp file:', err);
     }
   });
 });
