@@ -130,8 +130,11 @@
       window.updateFileInfo(tab.filePath);
     }
     
-    // Set global current file path
+    // Set global current file path and originalMarkdown
     window.currentFilePath = tab.filePath;
+    if (window.originalMarkdown !== undefined) {
+      window.originalMarkdown = tab.originalContent;
+    }
     
     // Render content
     if (window.renderMarkdown) {
@@ -312,6 +315,26 @@
       }
     });
   }
+
+  // ============================================
+  // Sync with renderer's isEditMode
+  // ============================================
+
+  // Monitor edit button clicks to track edit mode state
+  document.addEventListener('DOMContentLoaded', () => {
+    const toggleEditBtn = document.getElementById('toggleEdit');
+    if (toggleEditBtn) {
+      toggleEditBtn.addEventListener('click', () => {
+        // Wait a tick for renderer.js to update isEditMode
+        setTimeout(() => {
+          // Check if we're in edit mode by checking the class
+          const contentWrapper = document.querySelector('.content-wrapper');
+          window.isEditMode = contentWrapper && contentWrapper.classList.contains('split-view');
+          console.log('[CustomTabs] Edit mode changed to:', window.isEditMode);
+        }, 10);
+      });
+    }
+  });
 
   // ============================================
   // Export API

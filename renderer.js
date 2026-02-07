@@ -121,6 +121,14 @@ let originalMarkdown = '';
 let previewDebounceTimer = null;
 const PREVIEW_DEBOUNCE_DELAY = 3000; // 3 seconds
 
+// Export originalMarkdown reference for custom-tabs.js
+// We need to use a getter/setter since it's a primitive
+Object.defineProperty(window, 'originalMarkdown', {
+  get() { return originalMarkdown; },
+  set(value) { originalMarkdown = value; },
+  enumerable: true
+});
+
 // Navigation history (for back/forward)
 let navigationHistory = [];
 let navigationIndex = -1;
@@ -2489,5 +2497,6 @@ ctxCopyPath.addEventListener('click', () => {
 window.renderMarkdown = renderMarkdown;
 window.viewer = viewer;
 window.markdownEditor = markdownEditor;
-window.isEditMode = false;  // Will be updated by event listeners
 window.updateFileInfo = updateFileInfo;
+// Note: window.originalMarkdown is defined above with getter/setter
+// Note: window.isEditMode should be synced via event listener
