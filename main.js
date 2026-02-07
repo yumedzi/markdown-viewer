@@ -137,7 +137,7 @@ function createWindow() {
   });
 
   // Open DevTools in development (F12 to toggle)
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', () => {
     mainWindow = null;

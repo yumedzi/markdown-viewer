@@ -5,10 +5,20 @@
  */
 
 /* ============================================
-   CUSTOM: Compact Header
+   CUSTOM: Compact Header (FORCE with high specificity)
    ============================================ */
+.container .header,
 .header {
   padding: 6px 16px !important;  /* Reduced from upstream's 12px 20px */
+  background: #e8f4f5 !important;  /* Temp: Light blue to verify loading */
+  border-bottom: 3px solid #279EA7 !important;  /* Temp: Thick border to verify */
+  min-height: auto !important;
+  height: auto !important;
+}
+
+body.dark-mode .container .header,
+body.dark-mode .header {
+  background: #1a3a3e !important;  /* Temp: Dark teal to verify */
 }
 
 /* ============================================

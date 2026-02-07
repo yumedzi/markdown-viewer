@@ -224,9 +224,37 @@
         const tabsData = JSON.parse(savedTabs);
         console.log('[CustomTabs] Restoring', tabsData.length, 'tabs');
         
-        if (window.ipcRenderer && tabsData.length > 0) {
-          window.ipcRenderer.send('restore-tabs', tabsData);
+        // Load files directly using fs (available since nodeIntegration: true)
+        if (tabsData.length > 0 && window.fs) {
+          tabsData.forEach((tabData, index) => {
+            try {
+              if (window.fs.existsSync(tabData.filePath)) {
+                let content = window.fs.readFileSync(tabData.filePath, 'utf8');
+                // Remove BOM if present
+                if (content.charCodeAt(0) === 0xFEFF) {
+                  content = content.substring(1);
+                }
+                const tab = createTab(tabData.filePath, content);
+                tab.scrollPosition = tabData.scrollPosition || 0;
+                console.log('[CustomTabs] Restored tab:', tabData.filePath);
+              } else {
+                console.log('[CustomTabs] File no longer exists:', tabData.filePath);
+              }
+            } catch (error) {
+              console.error('[CustomTabs] Error restoring tab:', tabData.filePath, error);
+            }
+          });
+          
+          // Switch to previously active tab if it exists
+          if (savedActiveTabId && tabs.length > 0) {
+            const activeTab = tabs[0]; // Just use first tab for now
+            switchToTab(activeTab.id);
+          }
+        } else {
+          console.log('[CustomTabs] No fs module or no tabs to restore');
         }
+      } else {
+        console.log('[CustomTabs] No saved tabs in localStorage');
       }
     } catch (error) {
       console.error('[CustomTabs] Error loading saved tabs:', error);

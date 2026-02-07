@@ -3,6 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const html2canvas = require('html2canvas');
 
+// Export fs to window for custom-tabs.js
+window.fs = fs;
+window.path = path;
+window.ipcRenderer = ipcRenderer;
+
 // Libraries loaded from CDN in index.html
 // marked, mermaid, and DOMPurify are available globally
 
@@ -2479,3 +2484,10 @@ ctxCopyPath.addEventListener('click', () => {
   }
   hideRecentContextMenu();
 });
+
+// Export functions for custom-tabs.js
+window.renderMarkdown = renderMarkdown;
+window.viewer = viewer;
+window.markdownEditor = markdownEditor;
+window.isEditMode = false;  // Will be updated by event listeners
+window.updateFileInfo = updateFileInfo;
