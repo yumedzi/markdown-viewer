@@ -1,10 +1,18 @@
+// ============================================
+// IMPORTS
+// ============================================
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const HTMLtoDOCX = require('html-to-docx');
 
-// Conditionally load electron-updater (may not be available in dev or if not installed)
+// Helper modules
+const { isMermaidFile, wrapMermaidContent, removeBOM, readMarkdownFile, sendIPCResult } = require('./file-helpers');
+
+// ============================================
+// CONDITIONAL IMPORTS
+// ============================================
 let autoUpdater = null;
 try {
   autoUpdater = require('electron-updater').autoUpdater;
@@ -12,7 +20,9 @@ try {
   console.log('electron-updater not available:', err.message);
 }
 
-// Setup logging to file for debugging packaged app
+// ============================================
+// LOGGING
+// ============================================
 const logFilePath = path.join(app.getPath('userData'), 'debug.log');
 const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
 
@@ -35,11 +45,20 @@ log('=== Application started ===');
 log('User data path:', app.getPath('userData'));
 log('Log file:', logFilePath);
 
-let mainWindow;
+// ============================================
+// APPLICATION STATE
+// ============================================
+let mainWindow = null;
 let fileToOpen = null;
-let fileWatcher = null; // File watching state
+
+// File watching state
+let fileWatcher = null;
 let watchedFilePath = null;
 let lastModifiedTime = null;
+
+// ============================================
+// WINDOW MANAGEMENT
+// ============================================
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -110,7 +129,10 @@ function createWindow() {
   });
 }
 
-// File watching functions
+// ============================================
+// FILE WATCHING
+// ============================================
+
 function startFileWatching(filePath) {
   // Stop any existing watcher
   stopFileWatching();
@@ -197,25 +219,9 @@ function resumeFileWatching() {
   }
 }
 
-// Check if file is a Mermaid diagram file
-function isMermaidFile(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  return ['.mmd', '.mermaid'].includes(ext);
-}
-
-// Wrap content in mermaid code block if it's a mermaid file
-function wrapMermaidContent(content, filePath) {
-  if (isMermaidFile(filePath)) {
-    // Check if already wrapped in mermaid code block
-    const trimmed = content.trim();
-    if (trimmed.startsWith('```mermaid') || trimmed.startsWith('~~~mermaid')) {
-      return content; // Already wrapped
-    }
-    // Wrap in mermaid code block
-    return '```mermaid\n' + content + '\n```';
-  }
-  return content;
-}
+// ============================================
+// FILE OPERATIONS
+// ============================================
 
 function openFile(filePath) {
   log('Attempting to open file:', filePath);
@@ -234,19 +240,13 @@ function openFile(filePath) {
     return;
   }
 
-  fs.readFile(filePath, 'utf8', (err, data) => {
+  // Use helper function for reading markdown files
+  readMarkdownFile(filePath, (err, data) => {
     if (err) {
       log('ERROR: Error reading file:', err);
       mainWindow.webContents.send('show-error', `Error reading file: ${err.message}`);
       return;
     }
-    // Remove BOM if present
-    if (data.charCodeAt(0) === 0xFEFF) {
-      data = data.substring(1);
-    }
-
-    // Wrap mermaid files in code block for rendering
-    data = wrapMermaidContent(data, filePath);
 
     log('File read successfully, sending to renderer');
     mainWindow.webContents.send('file-opened', {
@@ -266,26 +266,20 @@ function openFileDialog() {
     filters: [
       { name: 'Markdown Files', extensions: ['md', 'markdown', 'mdown', 'mkd', 'mkdn'] },
       { name: 'Mermaid Files', extensions: ['mmd', 'mermaid'] },
+      { name: 'OmniWare Files', extensions: ['ow'] },
       { name: 'All Files', extensions: ['*'] }
     ]
   }).then(result => {
     if (!result.canceled && result.filePaths.length > 0) {
       const filePaths = result.filePaths;
-
-      // Read the first file to display
       const firstFilePath = filePaths[0];
-      fs.readFile(firstFilePath, 'utf8', (err, data) => {
+
+      // Use helper function for reading markdown files
+      readMarkdownFile(firstFilePath, (err, data) => {
         if (err) {
           console.error('Error reading file:', err);
           return;
         }
-        // Remove BOM if present
-        if (data.charCodeAt(0) === 0xFEFF) {
-          data = data.substring(1);
-        }
-
-        // Wrap mermaid files in code block for rendering
-        data = wrapMermaidContent(data, firstFilePath);
 
         // Send first file content and all selected paths
         mainWindow.webContents.send('file-opened', {
@@ -303,7 +297,10 @@ function openFileDialog() {
   });
 }
 
-// Handle file open request from renderer
+// ============================================
+// IPC HANDLERS - File Operations
+// ============================================
+
 ipcMain.on('open-file-dialog', () => {
   openFileDialog();
 });
@@ -326,7 +323,10 @@ ipcMain.on('open-folder-in-explorer', (event, filePath) => {
   }
 });
 
-// Handle PDF export request from renderer
+// ============================================
+// IPC HANDLERS - Export
+// ============================================
+
 ipcMain.on('export-pdf', async (event, data) => {
   try {
     const { currentFileName } = data;
@@ -538,7 +538,10 @@ ipcMain.on('save-markdown-file', (event, data) => {
   }
 });
 
-// Handle file watching control requests
+// ============================================
+// IPC HANDLERS - File Watching
+// ============================================
+
 ipcMain.on('start-file-watching', (event, data) => {
   const { filePath } = data;
   startFileWatching(filePath);
@@ -561,29 +564,16 @@ ipcMain.on('reload-file', (event, data) => {
   const { filePath } = data;
 
   if (!fs.existsSync(filePath)) {
-    mainWindow.webContents.send('file-reload-result', {
-      success: false,
-      error: 'File not found'
-    });
+    sendIPCResult(mainWindow.webContents, 'file-reload-result', false, { error: 'File not found' });
     return;
   }
 
-  fs.readFile(filePath, 'utf8', (err, content) => {
+  // Use helper function for reading markdown files
+  readMarkdownFile(filePath, (err, content) => {
     if (err) {
       console.error('Error reloading file:', err);
-      mainWindow.webContents.send('file-reload-result', {
-        success: false,
-        error: err.message
-      });
+      sendIPCResult(mainWindow.webContents, 'file-reload-result', false, { error: err.message });
     } else {
-      // Remove BOM if present
-      if (content.charCodeAt(0) === 0xFEFF) {
-        content = content.substring(1);
-      }
-
-      // Wrap mermaid files in code block for rendering
-      content = wrapMermaidContent(content, filePath);
-
       // Update the last modified time after successful reload
       try {
         const stats = fs.statSync(filePath);
@@ -592,16 +582,15 @@ ipcMain.on('reload-file', (event, data) => {
         console.error('Error updating file stats:', statErr);
       }
 
-      mainWindow.webContents.send('file-reload-result', {
-        success: true,
-        content: content,
-        path: filePath
-      });
+      sendIPCResult(mainWindow.webContents, 'file-reload-result', true, { content, path: filePath });
     }
   });
 });
 
-// Handle Mermaid diagram popup request
+// ============================================
+// IPC HANDLERS - Popups
+// ============================================
+
 ipcMain.on('open-mermaid-popup', (event, data) => {
   const { svgContent, isDarkMode } = data;
 
@@ -957,6 +946,126 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
   });
 });
 
+// Handle OmniWare wireframe popup request
+ipcMain.on('open-omniware-popup', (event, data) => {
+  const { dslCode, isDarkMode } = data;
+
+  const popupWindow = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    backgroundColor: isDarkMode ? '#1a1a1a' : '#f8f6f1',
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    },
+    title: 'OmniWare Wireframe',
+    icon: path.join(__dirname, 'logo.ico')
+  });
+
+  popupWindow.setMenu(null);
+
+  // Read the OmniWare library
+  const omniwareJsPath = path.join(__dirname, 'omniwire', 'omniware.js');
+  const omniwareJs = fs.readFileSync(omniwareJsPath, 'utf8');
+
+  // Dark mode CSS overrides
+  const { getOmniWareDarkCSS } = require('./omniware-config');
+  const darkCSS = isDarkMode ? `<style>${getOmniWareDarkCSS(true)}</style>` : '';
+
+  const escapedDsl = dslCode.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
+  const tempHtmlPath = path.join(os.tmpdir(), 'omnicore-temp-omniware.html');
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniWare Wireframe</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 20px;
+            background-color: ${isDarkMode ? '#2d2d2d' : '#f0ede6'};
+            min-height: 100vh;
+        }
+        .toolbar {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 8px;
+        }
+        .toolbar button {
+            padding: 6px 14px;
+            border: 1px solid ${isDarkMode ? '#555' : '#ccc'};
+            background: ${isDarkMode ? '#333' : '#fff'};
+            color: ${isDarkMode ? '#e0e0e0' : '#333'};
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .toolbar button:hover {
+            background: ${isDarkMode ? '#444' : '#eee'};
+        }
+    </style>
+    ${darkCSS}
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="exportPDF()">Export PDF</button>
+    </div>
+    <div id="render-target"></div>
+
+    <script>${omniwareJs}</script>
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        const dsl = \`${escapedDsl}\`;
+        OmniWare.render(dsl, document.getElementById('render-target'));
+
+        function exportPDF() {
+            ipcRenderer.send('omniware-export-pdf');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') window.close();
+        });
+    </script>
+</body>
+</html>`;
+
+  fs.writeFileSync(tempHtmlPath, htmlContent, 'utf8');
+  popupWindow.loadFile(tempHtmlPath);
+
+  // Handle PDF export from popup
+  ipcMain.once('omniware-export-pdf', async () => {
+    try {
+      const saveResult = await dialog.showSaveDialog(popupWindow, {
+        title: 'Export Wireframe as PDF',
+        defaultPath: 'wireframe.pdf',
+        filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+      });
+      if (!saveResult.canceled && saveResult.filePath) {
+        const pdfData = await popupWindow.webContents.printToPDF({
+          landscape: false,
+          printBackground: true,
+          margins: { top: 0.4, bottom: 0.4, left: 0.4, right: 0.4 }
+        });
+        fs.writeFileSync(saveResult.filePath, pdfData);
+      }
+    } catch (err) {
+      console.error('OmniWare PDF export error:', err);
+    }
+  });
+
+  // Clean up temp file on close
+  popupWindow.on('closed', () => {
+    try { fs.unlinkSync(tempHtmlPath); } catch (e) { /* ignore */ }
+  });
+});
+
 // Handle Table popup request
 ipcMain.on('open-table-popup', (event, data) => {
   const { tableData, isDarkMode } = data;
@@ -1273,7 +1382,10 @@ ipcMain.on('open-table-popup', (event, data) => {
   });
 });
 
-// Handle file argument from command line or "Open with"
+// ============================================
+// COMMAND LINE HANDLING
+// ============================================
+
 function handleFileArgument(argv) {
   log('handleFileArgument called with argv:', argv);
   log('app.isPackaged:', app.isPackaged);
@@ -1295,7 +1407,7 @@ function handleFileArgument(argv) {
     // Check if it's a file path
     if (fs.existsSync(arg)) {
       const ext = path.extname(arg).toLowerCase();
-      if (['.md', '.markdown', '.mdown', '.mkd', '.mkdn', '.mmd', '.mermaid'].includes(ext)) {
+      if (['.md', '.markdown', '.mdown', '.mkd', '.mkdn', '.mmd', '.mermaid', '.ow'].includes(ext)) {
         filePath = arg;
         break;
       }
@@ -1320,7 +1432,6 @@ function handleFileArgument(argv) {
 log('Initial process.argv:', process.argv);
 handleFileArgument(process.argv);
 
-// Handle request to open a file (with unsaved changes check in renderer)
 ipcMain.on('request-open-file', (event, data) => {
   const { filePath } = data;
   if (filePath && fs.existsSync(filePath)) {
@@ -1328,7 +1439,10 @@ ipcMain.on('request-open-file', (event, data) => {
   }
 });
 
-// Handle second-instance (when app is already running and user opens another file)
+// ============================================
+// SINGLE INSTANCE LOCK & APP LIFECYCLE
+// ============================================
+
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {

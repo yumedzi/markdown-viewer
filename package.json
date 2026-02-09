@@ -67,6 +67,13 @@
       "file-icon.png",
       "file-icon.ico",
       "libs/**/*",
+      "omniwire/**/*",
+      "omniware-config.js",
+      "utils.js",
+      "mermaid-config.js",
+      "context-menu-utils.js",
+      "notification-helpers.js",
+      "file-helpers.js",
       "node_modules/**/*",
       "!**/*.md",
       "!dist/**/*",
@@ -115,6 +122,13 @@
           "description": "Mermaid Diagram File",
           "icon": "file-icon.ico",
           "role": "Viewer"
+        },
+        {
+          "ext": "ow",
+          "name": "OmniWare Wireframe",
+          "description": "OmniWare Wireframe File",
+          "icon": "file-icon.ico",
+          "role": "Viewer"
         }
       ]
     },
@@ -142,6 +156,13 @@
           "ext": "mermaid",
           "name": "Mermaid Diagram",
           "description": "Mermaid Diagram File",
+          "icon": "file-icon.png",
+          "role": "Viewer"
+        },
+        {
+          "ext": "ow",
+          "name": "OmniWare Wireframe",
+          "description": "OmniWare Wireframe File",
           "icon": "file-icon.png",
           "role": "Viewer"
         }
@@ -175,6 +196,13 @@
           "name": "Mermaid Diagram",
           "description": "Mermaid Diagram File",
           "mimeType": "text/x-mermaid",
+          "icon": "file-icon.png"
+        },
+        {
+          "ext": "ow",
+          "name": "OmniWare Wireframe",
+          "description": "OmniWare Wireframe File",
+          "mimeType": "text/x-omniware",
           "icon": "file-icon.png"
         }
       ]
