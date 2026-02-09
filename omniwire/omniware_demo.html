@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OmniWare Demo — Teklif Değerlendirme</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Split layout ── */
+  .editor-pane {
+    width: 45%;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid #333;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .preview-pane {
+    flex: 1;
+    overflow-y: auto;
+    background: #f0ede6;
+    padding: 20px;
+  }
+
+  /* ── Editor Header ── */
+  .editor-header {
+    padding: 12px 16px;
+    background: #16213e;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .editor-header h2 {
+    font-size: 14px;
+    color: #8892b0;
+    font-weight: normal;
+  }
+  .editor-header h2 b { color: #64ffda; }
+  .render-btn {
+    padding: 6px 16px;
+    background: #64ffda;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .render-btn:hover { background: #4dd4b0; }
+
+  /* ── Textarea ── */
+  .editor-area {
+    flex: 1;
+    overflow: hidden;
+  }
+  #dsl-input {
+    width: 100%;
+    height: 100%;
+    background: #0a192f;
+    color: #a8b2d1;
+    border: none;
+    padding: 16px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    tab-size: 2;
+  }
+
+  /* ── Preview Header ── */
+  .preview-header {
+    padding: 12px 16px;
+    background: #fff;
+    border-bottom: 2px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -20px -20px 20px -20px;
+  }
+  .preview-header h2 {
+    font-size: 14px;
+    color: #333;
+    font-weight: normal;
+  }
+  .preview-header h2 b { color: #5a9e6f; }
+
+  @media (max-width: 1000px) {
+    body { flex-direction: column; }
+    .editor-pane { width: 100%; height: 50vh; position: relative; }
+    .preview-pane { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="editor-pane">
+  <div class="editor-header">
+    <h2><b>OmniWare</b> DSL Editor v1.0</h2>
+    <button class="render-btn" onclick="renderPreview()">▶ Render</button>
+  </div>
+  <div class="editor-area">
+    <textarea id="dsl-input" spellcheck="false">
+@page "Teklif Değerlendirme" status:draft
+
+@nav
+  SADES | Ana Sayfa | Talepler | *İhale Yönetimi* | Tedarikçi | Sözleşmeler | Raporlar
+
+@breadcrumb
+  ⌂ SADES > İhale Yönetimi > IH-2027-00142 > **Teklif Değerlendirme**
+
+@section "İhale Bilgileri" icon:info ref:FR-IH-001
+  @grid cols:2
+    İhale No          : **IH-2027-00142**
+    İhale Usulü       : **Açık İhale** (KRL-AI)
+    İhale Adı         : **VEDAŞ Trafo Merkezi Bakım Hizmeti Alımı**
+    Durum             : {blue}Değerlendirme Aşamasında
+    Tahmini Tutar     : **4.250.000,00 ₺**
+    İhale Tarihi      : **15.02.2027**
+    Teklif Sayısı     : **5 adet (≥3 ✓)**
+    Son Teklif        : **14.02.2027 — 17:00**
+
+@section "EPDK 4 Katmanlı Uyumluluk Durumu" icon:check ref:FR-UK-001~004
+  @badges
+    {green} UK-K1 Ön Kontrol: BAŞARILI
+    {green} UK-K2 Süreç Kontrol: BAŞARILI
+    {yellow} UK-K3 Doküman Kontrol: 1 UYARI
+    {gray} UK-K4 Sonuç Kontrol: BEKLİYOR
+  @note type:warning
+    UK-K3 Uyarı: Delta Teknik Ltd. imza sirküleri son geçerlilik tarihi yaklaşıyor (22.02.2027)
+
+@tabs
+  *① Yeterlik Değerlendirme* | ② Fiyat Karşılaştırma | ③ Açık Eksiltme | ④ Değerlendirme Raporu
+
+@section "Yeterlik Kontrol Tablosu" ref:FR-TV-002,FR-TV-006,KRL-YET
+  @table
+    # | İstekli Adı | İş Deneyim (%50-%150) | Yıllık Ciro (≤%200) | Geçici Teminat | Belgeler | Sonuç | İşlem
+    --
+    1 | **ABC Elektrik A.Ş.** | {green}✓ %85 | {green}✓ %120 | {green}✓ %5 | {green}✓ Tam | {green}YETERLİ | [Detay]
+    2 | **XYZ Mühendislik Ltd.** | {green}✓ %62 | {green}✓ %95 | {green}✓ %5 | {green}✓ Tam | {green}YETERLİ | [Detay]
+    3 | **Mega Enerji A.Ş.** | {green}✓ %110 | {red}✗ %210 | {green}✓ %5 | {green}✓ Tam | {red}YETERSİZ | [Detay]
+    4 | **Delta Teknik Ltd.** | {green}✓ %72 | {green}✓ %88 | {green}✓ %5 | {yellow}⚠ Eksik | {yellow}EKSİK BELGE | [Detay]
+    5 | **Anadolu Enerji San.** | {green}✓ %95 | {green}✓ %145 | {green}✓ %5 | {green}✓ Tam | {green}YETERLİ | [Detay]
+  @buttons
+    [primary] ✓ Yeterlik Sonuçlarını Onayla
+    [default] ✉ İsteklilere Bildirim Gönder
+    [default] 📄 Yeterlik Tutanağı Oluştur (PDF)
+
+@section "Fiyat Karşılaştırma Tablosu" icon:currency ref:FR-TV-005,FR-TV-007
+  @alert type:info ref:KRL-TEK-002
+    Yalnızca YETERLİ isteklilerin fiyat zarfları açılmıştır. Yetersiz isteklilerin fiyat zarfı açılmaz.
+  @table
+    Sıra | İstekli Adı | Teklif Bedeli (TB) | Yerli Malı | YO (%) | AUTB | Sıralama
+    --
+    1 | **ABC Elektrik A.Ş.** | 3.850.000,00 ₺ | ✓ Evet | %80 | **4.312.000 ₺** | {blue}#2
+    2 | **XYZ Mühendislik Ltd.** | 4.100.000,00 ₺ | ✗ Hayır | %0 | **4.100.000 ₺** | {yellow}#3
+    3 | **Anadolu Enerji San.** | 3.720.000,00 ₺ | ✓ Evet | %100 | **4.278.000 ₺** | {green}🏆 #1
+  @locked "Fiyat zarfı açılmadı — Yeterlik başarısız (KRL-TEK-002)"
+    @table
+      4 | Mega Enerji A.Ş. | — | — | — | — | —
+      5 | Delta Teknik Ltd. | — | — | — | — | —
+  @formula
+    AUTB = TB + (YO × YA × TB)  |  YA (Yerli Avantajı) = %15  (KRL-TEK-006)
+
+@section "AI Fiyat Analizi" icon:chart ref:FR-AI-001,FR-AI-002
+  @grid cols:2
+    📊 Piyasa Ortalaması : **3.950.000 ₺**
+    Sapma Aralığı        : **±%12**
+    ⚠ Anomali            : {green}Tespit Edilmedi
+    Güven Skoru          : **%87**
+  @placeholder height:80
+    📈 Geçmiş Fiyat Trendi Grafiği — Recharts / D3
+
+@section "Açık Eksiltme Oturumu" icon:play ref:FR-TV-004,KRL-TEK-004
+  @grid cols:2
+    Oturum Durumu : {blue}Planlandı
+    Başlangıç     : **16.02.2027 — 14:00**
+    Min. İndirim  : **%1**
+    Tur Süresi    : **5 dakika**
+  @buttons
+    [primary] ▶ Oturumu Başlat (BBB)
+    [default] ⏱ Süre Uzat
+    [danger] ⏹ Oturumu Sonlandır
+  @placeholder height:80
+    🖥 BigBlueButton Sanal İhale Odası Embed Alanı (FR-SIO-001)
+
+@section "Değerlendirme Özeti ve Komisyon Kararı" icon:star ref:FR-IS-001,FR-IS-002
+  @radio "Komisyon Kararı"
+    *Kazanan Belirle* | İhaleyi İptal Et | Ek Değerlendirme
+  @grid cols:2
+    Kazanan İstekli : **Anadolu Enerji San.**
+    Sözleşme Bedeli : {green}**3.720.000,00 ₺**
+  @textarea "Karar Gerekçesi" rows:3
+    En düşük AUTB değerine sahip, tüm yeterlik kriterlerini karşılayan istekli olarak belirlenmiştir. Yerli malı oranı %100 olup, fiyat avantajı hesaplaması sonrası en ekonomik teklif olarak değerlendirilmiştir.
+  @divider
+  @buttons
+    [success] ✓ İhale Yetkilisi Onayına Gönder
+    [primary] 📄 Değerlendirme Raporu (PDF)
+    [default] ✉ Sonuç Bildirimi (KEP ≤2 iş günü)
+    [default] 🌐 İnternet Sitesinde Yayınla
+  @note type:info
+    KEP bildirimi ≤2 iş günü içinde gönderilmelidir. Kazanan bilgisi VEDAŞ internet sitesinde süresiz yayınlanır. (KRL-SON-003~006)
+
+@footer
+  🔒 Tüm işlemler denetim izi kaydı altındadır (NFR-DNT)
+  Son güncelleme: **sa_uzman01** — 16.02.2027 15:42 | SADES v1.0
+</textarea>
+  </div>
+</div>
+
+<div class="preview-pane" id="preview">
+  <div class="preview-header">
+    <h2><b>Preview</b> — Rendered Wireframe</h2>
+  </div>
+  <div id="render-target"></div>
+</div>
+
+<!-- Include the renderer -->
+<script src="omniware.js"></script>
+<script>
+  function renderPreview() {
+    const dsl = document.getElementById('dsl-input').value;
+    OmniWare.render(dsl, document.getElementById('render-target'));
+  }
+
+  // Handle Tab key in textarea
+  document.getElementById('dsl-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = this.selectionStart;
+      const end = this.selectionEnd;
+      this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+      this.selectionStart = this.selectionEnd = start + 2;
+    }
+  });
+
+  // Auto-render on load
+  window.addEventListener('DOMContentLoaded', renderPreview);
+</script>
+</body>
+</html>

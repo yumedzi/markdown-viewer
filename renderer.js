@@ -1,49 +1,28 @@
+// ============================================
+// IMPORTS
+// ============================================
 const { ipcRenderer, shell, clipboard } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const html2canvas = require('html2canvas');
 
+// Helper modules
+const { removeBOM, getFileName, getDirectory, escapeRegex, formatBytes } = require('./utils');
+const { getMermaidConfig } = require('./mermaid-config');
+const OmniWare = require('./omniwire/omniware');
+const { getOmniWareDarkCSS } = require('./omniware-config');
+const { positionContextMenu, hideContextMenu: hideContextMenuHelper } = require('./context-menu-utils');
+
 // Libraries loaded from CDN in index.html
 // marked, mermaid, and DOMPurify are available globally
 
-// Initialize Mermaid with theme based on dark mode preference
+// ============================================
+// INITIALIZATION
+// ============================================
+
 function initializeMermaidWithTheme() {
   const isDark = localStorage.getItem('darkMode') === 'enabled';
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: isDark ? 'dark' : 'default',
-    themeVariables: isDark ? {
-      primaryColor: '#3DBDC6',
-      primaryTextColor: '#e8e8e8',
-      primaryBorderColor: '#3DBDC6',
-      lineColor: '#3DBDC6',
-      secondaryColor: '#2d2d2d',
-      tertiaryColor: '#1a1a1a',
-      background: '#242424',
-      mainBkg: '#242424',
-      secondBkg: '#2d2d2d',
-      textColor: '#e8e8e8',
-      border1: '#404040',
-      border2: '#404040',
-      fontSize: '13px',
-      fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
-    } : {
-      primaryColor: '#279EA7',
-      primaryTextColor: '#1F3244',
-      primaryBorderColor: '#279EA7',
-      lineColor: '#279EA7',
-      secondaryColor: '#1F3244',
-      tertiaryColor: '#f5f5f5',
-      background: '#ffffff',
-      mainBkg: '#ffffff',
-      secondBkg: '#f5f5f5',
-      textColor: '#1F3244',
-      border1: '#d0d0d0',
-      border2: '#d0d0d0',
-      fontSize: '13px',
-      fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
-    }
-  });
+  mermaid.initialize(getMermaidConfig(isDark));
 }
 
 // Initial mermaid setup
@@ -58,13 +37,34 @@ marked.setOptions({
   sanitize: false
 });
 
-// Zoom level
-let zoomLevel = 100;
-const zoomStep = 10;
-const minZoom = 50;
-const maxZoom = 200;
+// ============================================
+// CONFIGURATION CONSTANTS
+// ============================================
+const ZOOM_CONFIG = {
+  level: 100,
+  step: 10,
+  min: 50,
+  max: 200
+};
 
-// DOM Elements
+const TIMING = {
+  previewDebounceDelay: 3000,
+  hoverDelay: 500,
+  hoverTriggerZone: 10
+};
+
+const STORAGE = {
+  maxRecentFiles: 100
+};
+
+// ============================================
+// APPLICATION STATE
+// ============================================
+let zoomLevel = ZOOM_CONFIG.level;
+
+// ============================================
+// DOM ELEMENT REFERENCES
+// ============================================
 const viewer = document.getElementById('viewer');
 const openFileBtn = document.getElementById('openFile');
 const zoomInBtn = document.getElementById('zoomIn');
@@ -114,7 +114,6 @@ let isEditMode = false;
 let hasUnsavedChanges = false;
 let originalMarkdown = '';
 let previewDebounceTimer = null;
-const PREVIEW_DEBOUNCE_DELAY = 3000; // 3 seconds
 
 // Navigation history (for back/forward)
 let navigationHistory = [];
@@ -252,23 +251,26 @@ function updateZoom() {
   zoomResetBtn.textContent = `${zoomLevel}%`;
 }
 
-// Zoom controls
+// ============================================
+// ZOOM CONTROLS
+// ============================================
+
 zoomInBtn.addEventListener('click', () => {
-  if (zoomLevel < maxZoom) {
-    zoomLevel += zoomStep;
+  if (zoomLevel < ZOOM_CONFIG.max) {
+    zoomLevel += ZOOM_CONFIG.step;
     updateZoom();
   }
 });
 
 zoomOutBtn.addEventListener('click', () => {
-  if (zoomLevel > minZoom) {
-    zoomLevel -= zoomStep;
+  if (zoomLevel > ZOOM_CONFIG.min) {
+    zoomLevel -= ZOOM_CONFIG.step;
     updateZoom();
   }
 });
 
 zoomResetBtn.addEventListener('click', () => {
-  zoomLevel = 100;
+  zoomLevel = ZOOM_CONFIG.level;
   updateZoom();
 });
 
@@ -283,6 +285,9 @@ darkModeToggle.addEventListener('click', () => {
   if (mermaidElements.length > 0) {
     updateMermaidTheme(isDarkMode);
   }
+
+  // Update OmniWare dark mode
+  updateOmniWareDarkMode(isDarkMode);
 });
 
 // Load dark mode preference on startup
@@ -295,45 +300,32 @@ function loadDarkModePreference() {
 
 // Update Mermaid theme based on dark mode and re-render diagrams
 async function updateMermaidTheme(isDark) {
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: isDark ? 'dark' : 'default',
-    themeVariables: isDark ? {
-      primaryColor: '#3DBDC6',
-      primaryTextColor: '#e8e8e8',
-      primaryBorderColor: '#3DBDC6',
-      lineColor: '#3DBDC6',
-      secondaryColor: '#2d2d2d',
-      tertiaryColor: '#1a1a1a',
-      background: '#242424',
-      mainBkg: '#242424',
-      secondBkg: '#2d2d2d',
-      textColor: '#e8e8e8',
-      border1: '#404040',
-      border2: '#404040',
-      fontSize: '13px',
-      fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
-    } : {
-      primaryColor: '#279EA7',
-      primaryTextColor: '#1F3244',
-      primaryBorderColor: '#279EA7',
-      lineColor: '#279EA7',
-      secondaryColor: '#1F3244',
-      tertiaryColor: '#f5f5f5',
-      background: '#ffffff',
-      mainBkg: '#ffffff',
-      secondBkg: '#f5f5f5',
-      textColor: '#1F3244',
-      border1: '#d0d0d0',
-      border2: '#d0d0d0',
-      fontSize: '13px',
-      fontFamily: 'Fira Code Local, Fira Code, Segoe UI, Calibri, Arial, sans-serif'
-    }
-  });
+  mermaid.initialize(getMermaidConfig(isDark));
 
   // Re-render existing content if there's markdown loaded
   if (originalMarkdown) {
     await renderMarkdown(originalMarkdown);
+  }
+}
+
+/**
+ * Update OmniWare wireframe dark mode styling
+ * @param {boolean} isDark - Whether dark mode is enabled
+ */
+function updateOmniWareDarkMode(isDark) {
+  const existingStyle = document.getElementById('omniware-dark-styles');
+  if (isDark) {
+    const css = getOmniWareDarkCSS(true);
+    if (existingStyle) {
+      existingStyle.textContent = css;
+    } else {
+      const style = document.createElement('style');
+      style.id = 'omniware-dark-styles';
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
+  } else if (existingStyle) {
+    existingStyle.remove();
   }
 }
 
@@ -445,7 +437,7 @@ viewer.addEventListener('click', (e) => {
       if (fs.existsSync(targetPath)) {
         // Check if it's a markdown or mermaid file
         const ext = path.extname(targetPath).toLowerCase();
-        if (['.md', '.markdown', '.mmd', '.mermaid'].includes(ext)) {
+        if (['.md', '.markdown', '.mmd', '.mermaid', '.ow'].includes(ext)) {
           // Open the markdown file in this app
           ipcRenderer.send('open-file-path', targetPath);
         } else {
@@ -635,7 +627,7 @@ exportWordBtn.addEventListener('click', async () => {
     const viewerClone = viewer.cloneNode(true);
 
     // Remove maximize buttons from tables and mermaid diagrams
-    viewerClone.querySelectorAll('.mermaid-maximize-btn, .table-maximize-btn, .code-copy-btn').forEach(el => el.remove());
+    viewerClone.querySelectorAll('.mermaid-maximize-btn, .table-maximize-btn, .code-copy-btn, .omniware-maximize-btn').forEach(el => el.remove());
 
     // Convert mermaid diagrams to PNG images for Word compatibility
     const mermaidContainers = viewer.querySelectorAll('.mermaid-container');
@@ -868,7 +860,7 @@ markdownEditor.addEventListener('input', () => {
   // Set new timer for 3 seconds
   previewDebounceTimer = setTimeout(() => {
     renderMarkdown(markdownEditor.value);
-  }, PREVIEW_DEBOUNCE_DELAY);
+  }, TIMING.previewDebounceDelay);
 });
 
 // Save file
@@ -959,11 +951,12 @@ clearAllRecentBtn.addEventListener('click', () => {
   }
 });
 
-// Mouse hover to open recent panel
+// ============================================
+// RECENT FILES PANEL HOVER
+// ============================================
+
 let mouseHoverTimeout = null;
 let isMouseInTriggerZone = false;
-const HOVER_TRIGGER_ZONE = 10; // pixels from left edge
-const HOVER_DELAY = 500; // milliseconds
 
 document.addEventListener('mousemove', (e) => {
   // Don't trigger hover panel in edit mode to avoid interference while editing
@@ -978,7 +971,7 @@ document.addEventListener('mousemove', (e) => {
   }
 
   // Check if mouse is near the left edge
-  if (e.clientX <= HOVER_TRIGGER_ZONE) {
+  if (e.clientX <= TIMING.hoverTriggerZone) {
     // Start timeout if not already started
     if (!mouseHoverTimeout && !recentPanel.classList.contains('visible')) {
       isMouseInTriggerZone = true;
@@ -988,7 +981,7 @@ document.addEventListener('mousemove', (e) => {
           recentPanel.classList.add('visible');
         }
         mouseHoverTimeout = null;
-      }, HOVER_DELAY);
+      }, TIMING.hoverDelay);
     }
   } else {
     // Clear timeout if mouse moves away before delay completes
@@ -1010,8 +1003,9 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Recent files management
-const MAX_RECENT_FILES = 100;
+// ============================================
+// RECENT FILES MANAGEMENT
+// ============================================
 
 function getRecentFiles() {
   try {
@@ -1037,8 +1031,8 @@ function saveRecentFile(filePath) {
       timestamp: Date.now()
     });
 
-    // Keep only MAX_RECENT_FILES
-    recentFiles = recentFiles.slice(0, MAX_RECENT_FILES);
+    // Keep only max recent files
+    recentFiles = recentFiles.slice(0, STORAGE.maxRecentFiles);
 
     localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
     updateRecentFilesList();
@@ -1140,12 +1134,13 @@ function highlightSearchTerm(searchTerm) {
     NodeFilter.SHOW_TEXT,
     {
       acceptNode: function(node) {
-        // Skip script, style, svg, mermaid, and already highlighted nodes
+        // Skip script, style, svg, mermaid, omniware, and already highlighted nodes
         if (node.parentNode.tagName === 'SCRIPT' ||
             node.parentNode.tagName === 'STYLE' ||
             node.parentNode.tagName === 'SVG' ||
             node.parentNode.closest('.mermaid') ||
             node.parentNode.closest('svg') ||
+            node.parentNode.closest('.omniware-rendered') ||
             node.parentNode.classList?.contains('search-highlight')) {
           return NodeFilter.FILTER_REJECT;
         }
@@ -1159,7 +1154,7 @@ function highlightSearchTerm(searchTerm) {
     textNodes.push(node);
   }
 
-  const searchRegex = new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  const searchRegex = new RegExp(escapeRegex(searchTerm), 'gi');
 
   textNodes.forEach(textNode => {
     const text = textNode.textContent;
@@ -1329,7 +1324,10 @@ closeIndexBtn.addEventListener('click', () => {
   indexPanel.classList.remove('visible');
 });
 
-// Keyboard shortcuts
+// ============================================
+// KEYBOARD SHORTCUTS
+// ============================================
+
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey || e.metaKey) {
     switch (e.key) {
@@ -1341,22 +1339,22 @@ document.addEventListener('keydown', (e) => {
       case '+':
       case '=':
         e.preventDefault();
-        if (zoomLevel < maxZoom) {
-          zoomLevel += zoomStep;
+        if (zoomLevel < ZOOM_CONFIG.max) {
+          zoomLevel += ZOOM_CONFIG.step;
           updateZoom();
         }
         break;
       case '-':
       case '_':
         e.preventDefault();
-        if (zoomLevel > minZoom) {
-          zoomLevel -= zoomStep;
+        if (zoomLevel > ZOOM_CONFIG.min) {
+          zoomLevel -= ZOOM_CONFIG.step;
           updateZoom();
         }
         break;
       case '0':
         e.preventDefault();
-        zoomLevel = 100;
+        zoomLevel = ZOOM_CONFIG.level;
         updateZoom();
         break;
     }
@@ -1372,14 +1370,14 @@ document.addEventListener('wheel', (e) => {
     // Positive deltaY means scrolling down (zoom out)
     if (e.deltaY < 0) {
       // Zoom in
-      if (zoomLevel < maxZoom) {
-        zoomLevel += zoomStep;
+      if (zoomLevel < ZOOM_CONFIG.max) {
+        zoomLevel += ZOOM_CONFIG.step;
         updateZoom();
       }
     } else if (e.deltaY > 0) {
       // Zoom out
-      if (zoomLevel > minZoom) {
-        zoomLevel -= zoomStep;
+      if (zoomLevel > ZOOM_CONFIG.min) {
+        zoomLevel -= ZOOM_CONFIG.step;
         updateZoom();
       }
     }
@@ -1396,9 +1394,7 @@ async function renderMarkdown(content) {
 
   try {
     // Remove BOM (Byte Order Mark) if present
-    if (content.charCodeAt(0) === 0xFEFF) {
-      content = content.substring(1);
-    }
+    content = removeBOM(content);
 
     // First, extract mermaid blocks and replace with placeholders
     const mermaidBlocks = [];
@@ -1411,6 +1407,16 @@ async function renderMarkdown(content) {
     mermaidIndex++;
     return placeholder;
   });
+
+    // Extract omniware blocks and replace with placeholders
+    const omniwareBlocks = [];
+    let omniwareIndex = 0;
+    content = content.replace(/```omniware[\r\n]+([\s\S]*?)```/g, (match, code) => {
+      const placeholder = `OMNIWARE_PLACEHOLDER_${omniwareIndex}`;
+      omniwareBlocks.push({ placeholder, code: code.trim() });
+      omniwareIndex++;
+      return placeholder;
+    });
 
   // Parse markdown with marked (allows HTML)
   let html = marked.parse(content);
@@ -1426,6 +1432,21 @@ async function renderMarkdown(content) {
     const mermaidDiv = `<pre class="mermaid">${code}</pre>`;
     html = html.replace(placeholder, mermaidDiv);
   });
+
+    // Replace placeholders with rendered omniware wireframes
+    omniwareBlocks.forEach(({ placeholder, code }) => {
+      try {
+        const renderedHtml = OmniWare.toHTML(code);
+        const escapedDsl = code.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const omniwareDiv = `<div class="omniware-rendered" data-omniware-dsl="${escapedDsl}">${renderedHtml}</div>`;
+        html = html.replace(placeholder, omniwareDiv);
+      } catch (err) {
+        const errorDiv = `<div style="color: red; padding: 20px; background: #ffe6e6; border: 1px solid #ff0000; border-radius: 4px;">
+          <strong>OmniWare Rendering Error:</strong><br>${err.message}
+        </div>`;
+        html = html.replace(placeholder, errorDiv);
+      }
+    });
 
   // Set HTML content
   viewer.innerHTML = html;
@@ -1488,6 +1509,46 @@ async function renderMarkdown(content) {
       }
     });
   }
+
+    // Post-process OmniWare wireframes
+    const omniwareElements = viewer.querySelectorAll('.omniware-rendered');
+    if (omniwareElements.length > 0) {
+      // Ensure OmniWare styles are injected
+      if (!document.getElementById('omniware-styles')) {
+        const tempDiv = document.createElement('div');
+        OmniWare.render('', tempDiv);
+      }
+
+      // Apply dark mode if active
+      const isDarkMode = document.body.classList.contains('dark-mode');
+      updateOmniWareDarkMode(isDarkMode);
+
+      // Wrap each in container and add maximize button
+      omniwareElements.forEach((el) => {
+        const container = document.createElement('div');
+        container.className = 'omniware-container';
+        el.parentNode.insertBefore(container, el);
+        container.appendChild(el);
+
+        const maxBtn = document.createElement('button');
+        maxBtn.className = 'omniware-maximize-btn';
+        maxBtn.title = 'Open wireframe in new window';
+        maxBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+          </svg>
+        `;
+
+        maxBtn.addEventListener('click', () => {
+          const dslCode = el.getAttribute('data-omniware-dsl')
+            .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+          const isDark = document.body.classList.contains('dark-mode');
+          ipcRenderer.send('open-omniware-popup', { dslCode, isDarkMode: isDark });
+        });
+
+        container.appendChild(maxBtn);
+      });
+    }
 
     // Add maximize buttons to tables
     addTableMaximizeButtons();
@@ -1841,13 +1902,7 @@ function hideUpdateToast() {
   appUpdateToast.classList.remove('show');
 }
 
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
+// formatBytes is imported from utils.js
 
 // Update status handler
 ipcRenderer.on('update-status', (event, data) => {
@@ -1993,24 +2048,8 @@ function showContextMenu(x, y) {
     ctxRemoveFormat.classList.add('disabled');
   }
 
-  // Position the menu
-  contextMenu.style.left = `${x}px`;
-  contextMenu.style.top = `${y}px`;
-
-  // Show the menu
-  contextMenu.classList.add('visible');
-
-  // Adjust position if menu goes off screen
-  const menuRect = contextMenu.getBoundingClientRect();
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
-
-  if (menuRect.right > windowWidth) {
-    contextMenu.style.left = `${windowWidth - menuRect.width - 10}px`;
-  }
-  if (menuRect.bottom > windowHeight) {
-    contextMenu.style.top = `${windowHeight - menuRect.height - 10}px`;
-  }
+  // Use helper for positioning (handles screen edge adjustment)
+  positionContextMenu(contextMenu, x, y);
 }
 
 function hideContextMenu() {
@@ -2409,24 +2448,8 @@ let recentContextFilePath = null;
 function showRecentContextMenu(x, y, filePath) {
   recentContextFilePath = filePath;
 
-  // Position the menu
-  recentContextMenu.style.left = `${x}px`;
-  recentContextMenu.style.top = `${y}px`;
-
-  // Show the menu
-  recentContextMenu.classList.add('visible');
-
-  // Adjust position if menu goes off screen
-  const menuRect = recentContextMenu.getBoundingClientRect();
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
-
-  if (menuRect.right > windowWidth) {
-    recentContextMenu.style.left = `${windowWidth - menuRect.width - 10}px`;
-  }
-  if (menuRect.bottom > windowHeight) {
-    recentContextMenu.style.top = `${windowHeight - menuRect.height - 10}px`;
-  }
+  // Use helper for positioning (handles screen edge adjustment)
+  positionContextMenu(recentContextMenu, x, y);
 }
 
 function hideRecentContextMenu() {
