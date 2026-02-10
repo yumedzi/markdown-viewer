@@ -725,7 +725,8 @@ function syncNoteAddToOriginal(noteHtml, selectedText, noteId, rawTitle, rawCont
   // Extract note attrs from noteHtml to rebuild for original text
   const escTitleMatch = noteHtml.match(/data-note-title="([^"]*)"/);
   const escContentMatch = noteHtml.match(/data-note-content="([^"]*)"/);
-  const colorMatch = noteHtml.match(/style="color:([^"]*)"/);
+  let colorMatch = noteHtml.match(/data-note-color="([^"]*)"/);
+  if (!colorMatch) colorMatch = noteHtml.match(/style="color:([^"]*)"/);
   const escT = escTitleMatch ? escTitleMatch[1] : '';
   const escC = escContentMatch ? escContentMatch[1] : '';
   const col = colorMatch ? colorMatch[1] : '#ff6600';
@@ -1055,6 +1056,12 @@ showNotesToggle.addEventListener('click', (e) => {
   localStorage.setItem('notesVisible', notesVisible ? 'visible' : 'hidden');
   showNotesToggle.classList.toggle('active', notesVisible);
   viewer.classList.toggle('notes-hidden', !notesVisible);
+  // Close any open tooltip when hiding notes
+  if (!notesVisible) {
+    noteTooltipPinned = false;
+    noteTooltip.style.pointerEvents = 'none';
+    noteTooltip.classList.remove('visible');
+  }
 });
 
 // Update showNotesToggle visibility based on whether notes exist
@@ -1067,6 +1074,31 @@ function updateShowNotesToggleVisibility() {
   } else {
     viewer.classList.remove('notes-hidden');
   }
+}
+
+// Apply background-color + underline styles to noted-text elements via JS (post-DOMPurify)
+// This is the single source of truth for note visual styles — called after every render
+function applyNoteStyles() {
+  viewer.querySelectorAll('.noted-text').forEach(el => {
+    // New format: data-note-color attribute
+    let color = el.getAttribute('data-note-color');
+    // Legacy fallback: inline style color
+    if (!color) {
+      const styleAttr = el.getAttribute('style') || '';
+      const m = styleAttr.match(/color:\s*(#[0-9a-fA-F]{3,8})/);
+      if (m) color = m[1];
+    }
+    if (color && color.length >= 7) {
+      const r = parseInt(color.slice(1,3), 16);
+      const g = parseInt(color.slice(3,5), 16);
+      const b = parseInt(color.slice(5,7), 16);
+      el.style.backgroundColor = `rgba(${r},${g},${b},0.25)`;
+      el.style.textDecoration = 'underline';
+      el.style.textDecorationColor = color;
+      el.style.textDecorationThickness = '2px';
+      el.style.color = '';  // Clear legacy inline color
+    }
+  });
 }
 
 // Logo link - open website
@@ -2488,7 +2520,7 @@ async function renderMarkdown(content) {
   // Sanitize HTML but allow most tags for rich content
   html = DOMPurify.sanitize(html, {
     ADD_TAGS: ['iframe', 'style'],
-    ADD_ATTR: ['target', 'style', 'class', 'id', 'data-note-id', 'data-note-title', 'data-note-content']
+    ADD_ATTR: ['target', 'style', 'class', 'id', 'data-note-id', 'data-note-title', 'data-note-content', 'data-note-color']
   });
 
   // Restore data URI images after sanitization
@@ -2519,6 +2551,9 @@ async function renderMarkdown(content) {
 
   // Set HTML content
   viewer.innerHTML = html;
+
+  // Apply note styles immediately after DOM insertion (before async callbacks)
+  applyNoteStyles();
 
   // Re-run mermaid on the new content
   try {
@@ -2640,6 +2675,7 @@ async function renderMarkdown(content) {
         hideLoadingScreen();
         if (notesPanel.classList.contains('visible')) updateNotesList();
         updateShowNotesToggleVisibility();
+        applyNoteStyles();
       });
     } else {
       // Add copy buttons even without Prism
@@ -2648,6 +2684,7 @@ async function renderMarkdown(content) {
       hideLoadingScreen();
       if (notesPanel.classList.contains('visible')) updateNotesList();
       updateShowNotesToggleVisibility();
+      applyNoteStyles();
     }
   } catch (error) {
     console.error('Error rendering markdown:', error);
@@ -3664,7 +3701,9 @@ let editingNoteElement = null;
 // Returns { prefix, wrappedContent } where prefix stays outside the span.
 // For multi-line selections, wraps each line's content individually.
 function wrapWithNoteSpan(text, noteId, escTitle, escContent, color) {
-  const spanOpen = `<span class="noted-text" data-note-id="${noteId}" data-note-title="${escTitle}" data-note-content="${escContent}" style="color:${color}">`;
+  const _r = parseInt(color.slice(1,3), 16), _g = parseInt(color.slice(3,5), 16), _b = parseInt(color.slice(5,7), 16);
+  const noteStyle = `background-color:rgba(${_r},${_g},${_b},0.25);text-decoration:underline;text-decoration-color:${color};text-decoration-thickness:2px`;
+  const spanOpen = `<span class="noted-text" data-note-id="${noteId}" data-note-title="${escTitle}" data-note-content="${escContent}" data-note-color="${color}" style="${noteStyle}">`;
   const spanClose = '</span>';
 
   // Regex to match markdown line prefixes: headings, list items, blockquotes, hr
@@ -3728,7 +3767,7 @@ function findNoteSpanInSource(source, noteEl) {
 
   // data-note-id is optional (old notes don't have it)
   const regex = new RegExp(
-    `<span class="${className}"(?: data-note-id="\\d+")? data-note-title="${escapeRegex(srcTitle)}" data-note-content="${escapeRegex(srcContent)}" style="[^"]*">([\\s\\S]*?)</span>`
+    `<span class="${className}"(?: data-note-id="\\d+")? data-note-title="${escapeRegex(srcTitle)}" data-note-content="${escapeRegex(srcContent)}"[^>]*>([\\s\\S]*?)</span>`
   );
 
   return source.match(regex);
@@ -3805,20 +3844,16 @@ function openNoteDialogForEdit(noteEl) {
       noteSelectedColor = `#${r}${g}${b}`;
     }
   } else {
-    // Try hex from attribute first
-    const styleAttr = noteEl.getAttribute('style') || '';
-    const hexMatch = styleAttr.match(/color:\s*(#[0-9a-fA-F]{6})/);
-    if (hexMatch) {
-      noteSelectedColor = hexMatch[1];
+    // New format: data-note-color attribute
+    const dataColor = noteEl.getAttribute('data-note-color');
+    if (dataColor) {
+      noteSelectedColor = dataColor;
     } else {
-      // Fallback: parse computed rgb color
-      const computed = window.getComputedStyle(noteEl).color;
-      const rgbMatch = computed.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
-      if (rgbMatch) {
-        const r = parseInt(rgbMatch[1]).toString(16).padStart(2, '0');
-        const g = parseInt(rgbMatch[2]).toString(16).padStart(2, '0');
-        const b = parseInt(rgbMatch[3]).toString(16).padStart(2, '0');
-        noteSelectedColor = `#${r}${g}${b}`;
+      // Legacy fallback: inline style color
+      const styleAttr = noteEl.getAttribute('style') || '';
+      const hexMatch = styleAttr.match(/color:\s*(#[0-9a-fA-F]{6})/);
+      if (hexMatch) {
+        noteSelectedColor = hexMatch[1];
       }
     }
   }
@@ -3989,7 +4024,9 @@ noteSaveBtn.addEventListener('click', () => {
           newNoteHtml = `<span class="noted-image"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:rgba(${r},${g},${b},0.15)">${innerContent}</span>`;
         } else {
           const innerContent = match[1];
-          newNoteHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="color:${color}">${innerContent}</span>`;
+          const _r = parseInt(color.slice(1,3), 16), _g = parseInt(color.slice(3,5), 16), _b = parseInt(color.slice(5,7), 16);
+          const _noteStyle = `background-color:rgba(${_r},${_g},${_b},0.25);text-decoration:underline;text-decoration-color:${color};text-decoration-thickness:2px`;
+          newNoteHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" data-note-color="${color}" style="${_noteStyle}">${innerContent}</span>`;
         }
 
         markdownEditor.value =
@@ -4026,7 +4063,9 @@ noteSaveBtn.addEventListener('click', () => {
           newNoteHtml = `<span class="noted-image"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:rgba(${r},${g},${b},0.15)">${innerContent}</span>`;
         } else {
           const innerContent = match[1];
-          newNoteHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="color:${color}">${innerContent}</span>`;
+          const _r = parseInt(color.slice(1,3), 16), _g = parseInt(color.slice(3,5), 16), _b = parseInt(color.slice(5,7), 16);
+          const _noteStyle = `background-color:rgba(${_r},${_g},${_b},0.25);text-decoration:underline;text-decoration-color:${color};text-decoration-thickness:2px`;
+          newNoteHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" data-note-color="${color}" style="${_noteStyle}">${innerContent}</span>`;
         }
 
         const scrollPosition = contentWrapper.scrollTop;
@@ -4049,7 +4088,9 @@ noteSaveBtn.addEventListener('click', () => {
               const r2 = parseInt(color.slice(1,3), 16), g2 = parseInt(color.slice(3,5), 16), b2 = parseInt(color.slice(5,7), 16);
               origNewHtml = `<span class="noted-image"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:rgba(${r2},${g2},${b2},0.15)">${origInner}</span>`;
             } else {
-              origNewHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="color:${color}">${origInner}</span>`;
+              const _r3 = parseInt(color.slice(1,3), 16), _g3 = parseInt(color.slice(3,5), 16), _b3 = parseInt(color.slice(5,7), 16);
+              const _ns3 = `background-color:rgba(${_r3},${_g3},${_b3},0.25);text-decoration:underline;text-decoration-color:${color};text-decoration-thickness:2px`;
+              origNewHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" data-note-color="${color}" style="${_ns3}">${origInner}</span>`;
             }
             originalMarkdown = originalMarkdown.substring(0, origMatch.index) + origNewHtml + originalMarkdown.substring(origMatch.index + origMatch[0].length);
             translateNoteAttrsToOriginal(nid, title, content);
@@ -4541,10 +4582,17 @@ function extractNoteColor(noted) {
       noteColor = `#${r}${g}${b}`;
     }
   } else {
-    const styleAttr = noted.getAttribute('style') || '';
-    const hexMatch = styleAttr.match(/color:\s*(#[0-9a-fA-F]{3,8})/);
-    if (hexMatch) {
-      noteColor = hexMatch[1];
+    // New format: data-note-color attribute
+    const dataColor = noted.getAttribute('data-note-color');
+    if (dataColor) {
+      noteColor = dataColor;
+    } else {
+      // Legacy format: inline style color:#hex
+      const styleAttr = noted.getAttribute('style') || '';
+      const hexMatch = styleAttr.match(/color:\s*(#[0-9a-fA-F]{3,8})/);
+      if (hexMatch) {
+        noteColor = hexMatch[1];
+      }
     }
   }
   return noteColor;
@@ -4594,6 +4642,7 @@ window.closeNoteTooltip = function() {
 // Hover: show tooltip (not pinned)
 viewer.addEventListener('mouseover', (e) => {
   if (noteTooltipPinned) return;
+  if (!notesVisible) return;
   const noted = e.target.closest('.noted-text, .noted-image, .note-label');
   if (!noted) return;
   showNoteTooltip(noted, false);
@@ -4610,6 +4659,7 @@ viewer.addEventListener('mouseout', (e) => {
 
 // Click: pin tooltip on screen
 viewer.addEventListener('click', (e) => {
+  if (!notesVisible) return;
   const noted = e.target.closest('.noted-text, .noted-image, .note-label');
   if (!noted) return;
   // Don't pin if clicking a link inside the note
