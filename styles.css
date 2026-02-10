@@ -2038,7 +2038,10 @@ body.dark-mode .context-menu {
    Noted Text / Image Styles
    ============================================ */
 .noted-text {
-  border-bottom: 2px dotted currentColor;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  border-radius: 3px;
+  padding: 1px 2px;
   cursor: pointer;
   position: relative;
 }
@@ -2086,15 +2089,19 @@ body.dark-mode .context-menu {
 
 /* Notes hidden mode */
 .notes-hidden .noted-text {
-  color: inherit !important;
-  border-bottom: none !important;
+  background-color: transparent !important;
+  text-decoration: none !important;
+  text-decoration-color: transparent !important;
+  text-decoration-thickness: 0 !important;
   cursor: text;
+  pointer-events: none;
 }
 
 .notes-hidden .noted-image {
   background-color: transparent !important;
   padding: 0;
   cursor: default;
+  pointer-events: none;
 }
 
 .notes-hidden .note-label {
