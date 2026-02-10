@@ -47,10 +47,291 @@ const ZOOM_CONFIG = {
   max: 200
 };
 
+// ============================================
+// LOCALIZATION
+// ============================================
+let interfaceLang = localStorage.getItem('interfaceLang') || 'en';
+
+const UI_STRINGS = {
+  en: {
+    'open': 'Open', 'edit': 'Edit', 'pdf': 'PDF', 'word': 'Word',
+    'file': 'File', 'title.file': 'File',
+    'openFile': 'Open File', 'export': 'Export',
+    'exportPdf': 'Export as PDF', 'exportWord': 'Export as Word',
+    'history': 'History', 'editMode': 'Edit Mode',
+    'allNotes': 'All Notes', 'noNotes': 'No notes found',
+    'view': 'View', 'title.view': 'View',
+    'tools': 'Tools', 'darkMode': 'Dark Mode', 'fullscreen': 'Fullscreen', 'showNotes': 'Show Notes',
+    'save': 'Save', 'reload': 'Reload', 'dismiss': 'Dismiss',
+    'cancel': 'Cancel', 'find': 'Find', 'later': 'Later', 'exit': 'Exit',
+    'title.open': 'Open File (Ctrl+O)', 'title.recent': 'Recent Files',
+    'title.toc': 'Table of Contents', 'title.edit': 'Toggle Edit Mode',
+    'title.exitEdit': 'Exit Edit Mode',
+    'title.pdf': 'Export to PDF', 'title.word': 'Export to Word',
+    'title.zoomOut': 'Zoom Out (Ctrl+-)', 'title.zoomReset': 'Reset Zoom (Ctrl+0)',
+    'title.zoomIn': 'Zoom In (Ctrl++)', 'title.darkMode': 'Toggle Dark Mode',
+    'title.tools': 'Tools', 'title.fullscreen': 'Toggle Fullscreen (F11)',
+    'title.back': 'Back (Left Arrow)', 'title.forward': 'Forward (Right Arrow)',
+    'title.refresh': 'Refresh Document (Ctrl+R)', 'title.save': 'Save (Ctrl+S)',
+    'title.clearRecent': 'Clear All Recent Files',
+    'title.searchPrev': 'Previous (Shift+Enter)', 'title.searchNext': 'Next (Enter)',
+    'title.searchClose': 'Close (Esc)', 'title.removeRecent': 'Remove from recent files',
+    'title.note': 'Title',
+    'recentFiles': 'Recent Files', 'tableOfContents': 'Table of Contents',
+    'rawMarkdown': 'Raw Markdown', 'loading': 'Loading...',
+    'searchPlaceholder': 'Search in document...', 'noRecentFiles': 'No recent files',
+    'noHeaders': 'No headers found', 'unsaved': '● Unsaved',
+    'editorPlaceholder': 'Start typing markdown...',
+    'welcome.title': 'Welcome to Omnicore Markdown Viewer',
+    'welcome.subtitle': 'Press Ctrl+O to open a markdown file',
+    'welcome.features': 'Features',
+    'fileUpdated': 'File Updated',
+    'fileModifiedExternally': 'This file has been modified externally',
+    'updateAvailable': 'Update Available', 'newVersionAvailable': 'A new version is available',
+    'downloadUpdate': 'Download Update', 'restartInstall': 'Restart & Install',
+    'ctx.copy': 'Copy', 'ctx.copyPlain': 'Copy as Plain Text',
+    'ctx.bold': 'Bold', 'ctx.italic': 'Italic', 'ctx.code': 'Code Block',
+    'ctx.list': 'Make List', 'ctx.removeFormat': 'Remove Formatting',
+    'ctx.editText': 'Edit Text',
+    'ctx.addNote': 'Add Note', 'ctx.editNote': 'Edit Note',
+    'ctx.deleteNote': 'Delete Note', 'ctx.findNote': 'Find Note',
+    'ctx.insertImage': 'Insert Image', 'ctx.deleteImage': 'Delete Image',
+    'ctx.selectAll': 'Select All',
+    'ctx.openFolder': 'Open Containing Folder', 'ctx.copyPath': 'Copy Path',
+    'ctx.removeRecent': 'Remove from Recent',
+    'addNote': 'Add Note', 'editNote': 'Edit Note',
+    'label': 'Label', 'labelPlaceholder': 'Label name...',
+    'color': 'Color', 'note': 'Note',
+    'noteTitlePlaceholder': 'Note title...', 'notePlaceholder': 'Write your note...',
+    'findNote': 'Find Note', 'idOrTitle': 'ID or Title',
+    'findNotePlaceholder': '#1 or note title...',
+    'searchNotes': 'Search Notes', 'notesSearchPlaceholder': '#ID or title...',
+    'editText': 'Edit Text', 'editTextLabel': 'Edit the selected text:',
+    'notif.textEdited': 'Text updated',
+    'zoom': 'Zoom',
+    'language': 'Language', 'document': 'Document', 'interface': 'Interface',
+    'original': 'Original', 'english': 'English', 'turkish': 'Turkish',
+    'notif.translationFailed': 'Translation failed: ',
+    'notif.sectionNotFound': 'Section not found: ',
+    'notif.fileNotFound': 'File not found: ',
+    'notif.preparingWord': 'Preparing Word export...',
+    'notif.pdfExported': 'PDF exported: ',
+    'notif.wordExported': 'Word exported: ',
+    'notif.copyFailed': 'Failed to copy to clipboard',
+    'notif.fileDeleted': 'Warning: The opened file has been deleted from disk',
+    'notif.fileReloaded': 'File reloaded successfully',
+    'notif.reloadFailed': 'Failed to reload file: ',
+    'notif.noTextSelected': 'No text selected',
+    'notif.copied': 'Copied to clipboard',
+    'notif.copyError': 'Failed to copy: ',
+    'notif.copiedPlain': 'Copied as plain text',
+    'notif.textNotFound': 'Could not find text in source',
+    'notif.boldApplied': 'Applied bold formatting',
+    'notif.italicApplied': 'Applied italic formatting',
+    'notif.codeApplied': 'Applied code formatting',
+    'notif.listApplied': 'Applied list formatting',
+    'notif.formatRemoved': 'Removed formatting',
+    'notif.noteRemoved': 'Note removed',
+    'notif.noteNotFound': 'Could not find note in source',
+    'notif.enterLabel': 'Please enter a label name',
+    'notif.enterTitleOrContent': 'Please enter a title or note content',
+    'notif.noteUpdated': 'Note updated',
+    'notif.noteAdded': 'Note added',
+    'notif.imageNotFound': 'Could not find image in source',
+    'notif.noteAddedToImage': 'Note added to image',
+    'notif.enterNoteId': 'Please enter a note ID or title',
+    'notif.noteSearchNotFound': 'Note "${val}" not found',
+    'notif.openFileFirst': 'Please open a file first',
+    'notif.imageInserted': 'Image inserted',
+    'notif.imageInsertedCompressed': 'Image inserted (${from} → ${to})',
+    'notif.imageFailed': 'Failed to load image: ',
+    'notif.imageProcessFailed': 'Failed to process image',
+    'notif.imageDeleted': 'Image deleted',
+    'notif.pathCopied': 'Path copied to clipboard',
+    'notif.pathCopiedCheck': '✓ Path copied to clipboard',
+    'confirm.unsavedOpen': 'You have unsaved changes. Discard changes and open a new file?',
+    'confirm.unsavedRefresh': 'You have unsaved changes. Discard changes and refresh from disk?',
+    'confirm.unsavedExit': 'You have unsaved changes. Exit edit mode anyway?',
+    'confirm.unsavedOpenFile': 'You have unsaved changes. Discard changes and open "${name}"?',
+    'confirm.clearRecent': 'Are you sure you want to clear all recent files?',
+    'alert.openFirst': 'Please open a markdown file first before exporting to PDF.',
+    'alert.openFirstWord': 'Please open a markdown file first before exporting to Word.',
+    'alert.noFileOpen': 'No file is currently open.',
+    'alert.pdfFailed': 'Failed to export PDF: ',
+    'alert.wordFailed': 'Failed to export Word document: ',
+    'alert.saveFailed': 'Failed to save file: ',
+    'alert.wordError': 'Error preparing Word export: ',
+    'update.downloading': 'Downloading Update',
+    'update.ready': 'Update Ready',
+    'update.error': 'Update Error',
+    'update.versionReady': 'Version ${version} is ready to download',
+    'update.versionInstall': 'Version ${version} is ready to install',
+    'update.failed': 'Failed to check for updates',
+    'search.counter': '${current} of ${total}',
+    'search.zero': '0 of 0',
+    'mermaid.error': 'Could not convert diagram to image.',
+  },
+  tr: {
+    'open': 'Aç', 'edit': 'Düzenle', 'pdf': 'PDF', 'word': 'Word',
+    'file': 'Dosya', 'title.file': 'Dosya',
+    'openFile': 'Dosya Aç', 'export': 'Dışa Aktar',
+    'exportPdf': 'PDF Olarak Dışa Aktar', 'exportWord': 'Word Olarak Dışa Aktar',
+    'history': 'Geçmiş', 'editMode': 'Düzenleme Modu',
+    'allNotes': 'Tüm Notlar', 'noNotes': 'Not bulunamadı',
+    'view': 'Görünüm', 'title.view': 'Görünüm',
+    'tools': 'Araçlar', 'darkMode': 'Karanlık Mod', 'fullscreen': 'Tam Ekran', 'showNotes': 'Notları Göster',
+    'save': 'Kaydet', 'reload': 'Yenile', 'dismiss': 'Kapat',
+    'cancel': 'İptal', 'find': 'Bul', 'later': 'Sonra', 'exit': 'Çıkış',
+    'title.open': 'Dosya Aç (Ctrl+O)', 'title.recent': 'Son Dosyalar',
+    'title.toc': 'İçindekiler', 'title.edit': 'Düzenleme Modu',
+    'title.exitEdit': 'Düzenleme Modundan Çık',
+    'title.pdf': 'PDF Olarak Dışa Aktar', 'title.word': 'Word Olarak Dışa Aktar',
+    'title.zoomOut': 'Küçült (Ctrl+-)', 'title.zoomReset': 'Yakınlaştırmayı Sıfırla (Ctrl+0)',
+    'title.zoomIn': 'Büyüt (Ctrl++)', 'title.darkMode': 'Karanlık Mod',
+    'title.tools': 'Araçlar', 'title.fullscreen': 'Tam Ekran (F11)',
+    'title.back': 'Geri (Sol Ok)', 'title.forward': 'İleri (Sağ Ok)',
+    'title.refresh': 'Belgeyi Yenile (Ctrl+R)', 'title.save': 'Kaydet (Ctrl+S)',
+    'title.clearRecent': 'Tüm Son Dosyaları Temizle',
+    'title.searchPrev': 'Önceki (Shift+Enter)', 'title.searchNext': 'Sonraki (Enter)',
+    'title.searchClose': 'Kapat (Esc)', 'title.removeRecent': 'Son dosyalardan kaldır',
+    'title.note': 'Başlık',
+    'recentFiles': 'Son Dosyalar', 'tableOfContents': 'İçindekiler',
+    'rawMarkdown': 'Ham Markdown', 'loading': 'Yükleniyor...',
+    'searchPlaceholder': 'Belgede ara...', 'noRecentFiles': 'Son dosya yok',
+    'noHeaders': 'Başlık bulunamadı', 'unsaved': '● Kaydedilmemiş',
+    'editorPlaceholder': 'Markdown yazmaya başlayın...',
+    'welcome.title': 'Omnicore Markdown Viewer\'a Hoş Geldiniz',
+    'welcome.subtitle': 'Bir markdown dosyası açmak için Ctrl+O tuşlayın',
+    'welcome.features': 'Özellikler',
+    'fileUpdated': 'Dosya Güncellendi',
+    'fileModifiedExternally': 'Bu dosya harici olarak değiştirildi',
+    'updateAvailable': 'Güncelleme Mevcut', 'newVersionAvailable': 'Yeni bir sürüm mevcut',
+    'downloadUpdate': 'Güncellemeyi İndir', 'restartInstall': 'Yeniden Başlat ve Kur',
+    'ctx.copy': 'Kopyala', 'ctx.copyPlain': 'Düz Metin Olarak Kopyala',
+    'ctx.bold': 'Kalın', 'ctx.italic': 'İtalik', 'ctx.code': 'Kod Bloğu',
+    'ctx.list': 'Liste Yap', 'ctx.removeFormat': 'Biçimlendirmeyi Kaldır',
+    'ctx.editText': 'Metni Düzenle',
+    'ctx.addNote': 'Not Ekle', 'ctx.editNote': 'Notu Düzenle',
+    'ctx.deleteNote': 'Notu Sil', 'ctx.findNote': 'Not Bul',
+    'ctx.insertImage': 'Resim Ekle', 'ctx.deleteImage': 'Resmi Sil',
+    'ctx.selectAll': 'Tümünü Seç',
+    'ctx.openFolder': 'Klasörü Aç', 'ctx.copyPath': 'Yolu Kopyala',
+    'ctx.removeRecent': 'Son Dosyalardan Kaldır',
+    'addNote': 'Not Ekle', 'editNote': 'Notu Düzenle',
+    'label': 'Etiket', 'labelPlaceholder': 'Etiket adı...',
+    'color': 'Renk', 'note': 'Not',
+    'noteTitlePlaceholder': 'Not başlığı...', 'notePlaceholder': 'Notunuzu yazın...',
+    'findNote': 'Not Bul', 'idOrTitle': 'ID veya Başlık',
+    'findNotePlaceholder': '#1 veya not başlığı...',
+    'searchNotes': 'Notlarda Ara', 'notesSearchPlaceholder': '#ID veya başlık...',
+    'editText': 'Metni Düzenle', 'editTextLabel': 'Seçili metni düzenleyin:',
+    'notif.textEdited': 'Metin güncellendi',
+    'zoom': 'Yakınlaştır',
+    'language': 'Dil', 'document': 'Belge', 'interface': 'Arayüz',
+    'original': 'Orijinal', 'english': 'İngilizce', 'turkish': 'Türkçe',
+    'notif.translationFailed': 'Çeviri başarısız: ',
+    'notif.sectionNotFound': 'Bölüm bulunamadı: ',
+    'notif.fileNotFound': 'Dosya bulunamadı: ',
+    'notif.preparingWord': 'Word dışa aktarma hazırlanıyor...',
+    'notif.pdfExported': 'PDF dışa aktarıldı: ',
+    'notif.wordExported': 'Word dışa aktarıldı: ',
+    'notif.copyFailed': 'Panoya kopyalama başarısız',
+    'notif.fileDeleted': 'Uyarı: Açılan dosya diskten silinmiş',
+    'notif.fileReloaded': 'Dosya başarıyla yenilendi',
+    'notif.reloadFailed': 'Dosya yenilenemedi: ',
+    'notif.noTextSelected': 'Metin seçilmedi',
+    'notif.copied': 'Panoya kopyalandı',
+    'notif.copyError': 'Kopyalama başarısız: ',
+    'notif.copiedPlain': 'Düz metin olarak kopyalandı',
+    'notif.textNotFound': 'Kaynak metinde bulunamadı',
+    'notif.boldApplied': 'Kalın biçimlendirme uygulandı',
+    'notif.italicApplied': 'İtalik biçimlendirme uygulandı',
+    'notif.codeApplied': 'Kod biçimlendirme uygulandı',
+    'notif.listApplied': 'Liste biçimlendirme uygulandı',
+    'notif.formatRemoved': 'Biçimlendirme kaldırıldı',
+    'notif.noteRemoved': 'Not silindi',
+    'notif.noteNotFound': 'Not kaynakta bulunamadı',
+    'notif.enterLabel': 'Lütfen bir etiket adı girin',
+    'notif.enterTitleOrContent': 'Lütfen bir başlık veya not içeriği girin',
+    'notif.noteUpdated': 'Not güncellendi',
+    'notif.noteAdded': 'Not eklendi',
+    'notif.imageNotFound': 'Resim kaynakta bulunamadı',
+    'notif.noteAddedToImage': 'Resme not eklendi',
+    'notif.enterNoteId': 'Lütfen bir not ID\'si veya başlığı girin',
+    'notif.noteSearchNotFound': '"${val}" notu bulunamadı',
+    'notif.openFileFirst': 'Lütfen önce bir dosya açın',
+    'notif.imageInserted': 'Resim eklendi',
+    'notif.imageInsertedCompressed': 'Resim eklendi (${from} → ${to})',
+    'notif.imageFailed': 'Resim yüklenemedi: ',
+    'notif.imageProcessFailed': 'Resim işlenemedi',
+    'notif.imageDeleted': 'Resim silindi',
+    'notif.pathCopied': 'Yol panoya kopyalandı',
+    'notif.pathCopiedCheck': '✓ Yol panoya kopyalandı',
+    'confirm.unsavedOpen': 'Kaydedilmemiş değişiklikler var. Değişiklikleri silip yeni dosya açılsın mı?',
+    'confirm.unsavedRefresh': 'Kaydedilmemiş değişiklikler var. Değişiklikleri silip diskten yenilensin mi?',
+    'confirm.unsavedExit': 'Kaydedilmemiş değişiklikler var. Düzenleme modundan çıkılsın mı?',
+    'confirm.unsavedOpenFile': 'Kaydedilmemiş değişiklikler var. Değişiklikleri silip "${name}" açılsın mı?',
+    'confirm.clearRecent': 'Tüm son dosyalar temizlensin mi?',
+    'alert.openFirst': 'Lütfen PDF\'e aktarmadan önce bir markdown dosyası açın.',
+    'alert.openFirstWord': 'Lütfen Word\'e aktarmadan önce bir markdown dosyası açın.',
+    'alert.noFileOpen': 'Şu anda açık dosya yok.',
+    'alert.pdfFailed': 'PDF dışa aktarma başarısız: ',
+    'alert.wordFailed': 'Word belgesi dışa aktarma başarısız: ',
+    'alert.saveFailed': 'Dosya kaydetme başarısız: ',
+    'alert.wordError': 'Word dışa aktarma hatası: ',
+    'update.downloading': 'Güncelleme İndiriliyor',
+    'update.ready': 'Güncelleme Hazır',
+    'update.error': 'Güncelleme Hatası',
+    'update.versionReady': 'Sürüm ${version} indirmeye hazır',
+    'update.versionInstall': 'Sürüm ${version} kurulmaya hazır',
+    'update.failed': 'Güncellemeler kontrol edilemedi',
+    'search.counter': '${current} / ${total}',
+    'search.zero': '0 / 0',
+    'mermaid.error': 'Diyagram resme dönüştürülemedi.',
+  }
+};
+
+function i18n(key, params) {
+  let str = UI_STRINGS[interfaceLang]?.[key] || UI_STRINGS.en[key] || key;
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      str = str.replace('${' + k + '}', v);
+    }
+  }
+  return str;
+}
+
+function applyInterfaceLang(lang) {
+  interfaceLang = lang;
+  localStorage.setItem('interfaceLang', lang);
+
+  // Update all data-i18n elements (textContent)
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const str = UI_STRINGS[lang]?.[key];
+    if (str) el.textContent = str;
+  });
+
+  // Update all data-i18n-title elements (title attribute)
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    const str = UI_STRINGS[lang]?.[key];
+    if (str) el.title = str;
+  });
+
+  // Update all data-i18n-placeholder elements (placeholder attribute)
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    const str = UI_STRINGS[lang]?.[key];
+    if (str) el.placeholder = str;
+  });
+
+  // Update tools menu state (checkmarks)
+  updateToolsMenuState();
+}
+
 const TIMING = {
-  previewDebounceDelay: 3000,
-  hoverDelay: 500,
-  hoverTriggerZone: 10
+  previewDebounceDelay: 3000
 };
 
 const STORAGE = {
@@ -71,10 +352,12 @@ const zoomInBtn = document.getElementById('zoomIn');
 const zoomOutBtn = document.getElementById('zoomOut');
 const zoomResetBtn = document.getElementById('zoomReset');
 const fullscreenToggle = document.getElementById('fullscreenToggle');
-const toggleRecentBtn = document.getElementById('toggleRecent');
-const closeRecentBtn = document.getElementById('closeRecent');
-const recentPanel = document.getElementById('recentPanel');
-const recentList = document.getElementById('recentList');
+const showNotesToggle = document.getElementById('showNotesToggle');
+const fileBtn = document.getElementById('fileBtn');
+const fileMenu = document.getElementById('fileMenu');
+const fileMenuRecent = document.getElementById('fileMenuRecent');
+const viewBtn = document.getElementById('viewBtn');
+const viewMenu = document.getElementById('viewMenu');
 const logoLink = document.getElementById('logoLink');
 const searchPanel = document.getElementById('searchPanel');
 const searchInput = document.getElementById('searchInput');
@@ -86,6 +369,13 @@ const toggleIndexBtn = document.getElementById('toggleIndex');
 const closeIndexBtn = document.getElementById('closeIndex');
 const indexPanel = document.getElementById('indexPanel');
 const indexList = document.getElementById('indexList');
+const toggleNotesBtn = document.getElementById('toggleNotes');
+const closeNotesBtn = document.getElementById('closeNotes');
+const notesPanel = document.getElementById('notesPanel');
+const notesList = document.getElementById('notesList');
+const notesSearchToggle = document.getElementById('notesSearchToggle');
+const notesSearchBar = document.getElementById('notesSearchBar');
+const notesSearchInput = document.getElementById('notesSearchInput');
 const fileInfoBar = document.getElementById('fileInfoBar');
 const fileName = document.getElementById('fileName');
 const filePath = document.getElementById('filePath');
@@ -96,6 +386,7 @@ const toggleEditBtn = document.getElementById('toggleEdit');
 const editorPanel = document.getElementById('editorPanel');
 const markdownEditor = document.getElementById('markdownEditor');
 const saveButton = document.getElementById('saveButton');
+const exitEditBtn = document.getElementById('exitEditBtn');
 const unsavedIndicator = document.getElementById('unsavedIndicator');
 const contentWrapper = document.querySelector('.content-wrapper');
 const loadingScreen = document.getElementById('loadingScreen');
@@ -119,6 +410,18 @@ let previewDebounceTimer = null;
 let navigationHistory = [];
 let navigationIndex = -1;
 let isNavigating = false; // Flag to prevent adding to history during back/forward
+
+// Translation state
+const toolsBtn = document.getElementById('toolsBtn');
+const toolsMenu = document.getElementById('toolsMenu');
+const langSubmenu = document.getElementById('langSubmenu');
+let translatedMarkdown = null;        // cached translation for current target lang
+let isShowingTranslation = false;     // currently displaying translated version
+let isBackgroundTranslating = false;  // bg translation in progress
+let translationGeneration = 0;        // stale-detection counter
+let translationResolvers = [];        // waiters for bg translation completion
+let translationPieceCache = new Map(); // piece-level cache: original text → translated text
+let translationTargetLang = null;     // current target language ('en', 'tr', etc.) or null
 
 // Update file info display
 function updateFileInfo(path) {
@@ -144,7 +447,7 @@ filePath.addEventListener('click', () => {
     navigator.clipboard.writeText(currentFilePath).then(() => {
       // Visual feedback
       const originalText = filePath.textContent;
-      filePath.textContent = '✓ Path copied to clipboard';
+      filePath.textContent = i18n('notif.pathCopiedCheck');
       filePath.style.color = 'var(--primary-color)';
       setTimeout(() => {
         const pathParts = currentFilePath.split(/[\\/]/);
@@ -247,7 +550,7 @@ document.addEventListener('keydown', (e) => {
 
 // Update zoom display
 function updateZoom() {
-  viewer.style.fontSize = `${zoomLevel}%`;
+  viewer.style.zoom = `${zoomLevel / 100}`;
   zoomResetBtn.textContent = `${zoomLevel}%`;
 }
 
@@ -275,10 +578,12 @@ zoomResetBtn.addEventListener('click', () => {
 });
 
 // Dark mode toggle
-darkModeToggle.addEventListener('click', () => {
+darkModeToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
   document.body.classList.toggle('dark-mode');
   const isDarkMode = document.body.classList.contains('dark-mode');
   localStorage.setItem('darkMode', isDarkMode ? 'enabled' : 'disabled');
+  darkModeToggle.classList.toggle('active', isDarkMode);
 
   // Re-initialize Mermaid with new theme if there are diagrams
   const mermaidElements = document.querySelectorAll('.mermaid');
@@ -290,11 +595,402 @@ darkModeToggle.addEventListener('click', () => {
   updateOmniWareDarkMode(isDarkMode);
 });
 
+// Translation — background preemptive system
+const TRANSLATE_GLOBE_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
+
+function updateToolsMenuState() {
+  // Document section checkmarks
+  langSubmenu.querySelectorAll('.tools-submenu-item[data-section="doc"]').forEach(item => {
+    const lang = item.dataset.lang;
+    const isActive = (lang === 'original' && !isShowingTranslation) ||
+                     (lang === translationTargetLang && isShowingTranslation);
+    item.classList.toggle('active', isActive);
+  });
+  // Interface section checkmarks
+  langSubmenu.querySelectorAll('.tools-submenu-item[data-section="ui"]').forEach(item => {
+    item.classList.toggle('active', item.dataset.lang === interfaceLang);
+  });
+  toolsBtn.classList.toggle('translated', isShowingTranslation);
+}
+
+function startBackgroundTranslation(softMode) {
+  if (!translationTargetLang) return; // no target language selected
+  const gen = ++translationGeneration;
+  if (!softMode) translatedMarkdown = null;
+
+  // If already translating, just bump generation — the running translation
+  // will detect staleness on completion and auto-retry with latest content
+  if (isBackgroundTranslating) return;
+
+  isBackgroundTranslating = true;
+  toolsBtn.classList.add('translating');
+
+  translateMarkdownDocument(originalMarkdown, translationTargetLang)
+    .then(result => {
+      isBackgroundTranslating = false;
+      if (gen !== translationGeneration) {
+        // Content changed while translating — auto-retry with latest
+        startBackgroundTranslation(softMode);
+        return;
+      }
+      translatedMarkdown = result;
+      toolsBtn.classList.remove('translating');
+
+      // Resolve any waiters
+      translationResolvers.forEach(r => r());
+      translationResolvers = [];
+
+      // Auto-update view if showing translation
+      if (isShowingTranslation) {
+        const scrollPos = contentWrapper.scrollTop;
+        renderMarkdown(translatedMarkdown).then(() => {
+          contentWrapper.scrollTop = scrollPos;
+          hideLoadingScreen();
+        });
+      }
+    })
+    .catch(err => {
+      isBackgroundTranslating = false;
+      if (gen !== translationGeneration) {
+        // Content changed while translating — auto-retry
+        startBackgroundTranslation(softMode);
+        return;
+      }
+      console.error('Background translation error:', err);
+      toolsBtn.classList.remove('translating');
+      translationResolvers.forEach(r => r());
+      translationResolvers = [];
+      if (!softMode && isShowingTranslation) {
+        isShowingTranslation = false;
+        updateToolsMenuState();
+        hideLoadingScreen();
+        showNotification(i18n('notif.translationFailed') + err.message, 4000);
+      }
+    });
+}
+
+function waitForTranslation() {
+  if (translatedMarkdown) return Promise.resolve();
+  return new Promise(resolve => translationResolvers.push(resolve));
+}
+
+function invalidateTranslationCache() {
+  translatedMarkdown = null;
+  if (currentFilePath && originalMarkdown) {
+    startBackgroundTranslation();
+  }
+}
+
+function resetTranslationState() {
+  translationGeneration++;
+  translatedMarkdown = null;
+  isShowingTranslation = false;
+  isBackgroundTranslating = false;
+  translationTargetLang = null;
+  translationResolvers.forEach(r => r());
+  translationResolvers = [];
+  translationPieceCache.clear();
+  pendingNoteAttrTranslations.clear();
+  toolsBtn.classList.remove('translating');
+  updateToolsMenuState();
+}
+
+// Get the markdown source for the currently active view
+function getActiveMarkdown() {
+  return (isShowingTranslation && translatedMarkdown) ? translatedMarkdown : originalMarkdown;
+}
+
+// Reverse-lookup: find original text for a translated text via piece cache
+function findOriginalForTranslated(translatedText) {
+  for (const [original, translated] of translationPieceCache) {
+    if (translated === translatedText) return original;
+    if (translated.trim() === translatedText.trim()) return original;
+  }
+  return null;
+}
+
+// Find note span by data-note-id in source markdown
+function findNoteSpanById(source, noteId) {
+  if (!noteId) return null;
+  const safeId = noteId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(
+    `<span class="(?:noted-text|noted-image|note-label)" data-note-id="${safeId}"[^>]*>([\\s\\S]*?)</span>`
+  );
+  return source.match(regex);
+}
+
+// Sync a note-span addition from translatedMarkdown to originalMarkdown
+function syncNoteAddToOriginal(noteHtml, selectedText, noteId, rawTitle, rawContent, occurrence) {
+  occurrence = occurrence || 0;
+  // Extract note attrs from noteHtml to rebuild for original text
+  const escTitleMatch = noteHtml.match(/data-note-title="([^"]*)"/);
+  const escContentMatch = noteHtml.match(/data-note-content="([^"]*)"/);
+  const colorMatch = noteHtml.match(/style="color:([^"]*)"/);
+  const escT = escTitleMatch ? escTitleMatch[1] : '';
+  const escC = escContentMatch ? escContentMatch[1] : '';
+  const col = colorMatch ? colorMatch[1] : '#ff6600';
+
+  function buildOrigNoteHtml(origText) {
+    return wrapWithNoteSpan(origText, noteId, escT, escC, col);
+  }
+
+  // Strategy 1: reverse piece cache lookup (instant, accurate)
+  const origText = findOriginalForTranslated(selectedText);
+  if (origText) {
+    const idx = findNthOccurrence(originalMarkdown, origText, occurrence);
+    if (idx !== -1) {
+      originalMarkdown = originalMarkdown.substring(0, idx) + buildOrigNoteHtml(origText) + originalMarkdown.substring(idx + origText.length);
+      translateNoteAttrsToOriginal(noteId, rawTitle, rawContent);
+      return;
+    }
+  }
+
+  // Strategy 2: substring match in piece cache
+  for (const [original, translated] of translationPieceCache) {
+    if (translated.includes(selectedText) && selectedText.length > 0) {
+      const idx = findNthOccurrence(originalMarkdown, original, occurrence);
+      if (idx !== -1) {
+        originalMarkdown = originalMarkdown.substring(0, idx) + buildOrigNoteHtml(original) + originalMarkdown.substring(idx + original.length);
+        translateNoteAttrsToOriginal(noteId, rawTitle, rawContent);
+        return;
+      }
+    }
+  }
+
+  // Strategy 3: async reverse-translate via Google (fallback)
+  googleTranslate(selectedText, 'tr').then(trText => {
+    if (!trText) throw new Error('Empty reverse translation');
+    const idx = findNthOccurrence(originalMarkdown, trText, occurrence);
+    if (idx !== -1) {
+      originalMarkdown = originalMarkdown.substring(0, idx) + buildOrigNoteHtml(trText) + originalMarkdown.substring(idx + trText.length);
+      translateNoteAttrsToOriginal(noteId, rawTitle, rawContent);
+    } else {
+      throw new Error('Reverse translation not found in original');
+    }
+  }).catch(() => {
+    // Strategy 4: guaranteed fallback — append note to end
+    if (!findNoteSpanById(originalMarkdown, noteId)) {
+      originalMarkdown = originalMarkdown.trimEnd() + '\n\n' + noteHtml + '\n';
+      translateNoteAttrsToOriginal(noteId, rawTitle, rawContent);
+    }
+  });
+}
+
+// Pending note attr translations — noteId -> {rawTitle, rawContent}
+const pendingNoteAttrTranslations = new Map();
+
+// Immediately translate note attrs EN→TR and apply to originalMarkdown; queue as fallback on failure
+async function translateNoteAttrsToOriginal(noteId, rawTitle, rawContent) {
+  if (!noteId || (!rawTitle && !rawContent)) return;
+  try {
+    const [trTitle, trContent] = await Promise.all([
+      rawTitle ? googleTranslate(rawTitle, 'tr') : Promise.resolve(null),
+      rawContent ? googleTranslate(rawContent, 'tr') : Promise.resolve(null)
+    ]);
+
+    const match = findNoteSpanById(originalMarkdown, noteId);
+    if (!match) {
+      // Note span not yet synced to originalMarkdown — queue for later
+      pendingNoteAttrTranslations.set(noteId, { rawTitle, rawContent });
+      return;
+    }
+
+    let updated = match[0];
+    if (trTitle) {
+      const esc = trTitle.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      updated = updated.replace(/data-note-title="[^"]*"/, () => `data-note-title="${esc}"`);
+    }
+    if (trContent) {
+      const esc = trContent.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      updated = updated.replace(/data-note-content="[^"]*"/, () => `data-note-content="${esc}"`);
+    }
+
+    if (updated !== match[0]) {
+      originalMarkdown = originalMarkdown.substring(0, match.index) + updated + originalMarkdown.substring(match.index + match[0].length);
+    }
+  } catch (e) {
+    // Translation failed — queue for retry on view switch
+    pendingNoteAttrTranslations.set(noteId, { rawTitle, rawContent });
+  }
+}
+
+// Flush: translate all pending note attrs EN→TR and apply to originalMarkdown
+async function flushPendingNoteTranslations() {
+  const entries = [...pendingNoteAttrTranslations.entries()];
+  pendingNoteAttrTranslations.clear();
+  if (!entries.length) return;
+
+  await Promise.all(entries.map(async ([noteId, { rawTitle, rawContent }]) => {
+    try {
+      const [trTitle, trContent] = await Promise.all([
+        rawTitle ? googleTranslate(rawTitle, 'tr') : Promise.resolve(null),
+        rawContent ? googleTranslate(rawContent, 'tr') : Promise.resolve(null)
+      ]);
+
+      const match = findNoteSpanById(originalMarkdown, noteId);
+      if (!match) return;
+
+      let updated = match[0];
+      if (trTitle) {
+        const esc = trTitle.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        updated = updated.replace(/data-note-title="[^"]*"/, () => `data-note-title="${esc}"`);
+      }
+      if (trContent) {
+        const esc = trContent.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        updated = updated.replace(/data-note-content="[^"]*"/, () => `data-note-content="${esc}"`);
+      }
+
+      if (updated !== match[0]) {
+        originalMarkdown = originalMarkdown.substring(0, match.index) + updated + originalMarkdown.substring(match.index + match[0].length);
+      }
+    } catch (e) {}
+  }));
+}
+
+// Debounced resync timer for EN view edits
+let enViewResyncTimer = null;
+
+// Apply a view-mode content change and keep both markdowns in sync
+function commitViewModeEdit(newContent, scrollPosition, syncFn) {
+  if (isShowingTranslation && translatedMarkdown) {
+    translatedMarkdown = newContent;
+    if (syncFn) syncFn();
+    renderMarkdown(translatedMarkdown).then(() => {
+      contentWrapper.scrollTop = scrollPosition;
+    });
+    // Debounced resync: re-translate originalMarkdown in background for eventual consistency
+    clearTimeout(enViewResyncTimer);
+    enViewResyncTimer = setTimeout(() => {
+      if (isShowingTranslation && originalMarkdown) startBackgroundTranslation(true);
+    }, 2000);
+  } else {
+    originalMarkdown = newContent;
+    invalidateTranslationCache();
+    renderMarkdown(newContent).then(() => {
+      contentWrapper.scrollTop = scrollPosition;
+    });
+  }
+  hasUnsavedChanges = true;
+}
+
+function closeAllDropdowns() {
+  fileMenu.classList.remove('visible');
+  viewMenu.classList.remove('visible');
+  toolsMenu.classList.remove('visible');
+}
+
+// File menu toggle
+fileBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const willOpen = !fileMenu.classList.contains('visible');
+  closeAllDropdowns();
+  if (willOpen) {
+    fileMenu.classList.add('visible');
+    updateFileMenuRecent();
+  }
+});
+
+// View menu toggle
+viewBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const willOpen = !viewMenu.classList.contains('visible');
+  closeAllDropdowns();
+  if (willOpen) viewMenu.classList.add('visible');
+});
+
+// Tools menu toggle
+toolsBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const willOpen = !toolsMenu.classList.contains('visible');
+  closeAllDropdowns();
+  if (willOpen) toolsMenu.classList.add('visible');
+});
+
+// Close all menus on outside click
+document.addEventListener('click', () => {
+  closeAllDropdowns();
+});
+
+// Prevent clicks inside menus from closing them
+fileMenu.addEventListener('click', (e) => { e.stopPropagation(); });
+viewMenu.addEventListener('click', (e) => { e.stopPropagation(); });
+toolsMenu.addEventListener('click', (e) => { e.stopPropagation(); });
+
+// Language switch handler
+async function switchToLanguage(targetLang) {
+  if (!originalMarkdown || !currentFilePath) return;
+
+  if (targetLang === 'original') {
+    if (!isShowingTranslation) return;
+    await flushPendingNoteTranslations();
+    isShowingTranslation = false;
+    translationTargetLang = null;
+    const scrollPos = contentWrapper.scrollTop;
+    await renderMarkdown(originalMarkdown);
+    contentWrapper.scrollTop = scrollPos;
+    updateToolsMenuState();
+    return;
+  }
+
+  // Switching to a translation language (en/tr/etc.)
+  const langChanged = translationTargetLang !== targetLang;
+
+  if (langChanged) {
+    translatedMarkdown = null;
+    translationPieceCache.clear();
+    translationTargetLang = targetLang;
+  }
+
+  if (!langChanged && isShowingTranslation) return; // already showing this translation
+
+  isShowingTranslation = true;
+
+  if (translatedMarkdown) {
+    // Cache is valid — instant swap
+    const scrollPos = contentWrapper.scrollTop;
+    await renderMarkdown(translatedMarkdown);
+    contentWrapper.scrollTop = scrollPos;
+  } else {
+    // Need to wait for translation
+    showLoadingScreen();
+    if (!isBackgroundTranslating) startBackgroundTranslation();
+    await waitForTranslation();
+    if (!isShowingTranslation) return; // user switched back while waiting
+    if (translatedMarkdown) {
+      await renderMarkdown(translatedMarkdown);
+    } else {
+      // Translation failed — revert
+      isShowingTranslation = false;
+      updateToolsMenuState();
+      hideLoadingScreen();
+      return;
+    }
+    hideLoadingScreen();
+  }
+
+  updateToolsMenuState();
+}
+
+// Language submenu item click handlers
+langSubmenu.querySelectorAll('.tools-submenu-item').forEach(item => {
+  item.addEventListener('click', async () => {
+    toolsMenu.classList.remove('visible');
+    const section = item.dataset.section;
+    const lang = item.dataset.lang;
+    if (section === 'doc') {
+      await switchToLanguage(lang);
+    } else if (section === 'ui') {
+      applyInterfaceLang(lang);
+    }
+  });
+});
+
 // Load dark mode preference on startup
 function loadDarkModePreference() {
   const darkMode = localStorage.getItem('darkMode');
   if (darkMode === 'enabled') {
     document.body.classList.add('dark-mode');
+    darkModeToggle.classList.add('active');
   }
 }
 
@@ -332,14 +1028,46 @@ function updateOmniWareDarkMode(isDark) {
 // Load dark mode on startup
 loadDarkModePreference();
 
+// Apply saved interface language on startup
+if (interfaceLang !== 'en') applyInterfaceLang(interfaceLang);
+updateToolsMenuState();
+
 // Fullscreen toggle
-fullscreenToggle.addEventListener('click', () => {
+fullscreenToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
   if (document.fullscreenElement) {
     document.exitFullscreen();
   } else {
     document.documentElement.requestFullscreen();
   }
 });
+
+document.addEventListener('fullscreenchange', () => {
+  fullscreenToggle.classList.toggle('active', !!document.fullscreenElement);
+});
+
+// Show/Hide Notes toggle
+let notesVisible = localStorage.getItem('notesVisible') !== 'hidden';
+
+showNotesToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  notesVisible = !notesVisible;
+  localStorage.setItem('notesVisible', notesVisible ? 'visible' : 'hidden');
+  showNotesToggle.classList.toggle('active', notesVisible);
+  viewer.classList.toggle('notes-hidden', !notesVisible);
+});
+
+// Update showNotesToggle visibility based on whether notes exist
+function updateShowNotesToggleVisibility() {
+  const hasNotes = viewer.querySelectorAll('.noted-text[data-note-id], .noted-image[data-note-id], .note-label[data-note-id]').length > 0;
+  showNotesToggle.style.display = hasNotes ? '' : 'none';
+  if (hasNotes) {
+    showNotesToggle.classList.toggle('active', notesVisible);
+    viewer.classList.toggle('notes-hidden', !notesVisible);
+  } else {
+    viewer.classList.remove('notes-hidden');
+  }
+}
 
 // Logo link - open website
 logoLink.addEventListener('click', (e) => {
@@ -399,7 +1127,7 @@ viewer.addEventListener('click', (e) => {
           behavior: 'smooth'
         });
       } else {
-        showNotification(`Section not found: ${targetId}`, 3000);
+        showNotification(i18n('notif.sectionNotFound') + targetId, 3000);
       }
       return;
     }
@@ -445,7 +1173,7 @@ viewer.addEventListener('click', (e) => {
           shell.openPath(targetPath);
         }
       } else {
-        showNotification(`File not found: ${path.basename(targetPath)}`, 4000);
+        showNotification(i18n('notif.fileNotFound') + path.basename(targetPath), 4000);
       }
     }
   }
@@ -455,11 +1183,12 @@ viewer.addEventListener('click', (e) => {
 openFileBtn.addEventListener('click', () => {
   // Check for unsaved changes before opening file dialog
   if (isEditMode && hasUnsavedChanges) {
-    if (!confirm('You have unsaved changes. Discard changes and open a new file?')) {
+    if (!confirm(i18n('confirm.unsavedOpen'))) {
       return; // User canceled, don't open file dialog
     }
   }
 
+  fileMenu.classList.remove('visible');
   ipcRenderer.send('open-file-dialog');
 });
 
@@ -471,7 +1200,7 @@ refreshBtn.addEventListener('click', () => {
 
   // Check for unsaved changes before refreshing
   if (isEditMode && hasUnsavedChanges) {
-    if (!confirm('You have unsaved changes. Discard changes and refresh from disk?')) {
+    if (!confirm(i18n('confirm.unsavedRefresh'))) {
       return;
     }
   }
@@ -482,8 +1211,9 @@ refreshBtn.addEventListener('click', () => {
 
 // Export to PDF button
 exportPdfBtn.addEventListener('click', () => {
+  fileMenu.classList.remove('visible');
   if (!currentFilePath) {
-    alert('Please open a markdown file first before exporting to PDF.');
+    alert(i18n('alert.openFirst'));
     return;
   }
 
@@ -610,14 +1340,15 @@ async function mermaidToBase64Png(mermaidElement) {
 
 // Export to Word button
 exportWordBtn.addEventListener('click', async () => {
+  fileMenu.classList.remove('visible');
   if (!currentFilePath) {
-    alert('Please open a markdown file first before exporting to Word.');
+    alert(i18n('alert.openFirstWord'));
     return;
   }
 
   try {
     // Show loading notification
-    showNotification('Preparing Word export...', 10000);
+    showNotification(i18n('notif.preparingWord'), 10000);
 
     const pathParts = currentFilePath.split(/[\\/]/);
     const currentFileName = pathParts.pop();
@@ -686,7 +1417,7 @@ exportWordBtn.addEventListener('click', async () => {
           // Fallback to placeholder if conversion fails
           const placeholder = document.createElement('div');
           placeholder.style.cssText = 'padding: 20px; background: #f5f5f5; border: 1px solid #ddd; text-align: center; color: #666; margin: 10px 0;';
-          placeholder.innerHTML = '<strong>[Mermaid Diagram]</strong><br><em>Could not convert diagram to image.</em>';
+          placeholder.innerHTML = '<strong>[Mermaid Diagram]</strong><br><em>' + i18n('mermaid.error') + '</em>';
           clonedContainer.parentNode.replaceChild(placeholder, clonedContainer);
         }
       }
@@ -714,7 +1445,7 @@ exportWordBtn.addEventListener('click', async () => {
     ipcRenderer.send('export-word', { currentFileName, htmlContent });
   } catch (err) {
     console.error('Word export error:', err);
-    alert('Error preparing Word export: ' + err.message);
+    alert(i18n('alert.wordError') + err.message);
   }
 });
 
@@ -788,10 +1519,10 @@ ipcRenderer.on('pdf-export-result', (event, data) => {
   if (data.success) {
     console.log('PDF exported successfully to:', data.path);
     const fileName = data.path.split(/[\\/]/).pop();
-    showNotification(`PDF exported: ${fileName}`);
+    showNotification(i18n('notif.pdfExported') + fileName);
   } else {
     console.error('PDF export failed:', data.error);
-    alert(`Failed to export PDF: ${data.error}`);
+    alert(i18n('alert.pdfFailed') + data.error);
   }
 });
 
@@ -800,17 +1531,18 @@ ipcRenderer.on('word-export-result', (event, data) => {
   if (data.success) {
     console.log('Word document exported successfully to:', data.path);
     const fileName = data.path.split(/[\\/]/).pop();
-    showNotification(`Word exported: ${fileName}`);
+    showNotification(i18n('notif.wordExported') + fileName);
   } else {
     console.error('Word export failed:', data.error);
-    alert(`Failed to export Word document: ${data.error}`);
+    alert(i18n('alert.wordFailed') + data.error);
   }
 });
 
 // Toggle edit mode
-toggleEditBtn.addEventListener('click', () => {
+toggleEditBtn.addEventListener('click', async () => {
+  fileMenu.classList.remove('visible');
   if (isEditMode && hasUnsavedChanges) {
-    if (!confirm('You have unsaved changes. Exit edit mode anyway?')) {
+    if (!confirm(i18n('confirm.unsavedExit'))) {
       return;
     }
   }
@@ -818,6 +1550,13 @@ toggleEditBtn.addEventListener('click', () => {
   isEditMode = !isEditMode;
 
   if (isEditMode) {
+    // If showing translation, flush pending note translations and switch to original
+    if (isShowingTranslation) {
+      await flushPendingNoteTranslations();
+      isShowingTranslation = false;
+      updateToolsMenuState();
+      renderMarkdown(originalMarkdown);
+    }
     // Enter edit mode
     contentWrapper.classList.add('split-view');
     markdownEditor.value = originalMarkdown;
@@ -838,6 +1577,11 @@ toggleEditBtn.addEventListener('click', () => {
       isFileTrackingActive = true;
     }
   }
+});
+
+// Exit edit mode button (in editor header)
+exitEditBtn.addEventListener('click', () => {
+  if (isEditMode) toggleEditBtn.click();
 });
 
 // Live preview with 3-second debounce
@@ -866,7 +1610,7 @@ markdownEditor.addEventListener('input', () => {
 // Save file
 function saveMarkdownFile() {
   if (!currentFilePath) {
-    alert('No file is currently open.');
+    alert(i18n('alert.noFileOpen'));
     return;
   }
 
@@ -895,7 +1639,7 @@ document.addEventListener('keydown', (e) => {
     if (currentFilePath) {
       // Check for unsaved changes
       if (isEditMode && hasUnsavedChanges) {
-        if (confirm('You have unsaved changes. Discard changes and refresh from disk?')) {
+        if (confirm(i18n('confirm.unsavedRefresh'))) {
           reloadCurrentFile();
         }
       } else {
@@ -909,6 +1653,7 @@ document.addEventListener('keydown', (e) => {
 ipcRenderer.on('save-markdown-result', (event, data) => {
   if (data.success) {
     originalMarkdown = markdownEditor.value;
+    invalidateTranslationCache();
     hasUnsavedChanges = false;
     updateUnsavedIndicator();
     console.log('File saved successfully');
@@ -920,7 +1665,7 @@ ipcRenderer.on('save-markdown-result', (event, data) => {
     }
   } else {
     console.error('Save failed:', data.error);
-    alert(`Failed to save file: ${data.error}`);
+    alert(i18n('alert.saveFailed') + data.error);
   }
 });
 
@@ -932,76 +1677,6 @@ function updateUnsavedIndicator() {
     unsavedIndicator.style.display = 'none';
   }
 }
-
-// Recent files panel toggle
-toggleRecentBtn.addEventListener('click', () => {
-  recentPanel.classList.toggle('visible');
-});
-
-closeRecentBtn.addEventListener('click', () => {
-  recentPanel.classList.remove('visible');
-});
-
-// Clear all recent files
-const clearAllRecentBtn = document.getElementById('clearAllRecent');
-clearAllRecentBtn.addEventListener('click', () => {
-  if (confirm('Are you sure you want to clear all recent files?')) {
-    localStorage.removeItem('recentFiles');
-    updateRecentFilesList();
-  }
-});
-
-// ============================================
-// RECENT FILES PANEL HOVER
-// ============================================
-
-let mouseHoverTimeout = null;
-let isMouseInTriggerZone = false;
-
-document.addEventListener('mousemove', (e) => {
-  // Don't trigger hover panel in edit mode to avoid interference while editing
-  if (isEditMode) {
-    // Clear any pending timeout if we enter edit mode
-    isMouseInTriggerZone = false;
-    if (mouseHoverTimeout) {
-      clearTimeout(mouseHoverTimeout);
-      mouseHoverTimeout = null;
-    }
-    return;
-  }
-
-  // Check if mouse is near the left edge
-  if (e.clientX <= TIMING.hoverTriggerZone) {
-    // Start timeout if not already started
-    if (!mouseHoverTimeout && !recentPanel.classList.contains('visible')) {
-      isMouseInTriggerZone = true;
-      mouseHoverTimeout = setTimeout(() => {
-        // Only open if mouse is still in the trigger zone
-        if (isMouseInTriggerZone) {
-          recentPanel.classList.add('visible');
-        }
-        mouseHoverTimeout = null;
-      }, TIMING.hoverDelay);
-    }
-  } else {
-    // Clear timeout if mouse moves away before delay completes
-    isMouseInTriggerZone = false;
-    if (mouseHoverTimeout) {
-      clearTimeout(mouseHoverTimeout);
-      mouseHoverTimeout = null;
-    }
-  }
-});
-
-// Close recent panel when clicking outside
-document.addEventListener('click', (e) => {
-  if (recentPanel.classList.contains('visible')) {
-    // Check if click is outside the recent panel
-    if (!recentPanel.contains(e.target) && e.target !== toggleRecentBtn) {
-      recentPanel.classList.remove('visible');
-    }
-  }
-});
 
 // ============================================
 // RECENT FILES MANAGEMENT
@@ -1035,74 +1710,49 @@ function saveRecentFile(filePath) {
     recentFiles = recentFiles.slice(0, STORAGE.maxRecentFiles);
 
     localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
-    updateRecentFilesList();
   } catch (e) {
     console.error('Error saving recent file:', e);
   }
 }
 
-function updateRecentFilesList() {
+function updateFileMenuRecent() {
   const recentFiles = getRecentFiles();
 
   if (recentFiles.length === 0) {
-    recentList.innerHTML = '<div class="recent-empty">No recent files</div>';
+    fileMenuRecent.innerHTML = '<div class="tools-menu-recent-empty" data-i18n="noRecentFiles">' + i18n('noRecentFiles') + '</div>';
     return;
   }
 
-  recentList.innerHTML = '';
+  fileMenuRecent.innerHTML = '';
 
   recentFiles.forEach(file => {
     const item = document.createElement('div');
-    item.className = 'recent-item';
-
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'recent-item-content';
-    contentDiv.innerHTML = `
-      <div class="recent-item-name">${file.name}</div>
-      <div class="recent-item-path">${file.path}</div>
+    item.className = 'tools-menu-recent-item';
+    item.innerHTML = `
+      <span class="tools-menu-recent-name">${file.name}</span>
+      <span class="tools-menu-recent-path">${file.path}</span>
     `;
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'recent-delete-btn';
-    deleteBtn.innerHTML = '×';
-    deleteBtn.title = 'Remove from recent files';
-
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // Prevent opening the file
-      let recentFiles = getRecentFiles();
-      recentFiles = recentFiles.filter(f => f.path !== file.path);
-      localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
-      updateRecentFilesList();
-    });
-
-    contentDiv.addEventListener('click', () => {
+    item.addEventListener('click', () => {
       // Check for unsaved changes before opening
       if (isEditMode && hasUnsavedChanges) {
-        if (!confirm(`You have unsaved changes. Discard changes and open "${file.name}"?`)) {
-          return; // User canceled, don't open the file
+        if (!confirm(i18n('confirm.unsavedOpenFile', {name: file.name}))) {
+          return;
         }
       }
-
-      // Use the standard file opening path via IPC
       ipcRenderer.send('open-file-path', file.path);
-      recentPanel.classList.remove('visible');
+      fileMenu.classList.remove('visible');
     });
 
-    // Add context menu (right-click) handler
     item.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
       showRecentContextMenu(e.clientX, e.clientY, file.path);
     });
 
-    item.appendChild(contentDiv);
-    item.appendChild(deleteBtn);
-    recentList.appendChild(item);
+    fileMenuRecent.appendChild(item);
   });
 }
-
-// Initialize recent files list
-updateRecentFilesList();
 
 // Search functionality
 let searchMatches = [];
@@ -1210,11 +1860,11 @@ function highlightCurrentMatch() {
 
 function updateSearchCounter() {
   if (searchMatches.length > 0) {
-    searchCounter.textContent = `${currentMatchIndex + 1} of ${searchMatches.length}`;
+    searchCounter.textContent = i18n('search.counter', {current: currentMatchIndex + 1, total: searchMatches.length});
     searchPrevBtn.disabled = false;
     searchNextBtn.disabled = false;
   } else {
-    searchCounter.textContent = '0 of 0';
+    searchCounter.textContent = i18n('search.zero');
     searchPrevBtn.disabled = true;
     searchNextBtn.disabled = true;
   }
@@ -1273,7 +1923,7 @@ function buildTableOfContents() {
   const headers = viewer.querySelectorAll('h1, h2, h3, h4, h5, h6');
 
   if (headers.length === 0) {
-    indexList.innerHTML = '<div class="index-empty">No headers found</div>';
+    indexList.innerHTML = '<div class="index-empty" data-i18n="noHeaders">' + i18n('noHeaders') + '</div>';
     return;
   }
 
@@ -1317,12 +1967,176 @@ function buildTableOfContents() {
 
 // Index panel toggle
 toggleIndexBtn.addEventListener('click', () => {
+  fileMenu.classList.remove('visible');
   indexPanel.classList.toggle('visible');
 });
 
 closeIndexBtn.addEventListener('click', () => {
   indexPanel.classList.remove('visible');
 });
+
+// Notes panel toggle
+toggleNotesBtn.addEventListener('click', () => {
+  fileMenu.classList.remove('visible');
+  const willOpen = !notesPanel.classList.contains('visible');
+  notesPanel.classList.toggle('visible');
+  if (willOpen) updateNotesList();
+});
+
+closeNotesBtn.addEventListener('click', () => {
+  notesPanel.classList.remove('visible');
+  // Reset search state
+  notesSearchBar.classList.remove('visible');
+  notesSearchToggle.classList.remove('active');
+  notesSearchInput.value = '';
+});
+
+function updateNotesList() {
+  const allNotes = viewer.querySelectorAll('.noted-text[data-note-id], .noted-image[data-note-id], .note-label[data-note-id]');
+
+  if (allNotes.length === 0) {
+    notesList.innerHTML = '<div class="notes-empty" data-i18n="noNotes">' + i18n('noNotes') + '</div>';
+    return;
+  }
+
+  // Sort by note ID (numeric)
+  const sorted = Array.from(allNotes).sort((a, b) => {
+    return parseInt(a.getAttribute('data-note-id') || '0') - parseInt(b.getAttribute('data-note-id') || '0');
+  });
+
+  notesList.innerHTML = '';
+
+  sorted.forEach(noteEl => {
+    const noteId = noteEl.getAttribute('data-note-id') || '';
+    const title = noteEl.getAttribute('data-note-title') || '';
+    const content = noteEl.getAttribute('data-note-content') || '';
+    const color = extractNoteColor(noteEl);
+    const isLabel = noteEl.classList.contains('note-label');
+    const isImage = noteEl.classList.contains('noted-image');
+    const type = isLabel ? 'Label' : isImage ? 'Image' : 'Text';
+
+    const item = document.createElement('div');
+    item.className = 'notes-item';
+    item.dataset.noteId = noteId;
+    item.dataset.noteTitle = title.toLowerCase();
+    item.style.borderLeftColor = color;
+
+    const escTitle = title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escContent = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    item.innerHTML = `
+      <div class="notes-item-header">
+        <span class="notes-item-id">#${noteId}</span>
+        <span class="notes-item-title" style="color:${color}">${escTitle || i18n('note')}</span>
+      </div>
+      ${escContent ? `<div class="notes-item-content">${escContent}</div>` : ''}
+      <div class="notes-item-type">${type}</div>
+    `;
+
+    item.addEventListener('click', () => {
+      // Scroll to note in viewer
+      const target = viewer.querySelector(`[data-note-id="${noteId}"]`);
+      if (!target) return;
+      const noteRect = target.getBoundingClientRect();
+      const wrapperRect = contentWrapper.getBoundingClientRect();
+      const scrollTarget = contentWrapper.scrollTop + noteRect.top - wrapperRect.top - (wrapperRect.height / 2);
+      contentWrapper.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+
+      // Highlight with pulse animation
+      target.classList.add('note-highlight');
+      setTimeout(() => target.classList.remove('note-highlight'), 4500);
+    });
+
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showNotesPanelContextMenu(e.clientX, e.clientY, noteId);
+    });
+
+    notesList.appendChild(item);
+  });
+
+  // Re-apply active search filter if search bar is open
+  if (notesSearchBar.classList.contains('visible') && notesSearchInput.value.trim()) {
+    filterNotesList(notesSearchInput.value.trim());
+  }
+}
+
+// Notes panel search
+notesSearchToggle.addEventListener('click', () => {
+  const isVisible = notesSearchBar.classList.contains('visible');
+  notesSearchBar.classList.toggle('visible');
+  notesSearchToggle.classList.toggle('active');
+  if (!isVisible) {
+    notesSearchInput.value = '';
+    notesSearchInput.focus();
+    // Reset filter
+    notesList.querySelectorAll('.notes-item').forEach(item => {
+      item.classList.remove('search-hidden', 'search-highlight');
+    });
+  } else {
+    // Clear search on close
+    notesSearchInput.value = '';
+    notesList.querySelectorAll('.notes-item').forEach(item => {
+      item.classList.remove('search-hidden', 'search-highlight');
+    });
+  }
+});
+
+notesSearchInput.addEventListener('input', () => {
+  const query = notesSearchInput.value.trim();
+  filterNotesList(query);
+});
+
+notesSearchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    // Find first visible item and click it (scroll to note in viewer)
+    const firstVisible = notesList.querySelector('.notes-item:not(.search-hidden)');
+    if (firstVisible) firstVisible.click();
+  } else if (e.key === 'Escape') {
+    notesSearchToggle.click(); // Close search bar
+  }
+});
+
+function filterNotesList(query) {
+  const items = notesList.querySelectorAll('.notes-item');
+  if (!query) {
+    items.forEach(item => item.classList.remove('search-hidden', 'search-highlight'));
+    return;
+  }
+
+  const searchLower = query.toLowerCase();
+  const idMatch = query.match(/^#?(\d+)$/);
+  let firstMatch = null;
+
+  items.forEach(item => {
+    const noteId = item.dataset.noteId || '';
+    const noteTitle = item.dataset.noteTitle || '';
+    let matches = false;
+
+    if (idMatch) {
+      matches = noteId === idMatch[1];
+    }
+    if (!matches) {
+      matches = noteTitle.includes(searchLower) || noteId.includes(searchLower);
+    }
+
+    if (matches) {
+      item.classList.remove('search-hidden');
+      item.classList.add('search-highlight');
+      if (!firstMatch) firstMatch = item;
+    } else {
+      item.classList.add('search-hidden');
+      item.classList.remove('search-highlight');
+    }
+  });
+
+  // Scroll to first match in the notes list
+  if (firstMatch) {
+    firstMatch.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
 
 // ============================================
 // KEYBOARD SHORTCUTS
@@ -1384,6 +2198,248 @@ document.addEventListener('wheel', (e) => {
   }
 }, { passive: false });
 
+// ============================================
+// TRANSLATION SYSTEM (Batch + Parallel)
+// ============================================
+
+async function googleTranslate(text, targetLang) {
+  if (!text || !text.trim()) return text;
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Translation API error: ${response.status}`);
+  const data = await response.json();
+  return data[0].map(s => s[0]).join('');
+}
+
+// Parallel batch translator — sends up to CONCURRENCY requests at once
+async function batchGoogleTranslate(pieces, targetLang) {
+  const CONCURRENCY = 8;
+  const results = new Array(pieces.length);
+
+  const todo = [];
+  pieces.forEach((t, i) => {
+    if (t && t.trim()) {
+      todo.push(i);
+    } else {
+      results[i] = t || '';
+    }
+  });
+
+  for (let start = 0; start < todo.length; start += CONCURRENCY) {
+    const batch = todo.slice(start, start + CONCURRENCY);
+    await Promise.all(batch.map(async (i) => {
+      results[i] = await googleTranslate(pieces[i], targetLang);
+    }));
+  }
+
+  return results;
+}
+
+function parseMarkdownForTranslation(md) {
+  const segments = [];
+  let i = 0;
+  const len = md.length;
+
+  while (i < len) {
+    // Fenced code block
+    if (md.startsWith('```', i)) {
+      const endFence = md.indexOf('```', i + 3);
+      if (endFence !== -1) {
+        const block = md.slice(i, endFence + 3);
+        segments.push({ type: 'preserve', text: block });
+        i = endFence + 3;
+        continue;
+      }
+    }
+
+    // Note spans: noted-text, noted-image, note-label — translate their data attributes
+    const noteSpanMatch = md.slice(i).match(/^<span\s+class="(?:noted-text|noted-image|note-label)"[^>]*>[\s\S]*?<\/span>/);
+    if (noteSpanMatch) {
+      segments.push({ type: 'note-span', text: noteSpanMatch[0] });
+      i += noteSpanMatch[0].length;
+      continue;
+    }
+
+    // Inline code
+    if (md[i] === '`' && !md.startsWith('```', i)) {
+      const endTick = md.indexOf('`', i + 1);
+      if (endTick !== -1) {
+        segments.push({ type: 'preserve', text: md.slice(i, endTick + 1) });
+        i = endTick + 1;
+        continue;
+      }
+    }
+
+    // Image: ![alt](url)
+    const imgMatch = md.slice(i).match(/^!\[[^\]]*\]\([^)]*\)/);
+    if (imgMatch) {
+      segments.push({ type: 'preserve', text: imgMatch[0] });
+      i += imgMatch[0].length;
+      continue;
+    }
+
+    // Link: [text](url) — preserve URL, translate text
+    const linkMatch = md.slice(i).match(/^\[([^\]]*)\]\(([^)]*)\)/);
+    if (linkMatch) {
+      segments.push({ type: 'link', text: linkMatch[0], linkText: linkMatch[1], linkUrl: linkMatch[2] });
+      i += linkMatch[0].length;
+      continue;
+    }
+
+    // HTML block/tag — preserve entirely
+    const htmlMatch = md.slice(i).match(/^<[^>]+>/);
+    if (htmlMatch) {
+      segments.push({ type: 'preserve', text: htmlMatch[0] });
+      i += htmlMatch[0].length;
+      continue;
+    }
+
+    // Table separator row: |---|---|
+    const tableSepMatch = md.slice(i).match(/^(\|[\s:]*-{2,}[\s:]*)+\|?\s*(\n|$)/);
+    if (tableSepMatch) {
+      segments.push({ type: 'preserve', text: tableSepMatch[0] });
+      i += tableSepMatch[0].length;
+      continue;
+    }
+
+    // Regular text — collect until next special pattern
+    let end = i + 1;
+    while (end < len) {
+      if (md[end] === '`' || md[end] === '<' || md[end] === '!' || md[end] === '[') break;
+      if (md.startsWith('<span', end)) break;
+      end++;
+    }
+    segments.push({ type: 'translate', text: md.slice(i, end) });
+    i = end;
+  }
+
+  return segments;
+}
+
+async function translateMarkdownDocument(md, targetLang) {
+  const segments = parseMarkdownForTranslation(md);
+
+  // Phase 1: Collect all translatable pieces into a flat array
+  const pieces = [];
+  const blueprints = [];
+
+  for (const seg of segments) {
+    if (seg.type === 'preserve') {
+      blueprints.push({ type: 'literal', text: seg.text });
+    }
+    else if (seg.type === 'note-span') {
+      const bp = { type: 'note-span', html: seg.text, titleIdx: -1, contentIdx: -1, innerIdx: -1 };
+      const titleMatch = seg.text.match(/data-note-title="([^"]*)"/);
+      if (titleMatch && titleMatch[1]) { bp.titleIdx = pieces.length; pieces.push(titleMatch[1]); }
+      const contentMatch = seg.text.match(/data-note-content="([^"]*)"/);
+      if (contentMatch && contentMatch[1]) { bp.contentIdx = pieces.length; pieces.push(contentMatch[1]); }
+      const innerMatch = seg.text.match(/>([^<]+)<\/span>$/);
+      if (innerMatch && innerMatch[1]) { bp.innerIdx = pieces.length; pieces.push(innerMatch[1]); }
+      blueprints.push(bp);
+    }
+    else if (seg.type === 'link') {
+      blueprints.push({ type: 'link', url: seg.linkUrl, textIdx: pieces.length });
+      pieces.push(seg.linkText);
+    }
+    else if (seg.type === 'translate') {
+      const lines = seg.text.split('\n');
+      const lineInfos = [];
+      for (const line of lines) {
+        if (!line.trim()) { lineInfos.push({ empty: true, original: line }); continue; }
+        const tableSep = line.match(/^(\|[\s:]*-{2,}[\s:]*)+\|?\s*$/);
+        if (tableSep) { lineInfos.push({ empty: true, original: line }); continue; }
+        const pm = line.match(/^(\s*(?:#{1,6}\s+|[-*+]\s+|\d+\.\s+|>\s*|\|\s*))(.*)/);
+        if (pm && pm[1].trimStart().startsWith('|')) {
+          // Table row — each cell is a separate piece
+          const cells = line.split('|');
+          const cellInfos = cells.map(cell => {
+            if (cell.trim()) {
+              const ci = { hasContent: true, idx: pieces.length };
+              pieces.push(cell.trim());
+              return ci;
+            }
+            return { hasContent: false, original: cell };
+          });
+          lineInfos.push({ isTable: true, cells: cellInfos });
+        } else if (pm && pm[2].trim()) {
+          const isHeading = /^#{1,6}\s+$/.test(pm[1]);
+          lineInfos.push({ prefix: pm[1], idx: pieces.length, isHeading, original: isHeading ? pm[2] : undefined });
+          pieces.push(pm[2]);
+        } else if (line.trim()) {
+          lineInfos.push({ prefix: '', idx: pieces.length });
+          pieces.push(line);
+        } else {
+          lineInfos.push({ empty: true, original: line });
+        }
+      }
+      blueprints.push({ type: 'text', lineInfos });
+    }
+    else {
+      blueprints.push({ type: 'literal', text: seg.text });
+    }
+  }
+
+  // Phase 2: Check piece cache, only translate uncached pieces
+  const translated = new Array(pieces.length);
+  const uncachedIndices = [];
+  const uncachedTexts = [];
+
+  for (let i = 0; i < pieces.length; i++) {
+    const text = pieces[i];
+    if (!text || !text.trim()) {
+      translated[i] = text || '';
+      continue;
+    }
+    const cached = translationPieceCache.get(text);
+    if (cached !== undefined) {
+      translated[i] = cached;
+    } else {
+      uncachedIndices.push(i);
+      uncachedTexts.push(text);
+    }
+  }
+
+  if (uncachedTexts.length > 0) {
+    const newTranslations = await batchGoogleTranslate(uncachedTexts, targetLang);
+    for (let j = 0; j < uncachedIndices.length; j++) {
+      const pi = uncachedIndices[j];
+      translated[pi] = newTranslations[j];
+      translationPieceCache.set(pieces[pi], newTranslations[j]);
+    }
+  }
+
+  // Phase 3: Reconstruct document from blueprints
+  const result = [];
+  for (const bp of blueprints) {
+    switch (bp.type) {
+      case 'literal':
+        result.push(bp.text);
+        break;
+      case 'note-span': {
+        let html = bp.html;
+        if (bp.titleIdx >= 0) html = html.replace(/data-note-title="[^"]*"/, `data-note-title="${translated[bp.titleIdx].replace(/"/g, '&quot;')}"`);
+        if (bp.contentIdx >= 0) html = html.replace(/data-note-content="[^"]*"/, `data-note-content="${translated[bp.contentIdx].replace(/"/g, '&quot;')}"`);
+        if (bp.innerIdx >= 0) html = html.replace(/>([^<]+)<\/span>$/, `>${translated[bp.innerIdx]}</span>`);
+        result.push(html);
+        break;
+      }
+      case 'link':
+        result.push(`[${translated[bp.textIdx]}](${bp.url})`);
+        break;
+      case 'text':
+        result.push(bp.lineInfos.map(li => {
+          if (li.empty) return li.original;
+          if (li.isTable) return li.cells.map(c => c.hasContent ? ' ' + translated[c.idx] + ' ' : c.original).join('|');
+          if (li.isHeading) return li.prefix + translated[li.idx];
+          return li.prefix + translated[li.idx];
+        }).join('\n'));
+        break;
+    }
+  }
+
+  return result.join('');
+}
+
 // Process markdown with Mermaid support
 async function renderMarkdown(content) {
   // Show loading screen
@@ -1421,10 +2477,23 @@ async function renderMarkdown(content) {
   // Parse markdown with marked (allows HTML)
   let html = marked.parse(content);
 
+  // Protect data URI images from DOMPurify (it strips data: URIs by default)
+  const dataUriStore = [];
+  html = html.replace(/<img([^>]*?)src\s*=\s*"(data:image\/[^"]+)"([^>]*?)>/gi, (match, before, dataUri, after) => {
+    const idx = dataUriStore.length;
+    dataUriStore.push(dataUri);
+    return `<img${before}src="https://data-uri-placeholder.local/${idx}"${after}>`;
+  });
+
   // Sanitize HTML but allow most tags for rich content
   html = DOMPurify.sanitize(html, {
     ADD_TAGS: ['iframe', 'style'],
-    ADD_ATTR: ['target', 'style', 'class', 'id']
+    ADD_ATTR: ['target', 'style', 'class', 'id', 'data-note-id', 'data-note-title', 'data-note-content']
+  });
+
+  // Restore data URI images after sanitization
+  dataUriStore.forEach((uri, idx) => {
+    html = html.replace(`https://data-uri-placeholder.local/${idx}`, uri);
   });
 
   // Replace placeholders with mermaid divs
@@ -1569,12 +2638,16 @@ async function renderMarkdown(content) {
         addCodeBlockCopyButtons();
         // Hide loading screen after syntax highlighting is done
         hideLoadingScreen();
+        if (notesPanel.classList.contains('visible')) updateNotesList();
+        updateShowNotesToggleVisibility();
       });
     } else {
       // Add copy buttons even without Prism
       addCodeBlockCopyButtons();
       // Hide loading screen if no syntax highlighting needed
       hideLoadingScreen();
+      if (notesPanel.classList.contains('visible')) updateNotesList();
+      updateShowNotesToggleVisibility();
     }
   } catch (error) {
     console.error('Error rendering markdown:', error);
@@ -1694,7 +2767,7 @@ function addCodeBlockCopyButtons() {
         }, 2000);
       } catch (err) {
         console.error('Failed to copy:', err);
-        showNotification('Failed to copy to clipboard', 2000);
+        showNotification(i18n('notif.copyFailed'), 2000);
       }
     });
 
@@ -1750,6 +2823,9 @@ function extractTableData(table) {
 
 // Handle file opened
 ipcRenderer.on('file-opened', async (event, data) => {
+  // Reset translation state and start background translation
+  resetTranslationState();
+
   // Store original markdown for editor
   originalMarkdown = data.content;
 
@@ -1795,6 +2871,9 @@ ipcRenderer.on('file-opened', async (event, data) => {
     // Fallback for single file (backwards compatibility)
     saveRecentFile(data.path);
   }
+
+  // Start background translation immediately
+  startBackgroundTranslation();
 });
 
 // Handle file changed externally
@@ -1813,28 +2892,29 @@ ipcRenderer.on('file-changed-externally', (event, data) => {
 // Handle file deleted
 ipcRenderer.on('file-deleted', (event, data) => {
   console.log('File deleted:', data.path);
-  showNotification('Warning: The opened file has been deleted from disk', 5000);
+  showNotification(i18n('notif.fileDeleted'), 5000);
   isFileTrackingActive = false;
 });
 
 // Handle file not found (from recent files or links)
 ipcRenderer.on('file-not-found', (event, data) => {
   console.log('File not found:', data.path);
-  showNotification(`File not found: ${path.basename(data.path)}`, 4000);
+  showNotification(i18n('notif.fileNotFound') + path.basename(data.path), 4000);
 
   // Remove from recent files if it exists there
   let recentFiles = getRecentFiles();
   const filtered = recentFiles.filter(f => f.path !== data.path);
   if (filtered.length !== recentFiles.length) {
     localStorage.setItem('recentFiles', JSON.stringify(filtered));
-    updateRecentFilesList();
+    updateFileMenuRecent();
   }
 });
 
 // Handle file reload result
 ipcRenderer.on('file-reload-result', async (event, data) => {
   if (data.success) {
-    // Store new content as original
+    // Reset translation and store new content
+    resetTranslationState();
     originalMarkdown = data.content;
 
     // If in edit mode, update editor content
@@ -1847,9 +2927,12 @@ ipcRenderer.on('file-reload-result', async (event, data) => {
     // Re-render the markdown
     await renderMarkdown(data.content);
 
-    showNotification('File reloaded successfully', 2000);
+    // Start background translation
+    startBackgroundTranslation();
+
+    showNotification(i18n('notif.fileReloaded'), 2000);
   } else {
-    showNotification(`Failed to reload file: ${data.error}`, 4000);
+    showNotification(i18n('notif.reloadFailed') + data.error, 4000);
   }
 });
 
@@ -1859,7 +2942,7 @@ ipcRenderer.on('external-file-open-request', (event, data) => {
 
   // Check for unsaved changes
   if (isEditMode && hasUnsavedChanges) {
-    if (!confirm(`You have unsaved changes. Discard changes and open "${filePath.split(/[\\/]/).pop()}"?`)) {
+    if (!confirm(i18n('confirm.unsavedOpenFile', {name: filePath.split(/[\\/]/).pop()}))) {
       return; // User canceled, don't open the new file
     }
   }
@@ -1913,8 +2996,8 @@ ipcRenderer.on('update-status', (event, data) => {
 
     case 'available':
       pendingUpdateVersion = data.version;
-      updateTitle.textContent = 'Update Available';
-      updateMessage.textContent = `Version ${data.version} is ready to download`;
+      updateTitle.textContent = i18n('updateAvailable');
+      updateMessage.textContent = i18n('update.versionReady', {version: data.version});
       updateProgress.style.display = 'none';
       downloadUpdateBtn.style.display = 'flex';
       installUpdateBtn.style.display = 'none';
@@ -1928,7 +3011,7 @@ ipcRenderer.on('update-status', (event, data) => {
       break;
 
     case 'downloading':
-      updateTitle.textContent = 'Downloading Update';
+      updateTitle.textContent = i18n('update.downloading');
       updateMessage.textContent = `${formatBytes(data.transferred)} / ${formatBytes(data.total)}`;
       updateProgress.style.display = 'flex';
       progressFill.style.width = `${data.percent}%`;
@@ -1939,8 +3022,8 @@ ipcRenderer.on('update-status', (event, data) => {
       break;
 
     case 'downloaded':
-      updateTitle.textContent = 'Update Ready';
-      updateMessage.textContent = `Version ${data.version} is ready to install`;
+      updateTitle.textContent = i18n('update.ready');
+      updateMessage.textContent = i18n('update.versionInstall', {version: data.version});
       updateProgress.style.display = 'none';
       downloadUpdateBtn.style.display = 'none';
       installUpdateBtn.style.display = 'flex';
@@ -1950,13 +3033,13 @@ ipcRenderer.on('update-status', (event, data) => {
       break;
 
     case 'error':
-      updateTitle.textContent = 'Update Error';
-      updateMessage.textContent = data.error || 'Failed to check for updates';
+      updateTitle.textContent = i18n('update.error');
+      updateMessage.textContent = data.error || i18n('update.failed');
       updateProgress.style.display = 'none';
       downloadUpdateBtn.style.display = 'none';
       installUpdateBtn.style.display = 'none';
       laterUpdateBtn.style.display = 'block';
-      laterUpdateBtn.textContent = 'Dismiss';
+      laterUpdateBtn.textContent = i18n('dismiss');
       updateActions.style.display = 'flex';
       showUpdateToast();
       break;
@@ -1979,12 +3062,12 @@ installUpdateBtn.addEventListener('click', () => {
 
 laterUpdateBtn.addEventListener('click', () => {
   hideUpdateToast();
-  laterUpdateBtn.textContent = 'Later'; // Reset text
+  laterUpdateBtn.textContent = i18n('later'); // Reset text
 });
 
 closeUpdateToast.addEventListener('click', () => {
   hideUpdateToast();
-  laterUpdateBtn.textContent = 'Later'; // Reset text
+  laterUpdateBtn.textContent = i18n('later'); // Reset text
 });
 
 // ============================================
@@ -1999,11 +3082,45 @@ const ctxItalic = document.getElementById('ctxItalic');
 const ctxCode = document.getElementById('ctxCode');
 const ctxList = document.getElementById('ctxList');
 const ctxRemoveFormat = document.getElementById('ctxRemoveFormat');
+const ctxEditText = document.getElementById('ctxEditText');
+const ctxAddNote = document.getElementById('ctxAddNote');
+const ctxEditNote = document.getElementById('ctxEditNote');
+const ctxDeleteNote = document.getElementById('ctxDeleteNote');
+const ctxFindNote = document.getElementById('ctxFindNote');
+const ctxInsertImage = document.getElementById('ctxInsertImage');
+const ctxDeleteImage = document.getElementById('ctxDeleteImage');
 const ctxSelectAll = document.getElementById('ctxSelectAll');
+
+// Note dialog elements
+const noteDialogOverlay = document.getElementById('noteDialogOverlay');
+const noteDialogTitle = document.getElementById('noteDialogTitle');
+const noteDialogClose = document.getElementById('noteDialogClose');
+const noteTitleInput = document.getElementById('noteTitle');
+const noteContentInput = document.getElementById('noteContent');
+const noteSaveBtn = document.getElementById('noteSaveBtn');
+const noteCancelBtn = document.getElementById('noteCancelBtn');
+const noteColorOptions = document.querySelectorAll('.note-color-option');
+const noteLabelInput = document.getElementById('noteLabelName');
+const noteTooltip = document.getElementById('noteTooltip');
+const noteDialogIdSpan = document.getElementById('noteDialogId');
+
+// Find Note dialog elements
+const findNoteOverlay = document.getElementById('findNoteOverlay');
+const findNoteInput = document.getElementById('findNoteInput');
+const findNoteBtn = document.getElementById('findNoteBtn');
+const findNoteCancelBtn = document.getElementById('findNoteCancelBtn');
+const findNoteClose = document.getElementById('findNoteClose');
 
 // Store selection when context menu opens
 let savedSelection = null;
 let savedSelectionHtml = null;
+let savedSelectionOccurrence = 0;
+let rightClickTarget = null;
+let rightClickY = 0;
+let rightClickX = 0;
+let rightClickCaretInfo = null;
+let rightClickLabelPos = null; // {left, top} relative to viewer
+let savedCursorPosition = null;
 
 function showContextMenu(x, y) {
   // Get and save selected text
@@ -2019,9 +3136,27 @@ function showContextMenu(x, y) {
     const tempDiv = document.createElement('div');
     tempDiv.appendChild(range.cloneContents());
     savedSelectionHtml = tempDiv.innerHTML;
+
+    // Count which occurrence of the selected text this is (for tables with duplicate values)
+    try {
+      const preRange = document.createRange();
+      preRange.selectNodeContents(viewer);
+      preRange.setEnd(range.startContainer, range.startOffset);
+      const textBefore = preRange.toString();
+      let count = 0;
+      let pos = 0;
+      while ((pos = textBefore.indexOf(savedSelection, pos)) !== -1) {
+        count++;
+        pos += savedSelection.length;
+      }
+      savedSelectionOccurrence = count;
+    } catch (e) {
+      savedSelectionOccurrence = 0;
+    }
   } else {
     savedSelection = null;
     savedSelectionHtml = null;
+    savedSelectionOccurrence = 0;
   }
 
   // Enable/disable copy items based on selection
@@ -2034,18 +3169,60 @@ function showContextMenu(x, y) {
   }
 
   // Enable/disable formatting options (enabled when text is selected in any mode)
+  // Check if right-clicked on an image (for note adding)
+  const clickedImgForNote = rightClickTarget && (rightClickTarget.tagName === 'IMG' ? rightClickTarget : rightClickTarget.closest?.('img'));
+
   if (hasSelection) {
     ctxBold.classList.remove('disabled');
     ctxItalic.classList.remove('disabled');
     ctxCode.classList.remove('disabled');
     ctxList.classList.remove('disabled');
     ctxRemoveFormat.classList.remove('disabled');
+    ctxAddNote.classList.remove('disabled');
   } else {
     ctxBold.classList.add('disabled');
     ctxItalic.classList.add('disabled');
     ctxCode.classList.add('disabled');
     ctxList.classList.add('disabled');
     ctxRemoveFormat.classList.add('disabled');
+    // Enable Add Note when a file is open (label-based, no selection needed)
+    if (currentFilePath) {
+      ctxAddNote.classList.remove('disabled');
+    } else {
+      ctxAddNote.classList.add('disabled');
+    }
+  }
+
+  // Show/hide Edit Text based on selection and file open
+  if (hasSelection && currentFilePath) {
+    ctxEditText.style.display = '';
+  } else {
+    ctxEditText.style.display = 'none';
+  }
+
+  // Show/hide Edit Note / Delete Note based on whether a noted element was right-clicked
+  const clickedNote = rightClickTarget && rightClickTarget.closest?.('.noted-text, .noted-image, .note-label');
+  if (clickedNote) {
+    ctxEditNote.style.display = '';
+    ctxDeleteNote.style.display = '';
+  } else {
+    ctxEditNote.style.display = 'none';
+    ctxDeleteNote.style.display = 'none';
+  }
+
+  // Show/hide "Find Note" based on whether a file is open
+  if (currentFilePath) {
+    ctxFindNote.style.display = '';
+  } else {
+    ctxFindNote.style.display = 'none';
+  }
+
+  // Show/hide "Delete Image" based on whether an image was right-clicked
+  const clickedImg = rightClickTarget && (rightClickTarget.tagName === 'IMG' ? rightClickTarget : rightClickTarget.closest?.('img'));
+  if (clickedImg && clickedImg.src && clickedImg.src.startsWith('data:')) {
+    ctxDeleteImage.style.display = '';
+  } else {
+    ctxDeleteImage.style.display = 'none';
   }
 
   // Use helper for positioning (handles screen edge adjustment)
@@ -2059,12 +3236,42 @@ function hideContextMenu() {
 // Show context menu on right-click in viewer area
 viewer.addEventListener('contextmenu', (e) => {
   e.preventDefault();
+  rightClickTarget = e.target;
+  rightClickY = e.clientY;
+  rightClickX = e.clientX;
+
+  // Calculate label position relative to the viewer element
+  const viewerRect = viewer.getBoundingClientRect();
+  rightClickLabelPos = {
+    left: e.clientX - viewerRect.left,
+    top: e.clientY - viewerRect.top
+  };
+
+  // Capture exact caret position at the right-click point
+  rightClickCaretInfo = null;
+  if (document.caretRangeFromPoint) {
+    const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+    if (range && range.startContainer) {
+      const node = range.startContainer;
+      const offset = range.startOffset;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const fullText = node.textContent;
+        const textBefore = fullText.substring(Math.max(0, offset - 30), offset);
+        const textAfter = fullText.substring(offset, Math.min(fullText.length, offset + 30));
+        rightClickCaretInfo = { textBefore, textAfter, offset, fullText };
+      }
+    }
+  }
+
   showContextMenu(e.clientX, e.clientY);
 });
 
 // Also allow context menu in editor
 markdownEditor.addEventListener('contextmenu', (e) => {
   e.preventDefault();
+  rightClickTarget = e.target;
+  rightClickY = e.clientY;
+  savedCursorPosition = markdownEditor.selectionStart;
   showContextMenu(e.clientX, e.clientY);
 });
 
@@ -2099,7 +3306,7 @@ ctxCopy.addEventListener('click', async (e) => {
   hideContextMenu();
 
   if (!savedSelection || !savedSelection.trim()) {
-    showNotification('No text selected', 1500);
+    showNotification(i18n('notif.noTextSelected'), 1500);
     return;
   }
 
@@ -2109,10 +3316,10 @@ ctxCopy.addEventListener('click', async (e) => {
     // Try simple plain text first
     await navigator.clipboard.writeText(savedSelection);
     console.log('Copy successful');
-    showNotification('Copied to clipboard', 1500);
+    showNotification(i18n('notif.copied'), 1500);
   } catch (err) {
     console.error('Copy failed:', err);
-    showNotification('Failed to copy: ' + err.message, 3000);
+    showNotification(i18n('notif.copyError') + err.message, 3000);
   }
 });
 
@@ -2129,7 +3336,7 @@ ctxCopyPlain.addEventListener('click', async (e) => {
   hideContextMenu();
 
   if (!savedSelection || !savedSelection.trim()) {
-    showNotification('No text selected', 1500);
+    showNotification(i18n('notif.noTextSelected'), 1500);
     return;
   }
 
@@ -2138,10 +3345,10 @@ ctxCopyPlain.addEventListener('click', async (e) => {
   try {
     await navigator.clipboard.writeText(savedSelection);
     console.log('Copy plain successful');
-    showNotification('Copied as plain text', 1500);
+    showNotification(i18n('notif.copiedPlain'), 1500);
   } catch (err) {
     console.error('Copy plain failed:', err);
-    showNotification('Failed to copy: ' + err.message, 3000);
+    showNotification(i18n('notif.copyError') + err.message, 3000);
   }
 });
 
@@ -2200,11 +3407,11 @@ function applyMarkdownFormat(wrapper, multiline = false) {
       renderMarkdown(markdownEditor.value);
     }, PREVIEW_DEBOUNCE_DELAY);
   } else {
-    // View mode: Apply formatting to original markdown and re-render
-    const markdownContent = originalMarkdown;
+    // View mode: Apply formatting to active markdown and re-render
+    const markdownContent = getActiveMarkdown();
 
-    // Find the selected text in the markdown (first occurrence)
-    const textIndex = markdownContent.indexOf(savedSelection);
+    // Find the correct occurrence of selected text in markdown
+    const textIndex = findNthOccurrence(markdownContent, savedSelection, savedSelectionOccurrence);
 
     if (textIndex !== -1) {
       // Save current scroll position
@@ -2216,25 +3423,27 @@ function applyMarkdownFormat(wrapper, multiline = false) {
         formattedText +
         markdownContent.substring(textIndex + savedSelection.length);
 
-      // Update the markdown
-      originalMarkdown = newContent;
-
-      // Re-render
-      renderMarkdown(newContent).then(() => {
-        // Restore scroll position after render
-        contentWrapper.scrollTop = scrollPosition;
+      // Update both markdowns
+      commitViewModeEdit(newContent, scrollPosition, () => {
+        // Sync formatting to originalMarkdown
+        const origText = findOriginalForTranslated(savedSelection);
+        if (origText) {
+          const oi = findNthOccurrence(originalMarkdown, origText, savedSelectionOccurrence);
+          if (oi !== -1) {
+            let origFormatted;
+            if (formattedText.startsWith('- ')) {
+              const lines = origText.split('\n');
+              origFormatted = lines.map(line => line.trim() ? '- ' + line : line).join('\n');
+            } else {
+              const wrapper = formattedText.substring(0, formattedText.indexOf(savedSelection));
+              origFormatted = wrapper + origText + wrapper;
+            }
+            originalMarkdown = originalMarkdown.substring(0, oi) + origFormatted + originalMarkdown.substring(oi + origText.length);
+          }
+        }
       });
-
-      // Mark as unsaved
-      hasUnsavedChanges = true;
-
-      // If in edit mode, update editor too
-      if (isEditMode) {
-        markdownEditor.value = newContent;
-        updateUnsavedIndicator();
-      }
     } else {
-      showNotification('Could not find text in source', 2000);
+      showNotification(i18n('notif.textNotFound'), 2000);
     }
   }
 }
@@ -2244,7 +3453,7 @@ ctxBold.addEventListener('click', () => {
   hideContextMenu();
   applyMarkdownFormat('**');
   if (isEditMode) {
-    showNotification('Applied bold formatting', 1500);
+    showNotification(i18n('notif.boldApplied'), 1500);
   }
 });
 
@@ -2253,7 +3462,7 @@ ctxItalic.addEventListener('click', () => {
   hideContextMenu();
   applyMarkdownFormat('*');
   if (isEditMode) {
-    showNotification('Applied italic formatting', 1500);
+    showNotification(i18n('notif.italicApplied'), 1500);
   }
 });
 
@@ -2299,31 +3508,34 @@ ctxCode.addEventListener('click', () => {
       renderMarkdown(markdownEditor.value);
     }, PREVIEW_DEBOUNCE_DELAY);
 
-    showNotification('Applied code formatting', 1500);
+    showNotification(i18n('notif.codeApplied'), 1500);
   } else {
-    // View mode: Apply formatting to original markdown and re-render
-    const markdownContent = originalMarkdown;
-    const textIndex = markdownContent.indexOf(savedSelection);
+    // View mode: Apply formatting to active markdown and re-render
+    const markdownContent = getActiveMarkdown();
+    const textIndex = findNthOccurrence(markdownContent, savedSelection, savedSelectionOccurrence);
 
     if (textIndex !== -1) {
-      // Save current scroll position
       const scrollPosition = contentWrapper.scrollTop;
-
       const newContent =
         markdownContent.substring(0, textIndex) +
         formattedText +
         markdownContent.substring(textIndex + savedSelection.length);
 
-      originalMarkdown = newContent;
-      renderMarkdown(newContent).then(() => {
-        // Restore scroll position after render
-        contentWrapper.scrollTop = scrollPosition;
+      commitViewModeEdit(newContent, scrollPosition, () => {
+        const origText = findOriginalForTranslated(savedSelection);
+        if (origText) {
+          const oi = findNthOccurrence(originalMarkdown, origText, savedSelectionOccurrence);
+          if (oi !== -1) {
+            const isML = origText.includes('\n');
+            const origFmt = isML ? ('```\n' + origText + '\n```') : ('`' + origText + '`');
+            originalMarkdown = originalMarkdown.substring(0, oi) + origFmt + originalMarkdown.substring(oi + origText.length);
+          }
+        }
       });
-      hasUnsavedChanges = true;
 
-      showNotification('Applied code formatting', 1500);
+      showNotification(i18n('notif.codeApplied'), 1500);
     } else {
-      showNotification('Could not find text in source', 2000);
+      showNotification(i18n('notif.textNotFound'), 2000);
     }
   }
 });
@@ -2333,7 +3545,7 @@ ctxList.addEventListener('click', () => {
   hideContextMenu();
   applyMarkdownFormat('- ', true);
   if (isEditMode) {
-    showNotification('Applied list formatting', 1500);
+    showNotification(i18n('notif.listApplied'), 1500);
   }
 });
 
@@ -2378,10 +3590,10 @@ ctxRemoveFormat.addEventListener('click', () => {
       renderMarkdown(markdownEditor.value);
     }, PREVIEW_DEBOUNCE_DELAY);
 
-    showNotification('Removed formatting', 1500);
+    showNotification(i18n('notif.formatRemoved'), 1500);
   } else {
     // View mode: Find text with various markdown formatting patterns
-    const markdownContent = originalMarkdown;
+    const markdownContent = getActiveMarkdown();
     const plainText = savedSelection;
 
     // Try to find the text with different markdown formatting
@@ -2412,26 +3624,1287 @@ ctxRemoveFormat.addEventListener('click', () => {
     }
 
     if (foundIndex !== -1) {
-      // Save current scroll position
       const scrollPosition = contentWrapper.scrollTop;
-
       const newContent =
         markdownContent.substring(0, foundIndex) +
         plainText +
         markdownContent.substring(foundIndex + foundPattern.length);
 
-      originalMarkdown = newContent;
-      renderMarkdown(newContent).then(() => {
-        // Restore scroll position after render
-        contentWrapper.scrollTop = scrollPosition;
+      commitViewModeEdit(newContent, scrollPosition, () => {
+        // Sync to originalMarkdown: remove formatting of corresponding original text
+        const origText = findOriginalForTranslated(plainText);
+        if (origText) {
+          const origPatterns = [`**${origText}**`, `*${origText}*`, `\`${origText}\``, `***${origText}***`];
+          for (const op of origPatterns) {
+            const oi = originalMarkdown.indexOf(op);
+            if (oi !== -1) {
+              originalMarkdown = originalMarkdown.substring(0, oi) + origText + originalMarkdown.substring(oi + op.length);
+              break;
+            }
+          }
+        }
       });
-      hasUnsavedChanges = true;
 
-      showNotification('Removed formatting', 1500);
+      showNotification(i18n('notif.formatRemoved'), 1500);
     } else {
-      showNotification('Could not find text in source', 2000);
+      showNotification(i18n('notif.textNotFound'), 2000);
     }
   }
+});
+
+// ============================================
+// Add Note Feature
+// ============================================
+
+let noteSelectedColor = '#ff6600';
+let editingNoteElement = null;
+
+// Helper: get next available note ID by scanning existing notes in source
+// Wrap text with a note span while preserving markdown line-level syntax.
+// Returns { prefix, wrappedContent } where prefix stays outside the span.
+// For multi-line selections, wraps each line's content individually.
+function wrapWithNoteSpan(text, noteId, escTitle, escContent, color) {
+  const spanOpen = `<span class="noted-text" data-note-id="${noteId}" data-note-title="${escTitle}" data-note-content="${escContent}" style="color:${color}">`;
+  const spanClose = '</span>';
+
+  // Regex to match markdown line prefixes: headings, list items, blockquotes, hr
+  const prefixRe = /^(#{1,6}\s+|(?:[-*+]|\d+\.)\s+|>\s*|={3,}|-{3,}|\*{3,})/;
+
+  const lines = text.split('\n');
+  const wrappedLines = lines.map((line, idx) => {
+    const m = line.match(prefixRe);
+    if (m) {
+      const prefix = m[1];
+      const content = line.slice(prefix.length);
+      // Only wrap if there's actual content after prefix
+      if (content.length > 0) {
+        return prefix + spanOpen + content + spanClose;
+      }
+      return line;
+    }
+    // For non-prefix lines, wrap entire line (but not empty lines)
+    if (line.trim().length > 0) {
+      // Also preserve inline markdown wrappers like **bold**, *italic*, etc.
+      // by wrapping the whole line — marked parser handles inline HTML fine
+      return spanOpen + line + spanClose;
+    }
+    return line;
+  });
+
+  return wrappedLines.join('\n');
+}
+
+// Find the Nth occurrence (0-based) of searchStr in source
+function findNthOccurrence(source, searchStr, n) {
+  let pos = -1;
+  for (let i = 0; i <= n; i++) {
+    pos = source.indexOf(searchStr, pos + 1);
+    if (pos === -1) return -1;
+  }
+  return pos;
+}
+
+function getNextNoteId(source) {
+  let maxId = 0;
+  const idMatches = source.matchAll(/data-note-id="(\d+)"/g);
+  for (const m of idMatches) {
+    const id = parseInt(m[1], 10);
+    if (id > maxId) maxId = id;
+  }
+  return maxId + 1;
+}
+
+// Helper: find a note span in markdown source using regex (browser normalizes outerHTML so indexOf fails)
+function findNoteSpanInSource(source, noteEl) {
+  const rawTitle = noteEl.getAttribute('data-note-title') || '';
+  const rawContent = noteEl.getAttribute('data-note-content') || '';
+
+  // Re-escape the same way they were escaped when creating the note
+  const srcTitle = rawTitle.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const srcContent = rawContent.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const className = noteEl.classList.contains('note-label') ? 'note-label'
+    : noteEl.classList.contains('noted-image') ? 'noted-image' : 'noted-text';
+
+  // data-note-id is optional (old notes don't have it)
+  const regex = new RegExp(
+    `<span class="${className}"(?: data-note-id="\\d+")? data-note-title="${escapeRegex(srcTitle)}" data-note-content="${escapeRegex(srcContent)}" style="[^"]*">([\\s\\S]*?)</span>`
+  );
+
+  return source.match(regex);
+}
+
+function openNoteDialog() {
+  // Reset dialog
+  noteLabelInput.value = '';
+  noteTitleInput.value = '';
+  noteContentInput.value = '';
+  noteSelectedColor = '#ff6600';
+  editingNoteElement = null;
+  noteDialogTitle.textContent = i18n('addNote');
+  noteColorOptions.forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.color === noteSelectedColor);
+  });
+  // Show/hide label row based on whether text is selected
+  const noteLabelRow = document.getElementById('noteLabelRow');
+  const hasSelection = savedSelection && savedSelection.length > 0;
+  noteLabelRow.style.display = hasSelection ? 'none' : '';
+
+  noteDialogIdSpan.textContent = '';
+
+  noteDialogOverlay.classList.add('visible');
+  if (hasSelection) {
+    noteTitleInput.focus();
+  } else {
+    noteLabelInput.focus();
+  }
+}
+
+function openNoteDialogForEdit(noteEl) {
+  editingNoteElement = noteEl;
+  noteDialogTitle.textContent = i18n('editNote');
+
+  // Read existing values from the note element
+  const title = noteEl.getAttribute('data-note-title') || '';
+  const content = noteEl.getAttribute('data-note-content') || '';
+  // Unescape HTML entities for editing
+  const tempEl = document.createElement('textarea');
+  tempEl.innerHTML = title;
+  noteTitleInput.value = tempEl.value;
+  tempEl.innerHTML = content;
+  noteContentInput.value = tempEl.value;
+
+  // Handle label input for note-label elements
+  const isLabel = noteEl.classList.contains('note-label');
+  const noteLabelRow = document.getElementById('noteLabelRow');
+  if (isLabel) {
+    noteLabelInput.value = noteEl.textContent;
+    noteLabelRow.style.display = '';
+  } else {
+    noteLabelInput.value = '';
+    noteLabelRow.style.display = 'none';
+  }
+
+  // Detect color from the element - try attribute first, then computed style
+  const isImage = noteEl.classList.contains('noted-image');
+  if (isLabel) {
+    // Extract color from background-color hex
+    const styleAttr = noteEl.getAttribute('style') || '';
+    const bgHexMatch = styleAttr.match(/background-color:\s*(#[0-9a-fA-F]{6})/);
+    if (bgHexMatch) {
+      noteSelectedColor = bgHexMatch[1];
+    }
+  } else if (isImage) {
+    // Extract color from background-color rgba
+    const styleAttr = noteEl.getAttribute('style') || '';
+    const bgMatch = styleAttr.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (bgMatch) {
+      const r = parseInt(bgMatch[1]).toString(16).padStart(2, '0');
+      const g = parseInt(bgMatch[2]).toString(16).padStart(2, '0');
+      const b = parseInt(bgMatch[3]).toString(16).padStart(2, '0');
+      noteSelectedColor = `#${r}${g}${b}`;
+    }
+  } else {
+    // Try hex from attribute first
+    const styleAttr = noteEl.getAttribute('style') || '';
+    const hexMatch = styleAttr.match(/color:\s*(#[0-9a-fA-F]{6})/);
+    if (hexMatch) {
+      noteSelectedColor = hexMatch[1];
+    } else {
+      // Fallback: parse computed rgb color
+      const computed = window.getComputedStyle(noteEl).color;
+      const rgbMatch = computed.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+      if (rgbMatch) {
+        const r = parseInt(rgbMatch[1]).toString(16).padStart(2, '0');
+        const g = parseInt(rgbMatch[2]).toString(16).padStart(2, '0');
+        const b = parseInt(rgbMatch[3]).toString(16).padStart(2, '0');
+        noteSelectedColor = `#${r}${g}${b}`;
+      }
+    }
+  }
+
+  noteColorOptions.forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.color === noteSelectedColor);
+  });
+
+  noteDialogIdSpan.textContent = '';
+
+  noteDialogOverlay.classList.add('visible');
+  noteLabelInput.focus();
+}
+
+function closeNoteDialog() {
+  noteDialogOverlay.classList.remove('visible');
+  editingNoteElement = null;
+}
+
+// Color picker
+noteColorOptions.forEach(btn => {
+  btn.addEventListener('click', () => {
+    noteColorOptions.forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    noteSelectedColor = btn.dataset.color;
+  });
+});
+
+// Close dialog
+noteDialogClose.addEventListener('click', closeNoteDialog);
+noteCancelBtn.addEventListener('click', closeNoteDialog);
+noteDialogOverlay.addEventListener('click', (e) => {
+  if (e.target === noteDialogOverlay) closeNoteDialog();
+});
+
+// Add Note context menu click
+ctxAddNote.addEventListener('click', () => {
+  if (ctxAddNote.classList.contains('disabled')) return;
+  if (!currentFilePath) return;
+  hideContextMenu();
+  openNoteDialog();
+});
+
+// Edit Note context menu click
+ctxEditNote.addEventListener('click', () => {
+  hideContextMenu();
+  const noteEl = rightClickTarget && rightClickTarget.closest('.noted-text, .noted-image, .note-label');
+  if (!noteEl || !currentFilePath) return;
+  openNoteDialogForEdit(noteEl);
+});
+
+// Delete Note context menu click
+ctxDeleteNote.addEventListener('click', () => {
+  hideContextMenu();
+  const noteEl = rightClickTarget && rightClickTarget.closest('.noted-text, .noted-image, .note-label');
+  if (!noteEl || !currentFilePath) return;
+
+  const isLabel = noteEl.classList.contains('note-label');
+
+  if (isEditMode) {
+    const editorVal = markdownEditor.value;
+    const match = findNoteSpanInSource(editorVal, noteEl);
+    if (match) {
+      // For labels, remove the entire span (no original content to restore)
+      // For noted-text/noted-image, restore inner content
+      const replacement = isLabel ? '' : match[1];
+      markdownEditor.value =
+        editorVal.substring(0, match.index) +
+        replacement +
+        editorVal.substring(match.index + match[0].length);
+
+      hasUnsavedChanges = true;
+      updateUnsavedIndicator();
+
+      clearTimeout(previewDebounceTimer);
+      previewDebounceTimer = setTimeout(() => {
+        renderMarkdown(markdownEditor.value);
+      }, 300);
+
+      showNotification(i18n('notif.noteRemoved'), 1500);
+    } else {
+      showNotification(i18n('notif.noteNotFound'), 2000);
+    }
+  } else {
+    // View mode
+    const activeSource = getActiveMarkdown();
+    const match = findNoteSpanInSource(activeSource, noteEl);
+    if (match) {
+      const replacement = isLabel ? '' : match[1];
+      const scrollPosition = contentWrapper.scrollTop;
+      const newContent =
+        activeSource.substring(0, match.index) +
+        replacement +
+        activeSource.substring(match.index + match[0].length);
+
+      commitViewModeEdit(newContent, scrollPosition, () => {
+        // Sync to originalMarkdown: find same note by ID and delete it
+        const nid = noteEl.getAttribute('data-note-id');
+        const origMatch = nid ? findNoteSpanById(originalMarkdown, nid) : findNoteSpanInSource(originalMarkdown, noteEl);
+        if (origMatch) {
+          const origReplacement = isLabel ? '' : origMatch[1];
+          originalMarkdown = originalMarkdown.substring(0, origMatch.index) + origReplacement + originalMarkdown.substring(origMatch.index + origMatch[0].length);
+        }
+      });
+
+      showNotification(i18n('notif.noteRemoved'), 1500);
+    } else {
+      showNotification(i18n('notif.noteNotFound'), 2000);
+    }
+  }
+});
+
+// Save note
+noteSaveBtn.addEventListener('click', () => {
+  const labelName = noteLabelInput.value.trim();
+  const title = noteTitleInput.value.trim();
+  const content = noteContentInput.value.trim();
+
+  // --- Edit mode: update existing note ---
+  if (editingNoteElement) {
+    const isNoteLabel = editingNoteElement.classList.contains('note-label');
+    // For label edits, label name is required; for old notes, title or content is required
+    if (isNoteLabel && !labelName) {
+      showNotification(i18n('notif.enterLabel'), 2000);
+      return;
+    }
+    if (!isNoteLabel && !title && !content) {
+      showNotification(i18n('notif.enterTitleOrContent'), 2000);
+      return;
+    }
+
+    const color = noteSelectedColor;
+    const escTitle = title.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escContent = content.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const isNoteImage = editingNoteElement.classList.contains('noted-image');
+
+    // Preserve existing ID for all note types
+    let noteIdAttr = '';
+    const existingId = editingNoteElement.getAttribute('data-note-id');
+    if (existingId) {
+      noteIdAttr = ` data-note-id="${existingId}"`;
+    }
+
+    // Preserve existing position for labels
+    let labelPosStyle = '';
+    if (isNoteLabel) {
+      const existingStyle = editingNoteElement.getAttribute('style') || '';
+      const leftMatch = existingStyle.match(/left:\s*([^;]+)/);
+      const topMatch = existingStyle.match(/top:\s*([^;]+)/);
+      if (leftMatch && topMatch) {
+        labelPosStyle = `;left:${leftMatch[1].trim()};top:${topMatch[1].trim()}`;
+      }
+    }
+
+    if (isEditMode) {
+      const editorVal = markdownEditor.value;
+      const match = findNoteSpanInSource(editorVal, editingNoteElement);
+      if (match) {
+        let newNoteHtml;
+        if (isNoteLabel) {
+          const escLabel = labelName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          newNoteHtml = `<span class="note-label"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:${color}${labelPosStyle}">${escLabel}</span>`;
+        } else if (isNoteImage) {
+          const innerContent = match[1];
+          const r = parseInt(color.slice(1,3), 16);
+          const g = parseInt(color.slice(3,5), 16);
+          const b = parseInt(color.slice(5,7), 16);
+          newNoteHtml = `<span class="noted-image"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:rgba(${r},${g},${b},0.15)">${innerContent}</span>`;
+        } else {
+          const innerContent = match[1];
+          newNoteHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="color:${color}">${innerContent}</span>`;
+        }
+
+        markdownEditor.value =
+          editorVal.substring(0, match.index) +
+          newNoteHtml +
+          editorVal.substring(match.index + match[0].length);
+
+        hasUnsavedChanges = true;
+        updateUnsavedIndicator();
+
+        clearTimeout(previewDebounceTimer);
+        previewDebounceTimer = setTimeout(() => {
+          renderMarkdown(markdownEditor.value);
+        }, 300);
+
+        showNotification(i18n('notif.noteUpdated'), 1500);
+      } else {
+        showNotification(i18n('notif.noteNotFound'), 2000);
+      }
+    } else {
+      // View mode
+      const activeSource = getActiveMarkdown();
+      const match = findNoteSpanInSource(activeSource, editingNoteElement);
+      if (match) {
+        let newNoteHtml;
+        if (isNoteLabel) {
+          const escLabel = labelName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          newNoteHtml = `<span class="note-label"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:${color}${labelPosStyle}">${escLabel}</span>`;
+        } else if (isNoteImage) {
+          const innerContent = match[1];
+          const r = parseInt(color.slice(1,3), 16);
+          const g = parseInt(color.slice(3,5), 16);
+          const b = parseInt(color.slice(5,7), 16);
+          newNoteHtml = `<span class="noted-image"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:rgba(${r},${g},${b},0.15)">${innerContent}</span>`;
+        } else {
+          const innerContent = match[1];
+          newNoteHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="color:${color}">${innerContent}</span>`;
+        }
+
+        const scrollPosition = contentWrapper.scrollTop;
+        const newContent =
+          activeSource.substring(0, match.index) +
+          newNoteHtml +
+          activeSource.substring(match.index + match[0].length);
+
+        commitViewModeEdit(newContent, scrollPosition, () => {
+          // Sync to originalMarkdown: find same note by ID and update attributes
+          const nid = editingNoteElement.getAttribute('data-note-id');
+          const origMatch = nid ? findNoteSpanById(originalMarkdown, nid) : findNoteSpanInSource(originalMarkdown, editingNoteElement);
+          if (origMatch) {
+            const origInner = origMatch[1];
+            let origNewHtml;
+            if (isNoteLabel) {
+              const escLabel2 = labelName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              origNewHtml = `<span class="note-label"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:${color}${labelPosStyle}">${escLabel2}</span>`;
+            } else if (isNoteImage) {
+              const r2 = parseInt(color.slice(1,3), 16), g2 = parseInt(color.slice(3,5), 16), b2 = parseInt(color.slice(5,7), 16);
+              origNewHtml = `<span class="noted-image"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:rgba(${r2},${g2},${b2},0.15)">${origInner}</span>`;
+            } else {
+              origNewHtml = `<span class="noted-text"${noteIdAttr} data-note-title="${escTitle}" data-note-content="${escContent}" style="color:${color}">${origInner}</span>`;
+            }
+            originalMarkdown = originalMarkdown.substring(0, origMatch.index) + origNewHtml + originalMarkdown.substring(origMatch.index + origMatch[0].length);
+            translateNoteAttrsToOriginal(nid, title, content);
+          }
+        });
+
+        showNotification(i18n('notif.noteUpdated'), 1500);
+      } else {
+        showNotification(i18n('notif.noteNotFound'), 2000);
+      }
+    }
+
+    editingNoteElement = null;
+    closeNoteDialog();
+    return;
+  }
+
+  // --- Add new note ---
+  const hasTextSelection = savedSelection && savedSelection.length > 0;
+  const isImageTarget = rightClickTarget && rightClickTarget.tagName === 'IMG';
+
+  const color = noteSelectedColor;
+  const escTitle = title.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const escContent = content.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  if (hasTextSelection || isImageTarget) {
+    // ---- Text selected or image: wrap with noted-text / noted-image ----
+    if (!title && !content) {
+      showNotification(i18n('notif.enterTitleOrContent'), 2000);
+      return;
+    }
+
+    const currentSource = isEditMode ? markdownEditor.value : getActiveMarkdown();
+    const noteId = getNextNoteId(currentSource);
+
+    let noteHtml;
+    if (isImageTarget) {
+      const imgSrc = rightClickTarget.getAttribute('src') || '';
+      const imgAlt = rightClickTarget.getAttribute('alt') || '';
+      const escapedSrc = imgSrc.replace(/"/g, '&quot;');
+      const escapedAlt = imgAlt.replace(/"/g, '&quot;');
+      const r = parseInt(color.slice(1,3), 16);
+      const g = parseInt(color.slice(3,5), 16);
+      const b = parseInt(color.slice(5,7), 16);
+      noteHtml = `<span class="noted-image" data-note-id="${noteId}" data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:rgba(${r},${g},${b},0.15)"><img src="${escapedSrc}" alt="${escapedAlt}"></span>`;
+    } else {
+      noteHtml = wrapWithNoteSpan(savedSelection, noteId, escTitle, escContent, color);
+    }
+
+    if (isEditMode) {
+      const editorVal = markdownEditor.value;
+      const start = markdownEditor.selectionStart;
+      const end = markdownEditor.selectionEnd;
+      const selectedText = editorVal.substring(start, end);
+
+      let replacement;
+      if (isImageTarget) {
+        replacement = noteHtml;
+      } else {
+        replacement = wrapWithNoteSpan(selectedText, noteId, escTitle, escContent, color);
+      }
+
+      markdownEditor.value =
+        editorVal.substring(0, start) +
+        replacement +
+        editorVal.substring(end);
+
+      markdownEditor.focus();
+      markdownEditor.selectionStart = start;
+      markdownEditor.selectionEnd = start + replacement.length;
+
+      hasUnsavedChanges = true;
+      updateUnsavedIndicator();
+
+      clearTimeout(previewDebounceTimer);
+      previewDebounceTimer = setTimeout(() => {
+        renderMarkdown(markdownEditor.value);
+      }, 300);
+
+      showNotification(i18n('notif.noteAdded'), 1500);
+    } else {
+      // View mode
+      const markdownContent = getActiveMarkdown();
+
+      if (isImageTarget) {
+        const imgSrc = rightClickTarget.getAttribute('src') || '';
+        const imgAlt = rightClickTarget.getAttribute('alt') || '';
+        let found = false;
+        const mdImgPattern = `![${imgAlt}](${imgSrc})`;
+        let idx = markdownContent.indexOf(mdImgPattern);
+        if (idx !== -1) {
+          const scrollPosition = contentWrapper.scrollTop;
+          const newContent = markdownContent.substring(0, idx) + noteHtml + markdownContent.substring(idx + mdImgPattern.length);
+          commitViewModeEdit(newContent, scrollPosition, () => {
+            // Image src same in both — apply to originalMarkdown too
+            const oi = originalMarkdown.indexOf(mdImgPattern);
+            if (oi !== -1) originalMarkdown = originalMarkdown.substring(0, oi) + noteHtml + originalMarkdown.substring(oi + mdImgPattern.length);
+            translateNoteAttrsToOriginal(noteId, title, content);
+          });
+          found = true;
+        }
+        if (!found) {
+          const imgRegex = new RegExp(`<img[^>]*src=["']${imgSrc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`, 'i');
+          const match = markdownContent.match(imgRegex);
+          if (match) {
+            const scrollPosition = contentWrapper.scrollTop;
+            const newContent = markdownContent.replace(match[0], noteHtml);
+            commitViewModeEdit(newContent, scrollPosition, () => {
+              const origMatch = originalMarkdown.match(imgRegex);
+              if (origMatch) originalMarkdown = originalMarkdown.replace(origMatch[0], noteHtml);
+              translateNoteAttrsToOriginal(noteId, title, content);
+            });
+            found = true;
+          }
+        }
+        if (!found) {
+          showNotification(i18n('notif.imageNotFound'), 2000);
+        } else {
+          showNotification(i18n('notif.noteAddedToImage'), 1500);
+        }
+      } else {
+        const textIndex = findNthOccurrence(markdownContent, savedSelection, savedSelectionOccurrence);
+        if (textIndex !== -1) {
+          const scrollPosition = contentWrapper.scrollTop;
+          const newContent = markdownContent.substring(0, textIndex) + noteHtml + markdownContent.substring(textIndex + savedSelection.length);
+          commitViewModeEdit(newContent, scrollPosition, () => {
+            syncNoteAddToOriginal(noteHtml, savedSelection, noteId, title, content, savedSelectionOccurrence);
+          });
+          showNotification(i18n('notif.noteAdded'), 1500);
+        } else {
+          showNotification(i18n('notif.textNotFound'), 2000);
+        }
+      }
+    }
+  } else {
+    // ---- No selection: label badge at right-click position ----
+    if (!labelName) {
+      showNotification(i18n('notif.enterLabel'), 2000);
+      return;
+    }
+
+    const escLabel = labelName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const pos = rightClickLabelPos || { left: 100, top: 100 };
+    const currentSource = isEditMode ? markdownEditor.value : getActiveMarkdown();
+    const noteId = getNextNoteId(currentSource);
+    const noteHtml = `<span class="note-label" data-note-id="${noteId}" data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:${color};left:${Math.round(pos.left)}px;top:${Math.round(pos.top)}px">${escLabel}</span>`;
+
+    if (isEditMode) {
+      const editorVal = markdownEditor.value;
+      markdownEditor.value = editorVal + '\n' + noteHtml;
+
+      markdownEditor.focus();
+      const newPos = markdownEditor.value.length;
+      markdownEditor.selectionStart = newPos;
+      markdownEditor.selectionEnd = newPos;
+
+      hasUnsavedChanges = true;
+      updateUnsavedIndicator();
+
+      clearTimeout(previewDebounceTimer);
+      previewDebounceTimer = setTimeout(() => {
+        renderMarkdown(markdownEditor.value);
+      }, 300);
+
+      showNotification(i18n('notif.noteAdded'), 1500);
+    } else {
+      const scrollPosition = contentWrapper.scrollTop;
+      const activeContent = getActiveMarkdown();
+      const newContent = activeContent + '\n' + noteHtml;
+      commitViewModeEdit(newContent, scrollPosition, () => {
+        // Also add label to originalMarkdown
+        originalMarkdown = originalMarkdown + '\n' + noteHtml;
+        translateNoteAttrsToOriginal(noteId, title, content);
+      });
+
+      showNotification(i18n('notif.noteAdded'), 1500);
+    }
+  }
+
+  closeNoteDialog();
+});
+
+// Keyboard shortcut: Enter to save, Escape to close
+noteDialogOverlay.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeNoteDialog();
+  } else if (e.key === 'Enter' && !e.shiftKey && e.target !== noteContentInput) {
+    e.preventDefault();
+    noteSaveBtn.click();
+  }
+});
+
+// ============================================
+// Find Note Feature
+// ============================================
+
+function openFindNoteDialog() {
+  findNoteInput.value = '';
+  findNoteOverlay.classList.add('visible');
+  findNoteInput.focus();
+}
+
+function closeFindNoteDialog() {
+  findNoteOverlay.classList.remove('visible');
+}
+
+ctxFindNote.addEventListener('click', () => {
+  hideContextMenu();
+  if (!currentFilePath) return;
+  openFindNoteDialog();
+});
+
+findNoteClose.addEventListener('click', closeFindNoteDialog);
+findNoteCancelBtn.addEventListener('click', closeFindNoteDialog);
+findNoteOverlay.addEventListener('click', (e) => {
+  if (e.target === findNoteOverlay) closeFindNoteDialog();
+});
+
+findNoteOverlay.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeFindNoteDialog();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    findNoteBtn.click();
+  }
+});
+
+findNoteBtn.addEventListener('click', () => {
+  const searchVal = findNoteInput.value.trim();
+  if (!searchVal) {
+    showNotification(i18n('notif.enterNoteId'), 2000);
+    return;
+  }
+
+  let noteEl = null;
+  const allNotes = viewer.querySelectorAll('.noted-text[data-note-id], .noted-image[data-note-id], .note-label[data-note-id]');
+
+  // Try ID search first (pure number or #number)
+  const idMatch = searchVal.match(/^#?(\d+)$/);
+  if (idMatch) {
+    noteEl = viewer.querySelector(`[data-note-id="${idMatch[1]}"]`);
+  }
+
+  // If not found by ID, search by title (case-insensitive partial match)
+  if (!noteEl) {
+    const searchLower = searchVal.toLowerCase();
+    for (const note of allNotes) {
+      const title = (note.getAttribute('data-note-title') || '').toLowerCase();
+      if (title && title.includes(searchLower)) {
+        noteEl = note;
+        break;
+      }
+    }
+  }
+
+  if (!noteEl) {
+    showNotification(i18n('notif.noteSearchNotFound', {val: searchVal}), 2000);
+    return;
+  }
+
+  closeFindNoteDialog();
+
+  // Scroll the note into view
+  const noteRect = noteEl.getBoundingClientRect();
+  const wrapperRect = contentWrapper.getBoundingClientRect();
+  const scrollTarget = contentWrapper.scrollTop + noteRect.top - wrapperRect.top - (wrapperRect.height / 2);
+  contentWrapper.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+
+  // Highlight the note with pulse animation
+  noteEl.classList.remove('note-highlight');
+  void noteEl.offsetWidth; // force reflow
+  noteEl.classList.add('note-highlight');
+  noteEl.addEventListener('animationend', () => {
+    noteEl.classList.remove('note-highlight');
+  }, { once: true });
+
+  // Show tooltip for the found note
+  setTimeout(() => {
+    showNoteTooltip(noteEl, true);
+  }, 400);
+});
+
+// ============================================
+// Edit Text Feature (right-click edit selected text)
+// ============================================
+
+const editTextOverlay = document.getElementById('editTextOverlay');
+const editTextArea = document.getElementById('editTextArea');
+const editTextSaveBtn = document.getElementById('editTextSaveBtn');
+const editTextCancelBtn = document.getElementById('editTextCancelBtn');
+const editTextClose = document.getElementById('editTextClose');
+
+let editTextOriginal = null; // the original selected text
+let editTextOccurrence = 0;  // which occurrence
+
+function openEditTextDialog() {
+  if (!savedSelection) return;
+  editTextOriginal = savedSelection;
+  editTextOccurrence = savedSelectionOccurrence;
+  editTextArea.value = savedSelection;
+  editTextOverlay.classList.add('visible');
+  editTextArea.focus();
+  editTextArea.select();
+}
+
+function closeEditTextDialog() {
+  editTextOverlay.classList.remove('visible');
+  editTextOriginal = null;
+}
+
+ctxEditText.addEventListener('click', () => {
+  hideContextMenu();
+  if (!currentFilePath || !savedSelection) return;
+  openEditTextDialog();
+});
+
+editTextClose.addEventListener('click', closeEditTextDialog);
+editTextCancelBtn.addEventListener('click', closeEditTextDialog);
+editTextOverlay.addEventListener('click', (e) => {
+  if (e.target === editTextOverlay) closeEditTextDialog();
+});
+
+editTextOverlay.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeEditTextDialog();
+  } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    editTextSaveBtn.click();
+  }
+});
+
+// Partial render: replace text in DOM without full re-render
+function partialDOMReplace(container, oldText, newText, occurrence) {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let count = 0;
+  let node;
+  while ((node = walker.nextNode())) {
+    let idx = 0;
+    while ((idx = node.textContent.indexOf(oldText, idx)) !== -1) {
+      if (count === occurrence) {
+        node.textContent =
+          node.textContent.substring(0, idx) +
+          newText +
+          node.textContent.substring(idx + oldText.length);
+        return true;
+      }
+      count++;
+      idx += oldText.length;
+    }
+  }
+  return false;
+}
+
+// Update markdown source silently (no re-render)
+function updateSourceSilently(oldText, newText, occurrence) {
+  if (isShowingTranslation && translatedMarkdown) {
+    const ti = findNthOccurrence(translatedMarkdown, oldText, occurrence);
+    if (ti !== -1) {
+      translatedMarkdown =
+        translatedMarkdown.substring(0, ti) +
+        newText +
+        translatedMarkdown.substring(ti + oldText.length);
+    }
+    // Sync to originalMarkdown
+    const origText = findOriginalForTranslated(oldText);
+    if (origText) {
+      const oi = findNthOccurrence(originalMarkdown, origText, occurrence);
+      if (oi !== -1) {
+        originalMarkdown = originalMarkdown.substring(0, oi) + newText + originalMarkdown.substring(oi + origText.length);
+      }
+    } else {
+      const oi = findNthOccurrence(originalMarkdown, oldText, occurrence);
+      if (oi !== -1) {
+        originalMarkdown = originalMarkdown.substring(0, oi) + newText + originalMarkdown.substring(oi + oldText.length);
+      }
+    }
+  } else {
+    const ti = findNthOccurrence(originalMarkdown, oldText, occurrence);
+    if (ti !== -1) {
+      originalMarkdown =
+        originalMarkdown.substring(0, ti) +
+        newText +
+        originalMarkdown.substring(ti + oldText.length);
+    }
+    invalidateTranslationCache();
+  }
+  hasUnsavedChanges = true;
+  updateUnsavedIndicator();
+}
+
+editTextSaveBtn.addEventListener('click', () => {
+  const newText = editTextArea.value;
+  if (newText === editTextOriginal) {
+    closeEditTextDialog();
+    return;
+  }
+
+  if (isEditMode) {
+    const editorVal = markdownEditor.value;
+    const textIndex = findNthOccurrence(editorVal, editTextOriginal, editTextOccurrence);
+    if (textIndex !== -1) {
+      markdownEditor.value =
+        editorVal.substring(0, textIndex) +
+        newText +
+        editorVal.substring(textIndex + editTextOriginal.length);
+
+      hasUnsavedChanges = true;
+      updateUnsavedIndicator();
+
+      clearTimeout(previewDebounceTimer);
+      previewDebounceTimer = setTimeout(() => {
+        renderMarkdown(markdownEditor.value);
+      }, 300);
+
+      showNotification(i18n('notif.textEdited'), 1500);
+    } else {
+      showNotification(i18n('notif.textNotFound'), 2000);
+    }
+  } else {
+    // View mode — try partial render first, then fall back to full re-render
+    const activeSource = getActiveMarkdown();
+    const textIndex = findNthOccurrence(activeSource, editTextOriginal, editTextOccurrence);
+    if (textIndex === -1) {
+      showNotification(i18n('notif.textNotFound'), 2000);
+      closeEditTextDialog();
+      return;
+    }
+
+    // Check if structural markdown change (newlines changed) — needs full re-render
+    const structuralChange = newText.includes('\n') !== editTextOriginal.includes('\n');
+
+    if (!structuralChange && partialDOMReplace(viewer, editTextOriginal, newText, editTextOccurrence)) {
+      // Partial render succeeded — update source silently without re-rendering
+      updateSourceSilently(editTextOriginal, newText, editTextOccurrence);
+      showNotification(i18n('notif.textEdited'), 1500);
+    } else {
+      // Fall back to full re-render
+      const scrollPosition = contentWrapper.scrollTop;
+      const newContent =
+        activeSource.substring(0, textIndex) +
+        newText +
+        activeSource.substring(textIndex + editTextOriginal.length);
+
+      commitViewModeEdit(newContent, scrollPosition, () => {
+        const origText = findOriginalForTranslated(editTextOriginal);
+        if (origText) {
+          const oi = findNthOccurrence(originalMarkdown, origText, editTextOccurrence);
+          if (oi !== -1) {
+            originalMarkdown = originalMarkdown.substring(0, oi) + newText + originalMarkdown.substring(oi + origText.length);
+          }
+        } else {
+          const oi = findNthOccurrence(originalMarkdown, editTextOriginal, editTextOccurrence);
+          if (oi !== -1) {
+            originalMarkdown = originalMarkdown.substring(0, oi) + newText + originalMarkdown.substring(oi + editTextOriginal.length);
+          }
+        }
+      });
+
+      showNotification(i18n('notif.textEdited'), 1500);
+    }
+  }
+
+  closeEditTextDialog();
+});
+
+// ============================================
+// Note Tooltip (hover on noted elements)
+// ============================================
+
+let noteTooltipPinned = false;
+
+function extractNoteColor(noted) {
+  let noteColor = '#ff6600';
+  const isLabel = noted.classList.contains('note-label');
+  const isImage = noted.classList.contains('noted-image');
+  if (isLabel) {
+    const styleAttr = noted.getAttribute('style') || '';
+    const bgHexMatch = styleAttr.match(/background-color:\s*(#[0-9a-fA-F]{6})/);
+    if (bgHexMatch) {
+      noteColor = bgHexMatch[1];
+    }
+  } else if (isImage) {
+    const styleAttr = noted.getAttribute('style') || '';
+    const rgbaMatch = styleAttr.match(/rgba\((\d+),\s*(\d+),\s*(\d+)/);
+    if (rgbaMatch) {
+      const r = parseInt(rgbaMatch[1]).toString(16).padStart(2, '0');
+      const g = parseInt(rgbaMatch[2]).toString(16).padStart(2, '0');
+      const b = parseInt(rgbaMatch[3]).toString(16).padStart(2, '0');
+      noteColor = `#${r}${g}${b}`;
+    }
+  } else {
+    const styleAttr = noted.getAttribute('style') || '';
+    const hexMatch = styleAttr.match(/color:\s*(#[0-9a-fA-F]{3,8})/);
+    if (hexMatch) {
+      noteColor = hexMatch[1];
+    }
+  }
+  return noteColor;
+}
+
+function showNoteTooltip(noted, pinned) {
+  const title = noted.getAttribute('data-note-title') || '';
+  const content = noted.getAttribute('data-note-content') || '';
+  if (!title && !content) return;
+
+  const noteColor = extractNoteColor(noted);
+  // Convert hex to rgba with transparency
+  const r = parseInt(noteColor.slice(1,3), 16);
+  const g = parseInt(noteColor.slice(3,5), 16);
+  const b = parseInt(noteColor.slice(5,7), 16);
+  noteTooltip.style.background = `rgba(${r}, ${g}, ${b}, 0.85)`;
+  noteTooltip.style.backdropFilter = 'none';
+  noteTooltip.style.webkitBackdropFilter = 'none';
+
+  const noteId = noted.getAttribute('data-note-id') || '';
+
+  let html = '';
+  if (pinned) {
+    html += `<button class="note-tooltip-close" onclick="closeNoteTooltip()">&times;</button>`;
+  }
+  if (title) html += `<div class="note-tooltip-title">${title.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+  if (content) html += `<div class="note-tooltip-content">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+  if (noteId) html += `<div class="note-tooltip-id">#${noteId}</div>`;
+  noteTooltip.innerHTML = html;
+
+  noteTooltip.style.left = '50%';
+  noteTooltip.style.transform = 'translateX(-50%)';
+  noteTooltip.style.bottom = '30px';
+  noteTooltip.style.top = 'auto';
+
+  noteTooltipPinned = pinned;
+  noteTooltip.style.pointerEvents = pinned ? 'auto' : 'none';
+  noteTooltip.classList.add('visible');
+}
+
+window.closeNoteTooltip = function() {
+  noteTooltipPinned = false;
+  noteTooltip.style.pointerEvents = 'none';
+  noteTooltip.classList.remove('visible');
+};
+
+// Hover: show tooltip (not pinned)
+viewer.addEventListener('mouseover', (e) => {
+  if (noteTooltipPinned) return;
+  const noted = e.target.closest('.noted-text, .noted-image, .note-label');
+  if (!noted) return;
+  showNoteTooltip(noted, false);
+});
+
+viewer.addEventListener('mouseout', (e) => {
+  if (noteTooltipPinned) return;
+  const noted = e.target.closest('.noted-text, .noted-image, .note-label');
+  if (!noted) return;
+  const relatedTarget = e.relatedTarget;
+  if (relatedTarget && noted.contains(relatedTarget)) return;
+  noteTooltip.classList.remove('visible');
+});
+
+// Click: pin tooltip on screen
+viewer.addEventListener('click', (e) => {
+  const noted = e.target.closest('.noted-text, .noted-image, .note-label');
+  if (!noted) return;
+  // Don't pin if clicking a link inside the note
+  if (e.target.closest('a')) return;
+  e.preventDefault();
+  showNoteTooltip(noted, true);
+});
+
+// Also hide tooltip on scroll (only if not pinned)
+contentWrapper.addEventListener('scroll', () => {
+  if (!noteTooltipPinned) {
+    noteTooltip.classList.remove('visible');
+  }
+}, { passive: true });
+
+// Insert Image
+ctxInsertImage.addEventListener('click', () => {
+  hideContextMenu();
+  if (!currentFilePath) {
+    showNotification(i18n('notif.openFileFirst'), 2000);
+    return;
+  }
+  ipcRenderer.send('open-image-dialog');
+});
+
+// Find insertion position for label based on exact right-click caret position
+function getInsertPositionForLabel() {
+  const markdownContent = originalMarkdown;
+
+  // Use the captured caret info from right-click for precise placement
+  if (rightClickCaretInfo) {
+    const { textBefore, textAfter } = rightClickCaretInfo;
+
+    // Try matching with surrounding context (before + after the caret)
+    // Use increasingly shorter context to find best match
+    for (let contextLen = Math.min(textBefore.length, textAfter.length); contextLen >= 3; contextLen--) {
+      const before = textBefore.substring(textBefore.length - contextLen);
+      const after = textAfter.substring(0, contextLen);
+      const searchPattern = before + after;
+      const idx = markdownContent.indexOf(searchPattern);
+      if (idx !== -1) {
+        // Verify uniqueness - if multiple matches, try longer context
+        const secondIdx = markdownContent.indexOf(searchPattern, idx + 1);
+        if (secondIdx === -1 || contextLen <= 3) {
+          return idx + before.length;
+        }
+      }
+    }
+
+    // Try just textBefore for end-of-line scenarios
+    if (textBefore.length >= 3) {
+      const idx = markdownContent.indexOf(textBefore);
+      if (idx !== -1) {
+        return idx + textBefore.length;
+      }
+    }
+
+    // Try just textAfter for start-of-line scenarios
+    if (textAfter.length >= 3) {
+      const idx = markdownContent.indexOf(textAfter);
+      if (idx !== -1) {
+        return idx;
+      }
+    }
+  }
+
+  // If text is selected, insert after the selection in the source
+  if (savedSelection) {
+    const textIndex = findNthOccurrence(markdownContent, savedSelection, savedSelectionOccurrence);
+    if (textIndex !== -1) {
+      return textIndex + savedSelection.length;
+    }
+  }
+
+  // Fallback: use Y-coordinate based insertion
+  return getMarkdownInsertPosition();
+}
+
+// Find insertion position in markdown based on right-click Y coordinate (view mode)
+function getMarkdownInsertPosition() {
+  const md = getActiveMarkdown();
+  if (!md) return 0;
+
+  const children = Array.from(viewer.children);
+  if (children.length === 0) return md.length;
+
+  // Find which viewer child element is at the right-click Y position
+  let targetIndex = children.length - 1;
+  for (let i = 0; i < children.length; i++) {
+    const rect = children[i].getBoundingClientRect();
+    if (rect.bottom >= rightClickY) {
+      targetIndex = i;
+      break;
+    }
+  }
+
+  // Split markdown into blocks by double newline
+  const blocks = md.split(/\n\n/);
+  const blockIndex = Math.min(targetIndex, blocks.length - 1);
+
+  // Calculate character position: sum of all blocks up to and including blockIndex
+  let pos = 0;
+  for (let i = 0; i <= blockIndex; i++) {
+    pos += blocks[i].length;
+    if (i < blocks.length - 1) pos += 2; // +2 for the \n\n separator
+  }
+
+  return pos;
+}
+
+// Format byte size to human readable string
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// Insert image markdown into document at the right position
+function insertImageMarkdown(imageMarkdown, originalSize, compressedSize) {
+  if (isEditMode) {
+    // Edit mode: insert at saved cursor position
+    const cursorPos = savedCursorPosition !== null ? savedCursorPosition : markdownEditor.selectionStart;
+    const before = markdownEditor.value.substring(0, cursorPos);
+    const after = markdownEditor.value.substring(cursorPos);
+
+    const prefix = before.length > 0 && !before.endsWith('\n') ? '\n' : '';
+    const suffix = after.length > 0 && !after.startsWith('\n') ? '\n' : '';
+
+    markdownEditor.value = before + prefix + imageMarkdown + suffix + after;
+
+    const newPos = cursorPos + prefix.length + imageMarkdown.length + suffix.length;
+    markdownEditor.focus();
+    markdownEditor.selectionStart = newPos;
+    markdownEditor.selectionEnd = newPos;
+
+    hasUnsavedChanges = true;
+    updateUnsavedIndicator();
+
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      renderMarkdown(markdownEditor.value);
+    }, PREVIEW_DEBOUNCE_DELAY);
+  } else {
+    // View mode: insert after the clicked element's position in markdown
+    const scrollPosition = contentWrapper.scrollTop;
+    const activeContent = getActiveMarkdown();
+    const insertPos = getMarkdownInsertPosition();
+    const before = activeContent.substring(0, insertPos);
+    const after = activeContent.substring(insertPos);
+    const newContent = before + '\n' + imageMarkdown + '\n' + after;
+
+    commitViewModeEdit(newContent, scrollPosition, () => {
+      // Also insert image into originalMarkdown at similar position
+      const origInsertPos = Math.min(insertPos, originalMarkdown.length);
+      const origBefore = originalMarkdown.substring(0, origInsertPos);
+      const origAfter = originalMarkdown.substring(origInsertPos);
+      originalMarkdown = origBefore + '\n' + imageMarkdown + '\n' + origAfter;
+    });
+  }
+
+  if (originalSize && compressedSize) {
+    showNotification(i18n('notif.imageInsertedCompressed', {from: formatFileSize(originalSize), to: formatFileSize(compressedSize)}), 3000);
+  } else {
+    showNotification(i18n('notif.imageInserted'), 1500);
+  }
+}
+
+// Handle image selected from main process
+ipcRenderer.on('image-selected', (event, data) => {
+  if (data.error) {
+    showNotification(i18n('notif.imageFailed') + data.error, 3000);
+    return;
+  }
+
+  const { base64, mimeType, fileName } = data;
+
+  // Original file size (base64 is ~33% larger than binary, so estimate original)
+  const originalSize = Math.round(base64.length * 3 / 4);
+
+  // SVG: embed directly, no resize needed
+  if (mimeType === 'image/svg+xml') {
+    const imageMarkdown = `![${fileName}](data:${mimeType};base64,${base64})`;
+    insertImageMarkdown(imageMarkdown, originalSize, originalSize);
+    return;
+  }
+
+  // For raster images: resize to max 1000x1000 using Canvas
+  const img = new Image();
+  img.onload = () => {
+    let w = img.naturalWidth;
+    let h = img.naturalHeight;
+
+    if (w > 1000 || h > 1000) {
+      const scale = Math.min(1000 / w, 1000 / h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
+    const dataUrl = canvas.toDataURL('image/webp', 0.70);
+
+    // Compressed size: dataUrl contains "data:image/webp;base64," prefix + base64 data
+    const compressedBase64 = dataUrl.split(',')[1];
+    const compressedSize = Math.round(compressedBase64.length * 3 / 4);
+
+    const imageMarkdown = `![${fileName}](${dataUrl})`;
+    insertImageMarkdown(imageMarkdown, originalSize, compressedSize);
+  };
+
+  img.onerror = () => {
+    showNotification(i18n('notif.imageProcessFailed'), 3000);
+  };
+
+  img.src = `data:${mimeType};base64,${base64}`;
+});
+
+// Delete Image
+ctxDeleteImage.addEventListener('click', () => {
+  hideContextMenu();
+  if (!rightClickTarget || !currentFilePath) return;
+
+  // Find the img element
+  const imgEl = rightClickTarget.tagName === 'IMG' ? rightClickTarget : rightClickTarget.closest?.('img');
+  if (!imgEl || !imgEl.src || !imgEl.src.startsWith('data:')) return;
+
+  const altText = imgEl.alt || '';
+  // Build a search pattern: ![alt](data:...)
+  const searchStart = `![${altText}](${imgEl.src.substring(0, 50)}`;
+
+  if (isEditMode) {
+    const content = markdownEditor.value;
+    const startIdx = content.indexOf(searchStart);
+    if (startIdx === -1) {
+      showNotification(i18n('notif.imageNotFound'), 2000);
+      return;
+    }
+    // Find the closing )
+    const endIdx = content.indexOf(')', startIdx + searchStart.length);
+    if (endIdx === -1) return;
+
+    // Remove the image markdown and surrounding empty lines
+    let removeStart = startIdx;
+    let removeEnd = endIdx + 1;
+    // Clean up leading newline
+    if (removeStart > 0 && content[removeStart - 1] === '\n') removeStart--;
+    // Clean up trailing newline
+    if (removeEnd < content.length && content[removeEnd] === '\n') removeEnd++;
+
+    markdownEditor.value = content.substring(0, removeStart) + content.substring(removeEnd);
+
+    hasUnsavedChanges = true;
+    updateUnsavedIndicator();
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(() => {
+      renderMarkdown(markdownEditor.value);
+    }, PREVIEW_DEBOUNCE_DELAY);
+  } else {
+    // View mode
+    const content = getActiveMarkdown();
+    const startIdx = content.indexOf(searchStart);
+    if (startIdx === -1) {
+      showNotification(i18n('notif.imageNotFound'), 2000);
+      return;
+    }
+    const endIdx = content.indexOf(')', startIdx + searchStart.length);
+    if (endIdx === -1) return;
+
+    let removeStart = startIdx;
+    let removeEnd = endIdx + 1;
+    if (removeStart > 0 && content[removeStart - 1] === '\n') removeStart--;
+    if (removeEnd < content.length && content[removeEnd] === '\n') removeEnd++;
+
+    const scrollPosition = contentWrapper.scrollTop;
+    const newContent = content.substring(0, removeStart) + content.substring(removeEnd);
+    commitViewModeEdit(newContent, scrollPosition, () => {
+      // Also delete from originalMarkdown (same image pattern)
+      const origStartIdx = originalMarkdown.indexOf(searchStart);
+      if (origStartIdx !== -1) {
+        const origEndIdx = originalMarkdown.indexOf(')', origStartIdx + searchStart.length);
+        if (origEndIdx !== -1) {
+          let oRemoveStart = origStartIdx;
+          let oRemoveEnd = origEndIdx + 1;
+          if (oRemoveStart > 0 && originalMarkdown[oRemoveStart - 1] === '\n') oRemoveStart--;
+          if (oRemoveEnd < originalMarkdown.length && originalMarkdown[oRemoveEnd] === '\n') oRemoveEnd++;
+          originalMarkdown = originalMarkdown.substring(0, oRemoveStart) + originalMarkdown.substring(oRemoveEnd);
+        }
+      }
+    });
+  }
+
+  showNotification(i18n('notif.imageDeleted'), 1500);
 });
 
 // ============================================
@@ -2489,7 +4962,7 @@ ctxRemoveRecent.addEventListener('click', () => {
     let recentFiles = getRecentFiles();
     recentFiles = recentFiles.filter(f => f.path !== recentContextFilePath);
     localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
-    updateRecentFilesList();
+    updateFileMenuRecent();
   }
   hideRecentContextMenu();
 });
@@ -2498,7 +4971,112 @@ ctxRemoveRecent.addEventListener('click', () => {
 ctxCopyPath.addEventListener('click', () => {
   if (recentContextFilePath) {
     clipboard.writeText(recentContextFilePath);
-    showNotification('Path copied to clipboard', 1500);
+    showNotification(i18n('notif.pathCopied'), 1500);
   }
   hideRecentContextMenu();
+});
+
+// ============================================
+// Notes Panel Context Menu
+// ============================================
+
+const notesPanelContextMenu = document.getElementById('notesPanelContextMenu');
+const ctxNotesPanelEdit = document.getElementById('ctxNotesPanelEdit');
+const ctxNotesPanelDelete = document.getElementById('ctxNotesPanelDelete');
+
+let notesPanelContextNoteId = null;
+
+function showNotesPanelContextMenu(x, y, noteId) {
+  notesPanelContextNoteId = noteId;
+  positionContextMenu(notesPanelContextMenu, x, y);
+}
+
+function hideNotesPanelContextMenu() {
+  notesPanelContextMenu.classList.remove('visible');
+  notesPanelContextNoteId = null;
+}
+
+document.addEventListener('click', (e) => {
+  if (!notesPanelContextMenu.contains(e.target)) {
+    hideNotesPanelContextMenu();
+  }
+});
+
+document.addEventListener('scroll', hideNotesPanelContextMenu, true);
+window.addEventListener('resize', hideNotesPanelContextMenu);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideNotesPanelContextMenu();
+});
+
+// Edit note from notes panel
+ctxNotesPanelEdit.addEventListener('click', () => {
+  const nid = notesPanelContextNoteId;
+  hideNotesPanelContextMenu();
+  if (!nid || !currentFilePath) return;
+  const noteEl = viewer.querySelector(`[data-note-id="${nid}"]`);
+  if (!noteEl) return;
+  openNoteDialogForEdit(noteEl);
+});
+
+// Delete note from notes panel
+ctxNotesPanelDelete.addEventListener('click', () => {
+  const nid = notesPanelContextNoteId;
+  hideNotesPanelContextMenu();
+  if (!nid || !currentFilePath) return;
+  const noteEl = viewer.querySelector(`[data-note-id="${nid}"]`);
+  if (!noteEl) return;
+
+  const isLabel = noteEl.classList.contains('note-label');
+
+  if (isEditMode) {
+    const editorVal = markdownEditor.value;
+    const match = findNoteSpanInSource(editorVal, noteEl);
+    if (match) {
+      const replacement = isLabel ? '' : match[1];
+      markdownEditor.value =
+        editorVal.substring(0, match.index) +
+        replacement +
+        editorVal.substring(match.index + match[0].length);
+
+      hasUnsavedChanges = true;
+      updateUnsavedIndicator();
+
+      clearTimeout(previewDebounceTimer);
+      previewDebounceTimer = setTimeout(() => {
+        renderMarkdown(markdownEditor.value);
+      }, 300);
+
+      showNotification(i18n('notif.noteRemoved'), 1500);
+    } else {
+      showNotification(i18n('notif.noteNotFound'), 2000);
+    }
+  } else {
+    const activeSource = getActiveMarkdown();
+    const match = findNoteSpanInSource(activeSource, noteEl);
+    if (match) {
+      const replacement = isLabel ? '' : match[1];
+      const scrollPosition = contentWrapper.scrollTop;
+      const newContent =
+        activeSource.substring(0, match.index) +
+        replacement +
+        activeSource.substring(match.index + match[0].length);
+
+      commitViewModeEdit(newContent, scrollPosition, () => {
+        const nid = noteEl.getAttribute('data-note-id');
+        const origMatch = nid ? findNoteSpanById(originalMarkdown, nid) : findNoteSpanInSource(originalMarkdown, noteEl);
+        if (origMatch) {
+          const origReplacement = isLabel ? '' : origMatch[1];
+          originalMarkdown = originalMarkdown.substring(0, origMatch.index) + origReplacement + originalMarkdown.substring(origMatch.index + origMatch[0].length);
+        }
+      });
+
+      showNotification(i18n('notif.noteRemoved'), 1500);
+    } else {
+      showNotification(i18n('notif.noteNotFound'), 2000);
+    }
+  }
+
+  // Refresh the notes list
+  updateNotesList();
 });
