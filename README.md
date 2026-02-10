@@ -2,7 +2,7 @@
 
 <div align="center">
   <img src="logo.png" alt="Omnicore Logo" height="100">
-  <p><strong>A sleek, cross-platform markdown viewer with full HTML support and Mermaid diagram rendering</strong></p>
+  <p><strong>A sleek, cross-platform markdown viewer with full HTML support, Mermaid diagram rendering, and powerful note-taking</strong></p>
 </div>
 
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
@@ -14,24 +14,55 @@
 ### Core Rendering
 - **Full HTML Support** - Render HTML tags within markdown with DOMPurify sanitization
 - **Mermaid Diagrams** - Beautiful diagram rendering with interactive popup viewer featuring pan/zoom controls
+- **OmniWare Wireframes** - Built-in wireframe diagram support
 - **PrismJS Syntax Highlighting** - Code blocks with Solarized Light theme (offline support for 11+ languages)
 - **Interactive Tables** - Tabulator.js integration with sorting, filtering, pagination, and CSV/JSON export
 
 ### Editing & Export
 - **Live Markdown Editor** - Split-view editing with 3-second debounced preview and Fira Code font
+- **Inline Text Editing** - Right-click any selected text to edit it in place with partial rendering (no full page refresh)
 - **PDF Export** - One-click export with full styling, diagrams, and syntax highlighting
+- **Word Export** - Export documents as Microsoft Word (.docx) files
 - **Auto-Save Detection** - Unsaved changes indicator with confirmation prompts
 
+### Note System
+- **Text Notes** - Select any text and add colored notes with title and content
+- **Image Notes** - Annotate images with notes
+- **Note Labels** - Place floating label badges anywhere in the document
+- **All Notes Panel** - Side panel listing all notes sorted by ID with search functionality
+- **Note Search** - Search notes by ID or title, with auto-scroll to matching note
+- **Find Note** - Quick note lookup via right-click context menu
+- **Show/Hide Notes** - Toggle note visibility from the View menu
+- **Edit & Delete Notes** - Right-click context menu on notes for editing and deletion
+- **6 Color Options** - Orange, red, green, blue, purple, yellow
+
 ### Navigation & UI
+- **Dropdown Menus** - Organized File, View, and Tools dropdown menus
+  - **File** - Open, Table of Contents, Edit Mode, All Notes, Export (PDF/Word), Recent Files
+  - **View** - Zoom, Dark Mode, Fullscreen, Show/Hide Notes
+  - **Tools** - Language settings (Document translation & Interface language)
 - **Auto Table of Contents** - Hierarchical index of all headers (H1-H6) with one-click navigation
-- **Recent Files Manager** - Quick access to last 100 files with individual delete and clear all options
 - **Search with Highlighting** - Real-time text search with match counter and keyboard navigation (Ctrl+F)
 - **File Path Display** - Shows current file path with copy-to-clipboard functionality
 
 ### View Controls
+- **Dark Mode** - Toggle between light and dark themes
 - **Zoom Controls** - Flexible zoom from 50% to 200% via keyboard shortcuts or mouse wheel
 - **Fullscreen Mode** - Distraction-free viewing (F11)
-- **Responsive Sidebars** - Auto-showing recent files panel and collapsible TOC
+
+### Translation & Localization
+- **Document Translation** - Translate documents to English or Turkish via Google Translate
+- **Interface Language** - Switch UI language between English and Turkish
+- **Dual-source Editing** - Edit documents while viewing translations without switching back
+
+### Right-Click Context Menu
+- **Copy / Copy as Plain Text**
+- **Edit Text** - Edit selected text inline with partial DOM rendering
+- **Bold / Italic / Code Block / List** - Quick formatting
+- **Remove Formatting** - Strip markdown formatting from selection
+- **Add Note / Edit Note / Delete Note / Find Note** - Full note management
+- **Insert Image / Delete Image**
+- **Select All**
 
 ### Additional Features
 - **Professional Theme** - Clean interface with Omnicore branding (#279EA7 teal, #1F3244 navy)
@@ -39,6 +70,7 @@
 - **Offline Support** - All libraries bundled locally, no internet required
 - **Single Instance** - Prevents multiple app instances
 - **Toast Notifications** - User-friendly feedback for all operations
+- **Recent Files** - Quick access to last 100 files from File menu
 
 ## Installation
 
@@ -107,20 +139,24 @@ This creates both portable exe and installer.
 - **Ctrl+O** (Cmd+O on Mac) - Open markdown file
 - **Ctrl+S** (Cmd+S on Mac) - Save file (in edit mode)
 - **Ctrl+F** (Cmd+F on Mac) - Open search panel
+- **Ctrl+B** - Bold selected text
+- **Ctrl+I** - Italic selected text
+- **Ctrl+`** - Code block
 - **Enter** (in search) - Next match
 - **Shift+Enter** (in search) - Previous match
-- **Escape** (in search) - Close search panel
+- **Escape** - Close search panel / Exit dialogs
 - **Ctrl++** - Zoom in
 - **Ctrl+-** - Zoom out
 - **Ctrl+0** - Reset zoom to 100%
+- **Ctrl+Enter** - Save in Edit Text dialog
 - **F11** - Toggle fullscreen
-- **Escape** - Exit fullscreen
 
 ### Mouse Controls
 
 - **Ctrl+Mouse Wheel** (Cmd+Mouse Wheel on Mac) - Zoom in/out
   - Scroll up to zoom in
   - Scroll down to zoom out
+- **Right-click** - Context menu with formatting, notes, and editing options
 
 ### Search Features
 
@@ -136,7 +172,7 @@ This creates both portable exe and installer.
 - **Hierarchical display** - Shows header levels with indentation
 - **One-click navigation** - Click any header to jump to that section
 - **Active highlighting** - Current section is highlighted in the TOC
-- **Collapsible panel** - Click the TOC button in toolbar to show/hide
+- **Accessible from File menu** - Toggle via File > Table of Contents
 
 ## Supported File Types
 
@@ -149,12 +185,12 @@ This creates both portable exe and installer.
 ## Opening Files
 
 ### Method 1: Within the App
-- Press `Ctrl+O` and browse for files
-- Use Recent Files panel (left side)
+- Press `Ctrl+O` or use File > Open File
+- Access recent files from File > History section
 
 ### Method 2: Windows "Open With"
 - Right-click any `.md` file in Windows Explorer
-- Select "Open with" → "Omnicore Markdown Viewer"
+- Select "Open with" > "Omnicore Markdown Viewer"
 - The file opens directly in the app
 
 ### Method 3: Default Program (After Installer)
@@ -193,13 +229,13 @@ graph TD
 ### File Path Display and Toolbar
 <div align="center">
   <img src="ss/markdown-viewer_2.png" alt="Markdown Viewer - Toolbar" width="800">
-  <p><em>Full toolbar with Open, Recent Files, TOC, Edit, PDF Export, Search, Zoom, and Fullscreen controls</em></p>
+  <p><em>Toolbar with File, View, and Tools dropdown menus</em></p>
 </div>
 
 ### Recent Files Manager
 <div align="center">
   <img src="ss/markdown-viewer_recent_files.png" alt="Recent Files Panel" width="400">
-  <p><em>Quick access to recently opened files with individual delete options and clear all functionality</em></p>
+  <p><em>Quick access to recently opened files from File menu</em></p>
 </div>
 
 ### Hierarchical Table of Contents
