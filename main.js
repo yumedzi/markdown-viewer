@@ -1098,6 +1098,125 @@ ipcMain.on('open-omniware-popup', (event, data) => {
   });
 });
 
+// Handle HTML block popup request
+ipcMain.on('open-html-popup', (event, data) => {
+  const { htmlCode, isDarkMode } = data;
+
+  const popupWindow = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: true
+    },
+    title: 'HTML Preview',
+    icon: path.join(__dirname, 'logo.ico')
+  });
+
+  popupWindow.setMenu(null);
+
+  const tempHtmlPath = path.join(os.tmpdir(), `omnicore-html-popup-${Date.now()}.html`);
+
+  const escapedForDisplay = htmlCode
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+  const bgColor = isDarkMode ? '#1a1a1a' : '#ffffff';
+  const textColor = isDarkMode ? '#e0e0e0' : '#333333';
+  const toolbarBg = isDarkMode ? 'rgba(45, 45, 45, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+  const toolbarBorder = isDarkMode ? '#404040' : '#e0e0e0';
+  const btnBg = isDarkMode ? '#333' : '#fff';
+  const btnColor = isDarkMode ? '#e0e0e0' : '#333';
+  const btnBorder = isDarkMode ? '#555' : '#ccc';
+  const btnHover = isDarkMode ? '#444' : '#eee';
+  const codeBg = isDarkMode ? '#2d2d2d' : '#f5f5f5';
+  const codeBorder = isDarkMode ? '#404040' : '#ddd';
+  const activeColor = isDarkMode ? '#279EA7' : '#3DBDC6';
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Preview</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0;
+            background: ${bgColor};
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .toolbar {
+            position: fixed; top: 10px; right: 10px; z-index: 10000;
+            display: flex; gap: 8px;
+            background: ${toolbarBg};
+            padding: 8px; border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,${isDarkMode ? '0.4' : '0.1'});
+            border: 1px solid ${toolbarBorder};
+        }
+        .toolbar button {
+            padding: 6px 14px;
+            border: 1px solid ${btnBorder};
+            background: ${btnBg}; color: ${btnColor};
+            border-radius: 4px; cursor: pointer; font-size: 13px;
+            transition: background 0.2s;
+        }
+        .toolbar button:hover { background: ${btnHover}; }
+        .toolbar button.active {
+            background: ${activeColor}; color: white; border-color: ${activeColor};
+        }
+        #content-wrapper { padding: 60px 20px 20px 20px; }
+        #rendered-view { display: block; color: ${textColor}; }
+        #source-view {
+            display: none;
+            background: ${codeBg}; border: 1px solid ${codeBorder};
+            border-radius: 4px; padding: 20px;
+            font-family: 'Courier New', monospace; font-size: 13px;
+            white-space: pre-wrap; word-wrap: break-word;
+            color: ${textColor}; line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button id="viewRenderedBtn" class="active" onclick="showRendered()">Rendered</button>
+        <button id="viewSourceBtn" onclick="showSource()">Source</button>
+    </div>
+    <div id="content-wrapper">
+        <div id="rendered-view">${htmlCode}</div>
+        <div id="source-view">${escapedForDisplay}</div>
+    </div>
+    <script>
+        function showRendered() {
+            document.getElementById('rendered-view').style.display = 'block';
+            document.getElementById('source-view').style.display = 'none';
+            document.getElementById('viewRenderedBtn').classList.add('active');
+            document.getElementById('viewSourceBtn').classList.remove('active');
+        }
+        function showSource() {
+            document.getElementById('rendered-view').style.display = 'none';
+            document.getElementById('source-view').style.display = 'block';
+            document.getElementById('viewRenderedBtn').classList.remove('active');
+            document.getElementById('viewSourceBtn').classList.add('active');
+        }
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.close(); });
+    </script>
+</body>
+</html>`;
+
+  fs.writeFileSync(tempHtmlPath, htmlContent, 'utf8');
+  popupWindow.loadFile(tempHtmlPath);
+
+  popupWindow.on('closed', () => {
+    try { if (fs.existsSync(tempHtmlPath)) fs.unlinkSync(tempHtmlPath); } catch (e) { /* ignore */ }
+  });
+});
+
 // Handle Table popup request
 ipcMain.on('open-table-popup', (event, data) => {
   const { tableData, isDarkMode } = data;
