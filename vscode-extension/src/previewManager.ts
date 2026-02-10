@@ -57,7 +57,6 @@ export class PreviewManager {
     );
 
     this.panel.webview.html = this.getWebviewHtml();
-    this.updateContent();
 
     // Listen for document changes
     this.disposables.push(
@@ -128,6 +127,9 @@ export class PreviewManager {
 
   private async handleMessage(msg: any): Promise<void> {
     switch (msg.type) {
+      case 'webview-ready':
+        this.updateContent();
+        break;
       case 'open-mermaid-popup':
         this.popupManager.openMermaidPopup(msg.svgContent, msg.isDarkMode);
         break;
@@ -136,12 +138,6 @@ export class PreviewManager {
         break;
       case 'open-table-popup':
         this.popupManager.openTablePopup(msg.tableData, msg.isDarkMode);
-        break;
-      case 'export-pdf':
-        await this.exportService.savePdf(msg.data, msg.fileName || 'document.pdf');
-        break;
-      case 'export-word':
-        await this.exportService.saveWord(msg.htmlContent, msg.fileName || 'document.docx');
         break;
       case 'open-external':
         if (msg.url) {
@@ -241,8 +237,6 @@ export class PreviewManager {
         <line x1="3" y1="18" x2="3.01" y2="18"></line>
       </svg>
     </button>
-    <button id="exportPdfBtn" title="Export PDF">PDF</button>
-    <button id="exportWordBtn" title="Export Word">DOCX</button>
   </div>
 </div>
 

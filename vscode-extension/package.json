@@ -35,14 +35,6 @@
         "icon": "$(open-preview)"
       },
       {
-        "command": "omnicore.exportPdf",
-        "title": "Omnicore: Export to PDF"
-      },
-      {
-        "command": "omnicore.exportWord",
-        "title": "Omnicore: Export to Word"
-      },
-      {
         "command": "omnicore.toggleBold",
         "title": "Omnicore: Toggle Bold"
       },
@@ -182,6 +174,5 @@
     "@vscode/vsce": "^2.22.0"
   },
   "dependencies": {
-    "html-to-docx": "^1.8.0"
   }
 }

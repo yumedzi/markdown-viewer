@@ -25,18 +25,6 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // Export commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand('omnicore.exportPdf', () => {
-      previewManager?.openPreview(vscode.ViewColumn.Beside);
-      // PDF export is triggered from webview toolbar
-    }),
-    vscode.commands.registerCommand('omnicore.exportWord', () => {
-      previewManager?.openPreview(vscode.ViewColumn.Beside);
-      // Word export is triggered from webview toolbar
-    })
-  );
-
   // Recent files commands
   context.subscriptions.push(
     vscode.commands.registerCommand('omnicore.recentFiles.clear', () => {

@@ -42,8 +42,8 @@ const zoomOutBtn = document.getElementById('zoomOut');
 const zoomResetBtn = document.getElementById('zoomReset');
 const searchToggleBtn = document.getElementById('searchToggle');
 const tocToggleBtn = document.getElementById('tocToggle');
-const exportPdfBtn = document.getElementById('exportPdfBtn');
-const exportWordBtn = document.getElementById('exportWordBtn');
+
+
 
 // ============================================
 // INITIALIZATION
@@ -470,39 +470,6 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ============================================
-// EXPORT BUTTONS
-// ============================================
-
-exportPdfBtn.addEventListener('click', function() {
-  // Use browser print as the primary PDF method
-  window.print();
-});
-
-exportWordBtn.addEventListener('click', function() {
-  if (!currentFilePath) {
-    showNotification('No file loaded for export', 3000);
-    return;
-  }
-
-  // Clone viewer content for Word export
-  var viewerClone = viewer.cloneNode(true);
-  viewerClone.querySelectorAll('.mermaid-maximize-btn, .table-maximize-btn, .code-copy-btn, .omniware-maximize-btn').forEach(function(el) { el.remove(); });
-  viewerClone.querySelectorAll('.code-block-container').forEach(function(container) {
-    var pre = container.querySelector('pre');
-    if (pre) { container.parentNode.replaceChild(pre.cloneNode(true), container); }
-  });
-  viewerClone.querySelectorAll('.table-container').forEach(function(container) {
-    var table = container.querySelector('table');
-    if (table) { container.parentNode.replaceChild(table.cloneNode(true), container); }
-  });
-
-  var fileName = currentFilePath.split(/[\\/]/).pop() || 'document';
-  vscode.postMessage({
-    type: 'export-word',
-    htmlContent: viewerClone.innerHTML,
-    fileName: fileName
-  });
-});
 
 // ============================================
 // KEYBOARD SHORTCUTS
@@ -864,3 +831,6 @@ window.addEventListener('message', function(event) {
 // INITIAL SETUP
 // ============================================
 updateZoom();
+
+// Signal to extension host that webview is ready to receive content
+vscode.postMessage({ type: 'webview-ready' });
