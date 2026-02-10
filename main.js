@@ -305,6 +305,38 @@ ipcMain.on('open-file-dialog', () => {
   openFileDialog();
 });
 
+// Handle image insert dialog
+ipcMain.on('open-image-dialog', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Image',
+    filters: [
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] }
+    ],
+    properties: ['openFile']
+  });
+
+  if (result.canceled || result.filePaths.length === 0) return;
+
+  const filePath = result.filePaths[0];
+  const ext = path.extname(filePath).toLowerCase().replace('.', '');
+  const fileName = path.basename(filePath);
+
+  const mimeTypes = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp'
+  };
+  const mimeType = mimeTypes[ext] || 'image/png';
+
+  try {
+    const data = fs.readFileSync(filePath);
+    const base64 = data.toString('base64');
+    mainWindow.webContents.send('image-selected', { base64, mimeType, fileName });
+  } catch (err) {
+    console.error('Image read error:', err);
+    mainWindow.webContents.send('image-selected', { error: err.message });
+  }
+});
+
 // Handle direct file path open request from renderer (for markdown links)
 ipcMain.on('open-file-path', (event, filePath) => {
   if (filePath && fs.existsSync(filePath)) {
