@@ -2535,9 +2535,15 @@ async function renderMarkdown(content) {
     // Extract @@@html blocks and replace with placeholders
     const htmlBlocks = [];
     let htmlIndex = 0;
-    content = content.replace(/@@@html[\r\n]+([\s\S]*?)@@@/g, (match, code) => {
+    content = content.replace(/@@@html(?:\(([^)]*)\))?[\r\n]+([\s\S]*?)@@@/g, (match, params, code) => {
       const placeholder = `HTMLBLOCK_PLACEHOLDER_${htmlIndex}`;
-      htmlBlocks.push({ placeholder, code: code.trim() });
+      // Parse optional params like zoom:80%
+      let zoom = null;
+      if (params) {
+        const zoomMatch = params.match(/zoom:\s*([\d.]+%?)/);
+        if (zoomMatch) zoom = zoomMatch[1].endsWith('%') ? zoomMatch[1] : zoomMatch[1] + '%';
+      }
+      htmlBlocks.push({ placeholder, code: code.trim(), zoom });
       htmlIndex++;
       return placeholder;
     });
@@ -2586,14 +2592,15 @@ async function renderMarkdown(content) {
     });
 
     // Replace @@@html placeholders with marker divs
-    htmlBlocks.forEach(({ placeholder, code }) => {
+    htmlBlocks.forEach(({ placeholder, code, zoom }) => {
       const escapedCode = code
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-      const htmlDiv = `<div class="html-block-rendered" data-html-code="${escapedCode}"></div>`;
+      const zoomAttr = zoom ? ` data-html-zoom="${zoom}"` : '';
+      const htmlDiv = `<div class="html-block-rendered" data-html-code="${escapedCode}"${zoomAttr}></div>`;
       html = html.replace(placeholder, htmlDiv);
     });
 
@@ -2792,6 +2799,7 @@ async function renderMarkdown(content) {
           .replace(/&lt;/g, '<')
           .replace(/&gt;/g, '>')
           .replace(/&amp;/g, '&');
+        const zoom = el.getAttribute('data-html-zoom');
 
         // Wrap in container
         const container = document.createElement('div');
@@ -2808,7 +2816,18 @@ async function renderMarkdown(content) {
         const bgColor = isDark ? '#1a1a1a' : '#ffffff';
         const textColor = isDark ? '#e0e0e0' : '#333333';
 
+        const zoomFactor = zoom ? parseFloat(zoom) / 100 : 1;
+
         iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>html,body{margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:${bgColor};color:${textColor};overflow:hidden;}</style></head><body>${htmlCode}</body></html>`;
+
+        // If zoomed, make iframe wider so content lays out at full width,
+        // then transform:scale() shrinks it visually to fit the container.
+        // This way media queries see the wider viewport.
+        if (zoomFactor !== 1) {
+          iframe.style.width = `${100 / zoomFactor}%`;
+          iframe.style.transform = `scale(${zoomFactor})`;
+          iframe.style.transformOrigin = 'top left';
+        }
 
         // Auto-resize iframe to fit content
         iframe.addEventListener('load', () => {
@@ -2816,6 +2835,13 @@ async function renderMarkdown(content) {
             const doc = iframe.contentDocument || iframe.contentWindow.document;
             const height = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
             iframe.style.height = height + 'px';
+            // Transform doesn't change layout box, so clip the wrapper to visual size
+            if (zoomFactor !== 1) {
+              el.style.height = Math.ceil(height * zoomFactor) + 'px';
+              el.style.overflow = 'hidden';
+            } else {
+              iframe.style.height = height + 'px';
+            }
           } catch (e) { /* ignore */ }
         });
 
