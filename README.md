@@ -9,6 +9,15 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Electron](https://img.shields.io/badge/Electron-27.0-blue)
 
+## What's New in v1.9.0
+
+- **Robust Note Styling** - Notes now display with colored background highlight and colored underline, applied reliably regardless of sanitization
+- **Complete Note Hiding** - Hidden notes are fully invisible: no background, no underline, no tooltip on hover/click, text appears completely normal
+- **File/View/Tools Dropdown Menus** - Organized menu bar with File, View, and Tools dropdowns
+- **All Notes Panel** - Side panel listing all notes with search and navigation
+- **Inline Text Editing** - Right-click selected text to edit in place with partial DOM rendering
+- **Partial Rendering** - Edits re-render only affected sections, no full page refresh
+
 ## Features
 
 ### Core Rendering
@@ -26,13 +35,13 @@
 - **Auto-Save Detection** - Unsaved changes indicator with confirmation prompts
 
 ### Note System
-- **Text Notes** - Select any text and add colored notes with title and content
+- **Text Notes** - Select any text and add colored notes with background highlight and colored underline
 - **Image Notes** - Annotate images with notes
 - **Note Labels** - Place floating label badges anywhere in the document
 - **All Notes Panel** - Side panel listing all notes sorted by ID with search functionality
 - **Note Search** - Search notes by ID or title, with auto-scroll to matching note
 - **Find Note** - Quick note lookup via right-click context menu
-- **Show/Hide Notes** - Toggle note visibility from the View menu
+- **Show/Hide Notes** - Toggle note visibility; when hidden, notes are completely invisible (no background, no underline, no tooltip on hover)
 - **Edit & Delete Notes** - Right-click context menu on notes for editing and deletion
 - **6 Color Options** - Orange, red, green, blue, purple, yellow
 
