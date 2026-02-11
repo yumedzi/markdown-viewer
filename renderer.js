@@ -196,6 +196,8 @@ const UI_STRINGS = {
     'search.counter': '${current} of ${total}',
     'search.zero': '0 of 0',
     'mermaid.error': 'Could not convert diagram to image.',
+    'notif.corporateOn': 'Corporate letterhead mode activated',
+    'notif.corporateOff': 'Corporate letterhead mode deactivated',
   },
   tr: {
     'open': 'Aç', 'edit': 'Düzenle', 'pdf': 'PDF', 'word': 'Word',
@@ -314,6 +316,8 @@ const UI_STRINGS = {
     'search.counter': '${current} / ${total}',
     'search.zero': '0 / 0',
     'mermaid.error': 'Diyagram resme dönüştürülemedi.',
+    'notif.corporateOn': 'Kurumsal antetli kağıt modu etkinleştirildi',
+    'notif.corporateOff': 'Kurumsal antetli kağıt modu devre dışı bırakıldı',
   }
 };
 
@@ -448,6 +452,7 @@ let translationGeneration = 0;        // stale-detection counter
 let translationResolvers = [];        // waiters for bg translation completion
 let translationPieceCache = new Map(); // piece-level cache: original text → translated text
 let translationTargetLang = null;     // current target language ('en', 'tr', etc.) or null
+let corporateMode = false;            // corporate letterhead mode for PDF/DOCX exports
 
 // Update file info display
 function updateFileInfo(path) {
@@ -1278,7 +1283,7 @@ exportPdfBtn.addEventListener('click', () => {
   const pathParts = currentFilePath.split(/[\\/]/);
   const currentFileName = pathParts.pop();
 
-  ipcRenderer.send('export-pdf', { currentFileName });
+  ipcRenderer.send('export-pdf', { currentFileName, corporateMode });
 });
 
 // Convert Mermaid element to base64 PNG using native browser rendering
@@ -1500,7 +1505,7 @@ exportWordBtn.addEventListener('click', async () => {
     const htmlContent = viewerClone.innerHTML;
     console.log('Sending export-word IPC, HTML length:', htmlContent.length);
 
-    ipcRenderer.send('export-word', { currentFileName, htmlContent });
+    ipcRenderer.send('export-word', { currentFileName, htmlContent, corporateMode });
   } catch (err) {
     console.error('Word export error:', err);
     alert(i18n('alert.wordError') + err.message);
@@ -1687,6 +1692,15 @@ document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's' && isEditMode) {
     e.preventDefault();
     saveMarkdownFile();
+  }
+});
+
+// Ctrl+Shift+O keyboard shortcut for corporate letterhead mode
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
+    e.preventDefault();
+    corporateMode = !corporateMode;
+    showNotification(corporateMode ? i18n('notif.corporateOn') : i18n('notif.corporateOff'), 2000);
   }
 });
 

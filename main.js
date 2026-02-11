@@ -106,7 +106,7 @@ function createWindow() {
   // Register keyboard shortcuts
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.control || input.meta) {
-      if (input.key === 'o' && input.type === 'keyDown') {
+      if (input.key === 'o' && !input.shift && input.type === 'keyDown') {
         event.preventDefault();
         openFileDialog();
       } else if (input.key === 'q' && input.type === 'keyDown') {
@@ -361,7 +361,7 @@ ipcMain.on('open-folder-in-explorer', (event, filePath) => {
 
 ipcMain.on('export-pdf', async (event, data) => {
   try {
-    const { currentFileName } = data;
+    const { currentFileName, corporateMode } = data;
 
     // Determine default filename
     let defaultFilename = 'document.pdf';
@@ -384,14 +384,66 @@ ipcMain.on('export-pdf', async (event, data) => {
       return;
     }
 
-    // Generate PDF from current page
-    const pdfData = await mainWindow.webContents.printToPDF({
+    // PDF options
+    const pdfOptions = {
       printBackground: true,
       landscape: false,
-      marginsType: 1, // Minimum margins
       pageSize: 'A4',
       preferCSSPageSize: false
-    });
+    };
+
+    if (corporateMode) {
+      // Read logo and encode as base64
+      const logoPath = path.join(__dirname, 'corporate-logo.png');
+      const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+
+      // 3 vertical teal bars as SVG — extends to page bottom edge.
+      // Using preserveAspectRatio="none" so the SVG stretches to fill any height.
+      const barsSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="100" preserveAspectRatio="none"><rect x="0" y="0" width="2" height="100" fill="#279EA7"/><rect x="4.5" y="0" width="2" height="100" fill="#279EA7"/><rect x="9" y="0" width="2" height="100" fill="#279EA7"/></svg>`;
+      const barsBase64 = Buffer.from(barsSvg).toString('base64');
+
+      // Chromium's displayHeaderFooter renders templates in the margin area.
+      pdfOptions.margins = {
+        top: 0.79,     // ~2cm — logo area + comfortable spacing
+        bottom: 1.10,  // ~2.8cm — company info + page number
+        left: 0.79,    // ~2cm
+        right: 0.79    // ~2cm
+      };
+      pdfOptions.displayHeaderFooter = true;
+
+      // Header: logo top-left, filename top-right
+      const safeFileName = (currentFileName || 'document').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      pdfOptions.headerTemplate = `
+        <div style="width: 100%; height: 100%; margin: 0; padding: 4px 25px 0 25px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start;">
+          <img src="data:image/png;base64,${logoBase64}" style="height: 24px; width: auto;" />
+          <span style="font-size: 9px; color: #bbb; font-family: 'Petrov Sans', Calibri, Arial, sans-serif;">${safeFileName}</span>
+        </div>`;
+
+      // Footer: company info left, [bars + page number] right.
+      // Bars extend downward from content level to the page bottom edge.
+      pdfOptions.footerTemplate = `
+        <div style="width: 100%; padding: 0 40px 0 40px; box-sizing: border-box; overflow: visible;">
+          <table style="width: 100%; border-collapse: collapse; overflow: visible;">
+            <tr>
+              <td style="vertical-align: bottom; padding: 0 0 10px 0;">
+                <div style="font-size: 8px; line-height: 1.6;"><span style="font-family: 'Aptos Black', 'Aptos', Calibri, sans-serif; font-weight: 900; color: #1F3244;">OMNICORE</span><span style="font-family: 'Aptos', Calibri, sans-serif; font-weight: 600; color: #279EA7;"> STRATEJİK TEKNOLOJİLER LİMİTED ŞİRKETİ</span></div>
+                <div style="font-size: 7px; color: #1F3244; line-height: 1.6; font-family: 'Aptos Display', 'Aptos', Calibri, sans-serif;">KÜÇÜKBAKKALKÖY MAH. SELVİLİ SK. NO: 4 İÇ KAPI NO: 20 ATAŞEHİR</div>
+                <div style="font-size: 7px; color: #1F3244; line-height: 1.6; font-family: 'Aptos Display', 'Aptos', Calibri, sans-serif;">1074342 / 0642108183700001</div>
+                <div style="font-size: 7px; color: #1F3244; line-height: 1.6; font-family: 'Aptos', Calibri, monospace;">www.omnicore.com.tr</div>
+              </td>
+              <td style="vertical-align: bottom; text-align: right; padding: 0 0 10px 0; white-space: nowrap; width: 60px;">
+                <img src="data:image/svg+xml;base64,${barsBase64}" style="height: 150px; width: 12px; vertical-align: top; margin-right: 8px; margin-bottom: -100px;" />
+                <span style="font-size: 18px; color: #1F3244; vertical-align: top; font-family: 'Aptos', Calibri, monospace;" class="pageNumber"></span>
+              </td>
+            </tr>
+          </table>
+        </div>`;
+    } else {
+      pdfOptions.marginsType = 1; // Minimum margins
+    }
+
+    // Generate PDF from current page
+    const pdfData = await mainWindow.webContents.printToPDF(pdfOptions);
 
     // Write PDF to file
     fs.writeFile(result.filePath, pdfData, (err) => {
@@ -422,7 +474,7 @@ ipcMain.on('export-pdf', async (event, data) => {
 ipcMain.on('export-word', async (event, data) => {
   console.log('Received export-word request');
   try {
-    const { currentFileName, htmlContent } = data;
+    const { currentFileName, htmlContent, corporateMode } = data;
     console.log('Processing Word export for:', currentFileName, 'HTML length:', htmlContent?.length);
 
     // Determine default filename
@@ -477,14 +529,46 @@ ipcMain.on('export-word', async (event, data) => {
       </html>
     `;
 
+    // Build corporate header/footer HTML if corporate mode is on
+    let headerHTMLString = null;
+    let footerHTMLString = null;
+
+    if (corporateMode) {
+      const logoPath = path.join(__dirname, 'corporate-logo.png');
+      const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+
+      headerHTMLString = `
+        <div style="text-align: left;">
+          <img src="data:image/png;base64,${logoBase64}" style="height: 50px;" />
+        </div>
+      `;
+
+      footerHTMLString = `
+        <div style="font-family: Calibri, Arial, sans-serif;">
+          <p style="font-size: 8pt; color: #279EA7; font-weight: bold; margin: 0 0 2pt 0;">OMNICORE STRATEJİK TEKNOLOJİLER LİMİTED ŞİRKETİ</p>
+          <p style="font-size: 7pt; color: #333; margin: 0 0 1pt 0;">KÜÇÜKBAKKALKÖY MAH. SELVİLİ SK. NO: 4 İÇ KAPI NO: 20 ATAŞEHİR</p>
+          <p style="font-size: 7pt; color: #333; margin: 0 0 1pt 0;">1074342 / 0642108183700001</p>
+          <p style="font-size: 7pt; color: #333; margin: 0;">www.omnicore.com.tr</p>
+        </div>
+      `;
+    }
+
     // Convert HTML to DOCX
-    const docxBuffer = await HTMLtoDOCX(fullHtml, null, {
+    const docxOptions = {
       table: { row: { cantSplit: true } },
       footer: true,
       pageNumber: true,
       font: 'Calibri',
       fontSize: 22, // In half-points (22 = 11pt)
-      margins: {
+      margins: corporateMode ? {
+        top: 1847,    // 3.25cm in twips
+        right: 1440,
+        bottom: 1440,
+        left: 1440,
+        header: 720,
+        footer: 720,
+        gutter: 0
+      } : {
         top: 1440,    // 1 inch in twips
         right: 1440,
         bottom: 1440,
@@ -493,7 +577,13 @@ ipcMain.on('export-word', async (event, data) => {
         footer: 720,  // 0.5 inch
         gutter: 0
       }
-    });
+    };
+
+    if (corporateMode) {
+      docxOptions.header = true;
+    }
+
+    const docxBuffer = await HTMLtoDOCX(fullHtml, headerHTMLString, docxOptions, footerHTMLString);
 
     // Write DOCX to file
     fs.writeFile(result.filePath, docxBuffer, (err) => {

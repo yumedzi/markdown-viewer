@@ -1258,7 +1258,7 @@ html {
     display: block !important;
   }
 
-  /* Ensure viewer takes full width and has no borders */
+  /* Ensure viewer takes full width, no borders, and reset zoom */
   #viewer {
     width: 100% !important;
     max-width: 100% !important;
@@ -1273,16 +1273,326 @@ html {
     margin: 0;
   }
 
-  /* Prevent page breaks inside code blocks and images */
-  .markdown-body pre,
+  /* Headings: don't break inside a heading, but allow breaks after */
+  .markdown-body h1, .markdown-body h2, .markdown-body h3,
+  .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Prevent page breaks inside images and diagrams */
   .markdown-body img,
   .markdown-body .mermaid {
     page-break-inside: avoid;
   }
 
+  /* Code blocks: allow splitting across pages */
+  .markdown-body pre,
+  .markdown-body pre code,
+  .code-block-container,
+  .code-block-container pre,
+  .code-block-container pre code {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    max-height: none !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+  }
+
+  /* Better text flow */
+  .markdown-body p, .markdown-body li {
+    orphans: 3;
+    widows: 3;
+  }
+
   /* Ensure backgrounds are printed */
   body {
     background: white;
+  }
+
+  /* ── Force light-mode print colors ── */
+
+  /* NUCLEAR RESET: wipe ALL dark backgrounds everywhere */
+  pre[class*="language-"],
+  code[class*="language-"],
+  :not(pre) > code[class*="language-"],
+  body.dark-mode pre[class*="language-"],
+  body.dark-mode code[class*="language-"],
+  body.dark-mode :not(pre) > code[class*="language-"],
+  body.dark-mode .markdown-body,
+  body.dark-mode .markdown-body pre,
+  body.dark-mode .markdown-body code,
+  body.dark-mode .markdown-body blockquote,
+  body.dark-mode .markdown-body tr,
+  body.dark-mode .markdown-body td,
+  body.dark-mode .markdown-body table,
+  .code-block-container,
+  .code-block-container pre,
+  .code-block-container code,
+  body.dark-mode .code-block-container,
+  body.dark-mode .code-block-container pre,
+  body.dark-mode .code-block-container code {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+
+  /* Ensure code block containers and pre elements are fully visible in print */
+  .code-block-container,
+  .code-block-container pre,
+  .markdown-body pre,
+  body.dark-mode .code-block-container,
+  body.dark-mode .code-block-container pre,
+  body.dark-mode .markdown-body pre {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Hide copy button in print */
+  .code-copy-btn {
+    display: none !important;
+  }
+
+  /* Force ALL text inside code blocks to be dark — catches every token,
+     unclassed span, and text node regardless of PrismJS language/theme. */
+  pre, code,
+  pre *, code *,
+  pre[class*="language-"],
+  pre[class*="language-"] *,
+  code[class*="language-"],
+  code[class*="language-"] *,
+  .code-block-container pre,
+  .code-block-container pre *,
+  .code-block-container code,
+  .code-block-container code *,
+  .markdown-body pre,
+  .markdown-body pre *,
+  .markdown-body pre code,
+  body.dark-mode pre,
+  body.dark-mode pre *,
+  body.dark-mode code,
+  body.dark-mode code *,
+  body.dark-mode .markdown-body pre,
+  body.dark-mode .markdown-body pre *,
+  body.dark-mode .markdown-body pre code,
+  body.dark-mode .code-block-container pre,
+  body.dark-mode .code-block-container pre *,
+  body.dark-mode .code-block-container code,
+  body.dark-mode .code-block-container code * {
+    color: #333 !important;
+    -webkit-text-fill-color: #333 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  :root {
+    --text-primary: #1F3244 !important;
+    --text-secondary: #4a5568 !important;
+    --secondary-color: #1F3244 !important;
+    --primary-color: #1a7f87 !important;
+    --bg-primary: #ffffff !important;
+    --bg-secondary: #f8f8f8 !important;
+    --bg-tertiary: #f0f0f0 !important;
+    --border-color: #ccc !important;
+    --accent-main: #1a7f87 !important;
+  }
+
+  /* Body & paragraphs */
+  body, body.dark-mode,
+  .markdown-body, body.dark-mode .markdown-body,
+  .markdown-body p, body.dark-mode .markdown-body p,
+  .markdown-body li, body.dark-mode .markdown-body li {
+    color: #222 !important;
+  }
+
+  /* Headings — force visible with -webkit-text-fill-color */
+  .markdown-body h1, body.dark-mode .markdown-body h1 {
+    color: #1a7f87 !important;
+    -webkit-text-fill-color: #1a7f87 !important;
+    border-bottom-color: #1a7f87 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .markdown-body h2, body.dark-mode .markdown-body h2 {
+    color: #1F3244 !important;
+    -webkit-text-fill-color: #1F3244 !important;
+    border-bottom-color: #ccc !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .markdown-body h3, body.dark-mode .markdown-body h3 {
+    color: #1F3244 !important;
+    -webkit-text-fill-color: #1F3244 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .markdown-body h4, body.dark-mode .markdown-body h4,
+  .markdown-body h5, body.dark-mode .markdown-body h5 {
+    color: #2d3748 !important;
+    -webkit-text-fill-color: #2d3748 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .markdown-body h6, body.dark-mode .markdown-body h6 {
+    color: #4a5568 !important;
+    -webkit-text-fill-color: #4a5568 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Tables */
+  .markdown-body th, body.dark-mode .markdown-body th {
+    background: #1F3244 !important;
+    color: #ffffff !important;
+    border: 1px solid #1F3244 !important;
+  }
+
+  .markdown-body td, body.dark-mode .markdown-body td {
+    color: #222 !important;
+    background: #ffffff !important;
+    border: 1px solid #ccc !important;
+  }
+
+  .markdown-body tr, body.dark-mode .markdown-body tr {
+    background: #ffffff !important;
+  }
+
+  .markdown-body tr:nth-child(even), body.dark-mode .markdown-body tr:nth-child(even) {
+    background: #f8f8f8 !important;
+  }
+
+  .markdown-body tr:hover, body.dark-mode .markdown-body tr:hover {
+    background: transparent !important;
+  }
+
+  /* Links */
+  .markdown-body a, body.dark-mode .markdown-body a {
+    color: #1a7f87 !important;
+  }
+
+  /* Inline code */
+  .markdown-body code, body.dark-mode .markdown-body code {
+    color: #1F3244 !important;
+    background: #f0f0f0 !important;
+  }
+
+  /* Code blocks */
+  .markdown-body pre, body.dark-mode .markdown-body pre {
+    background: #f5f5f5 !important;
+    border: 1px solid #ddd !important;
+  }
+
+  .markdown-body pre code,
+  body.dark-mode .markdown-body pre code,
+  body.dark-mode code[class*="language-"],
+  body.dark-mode pre[class*="language-"],
+  code[class*="language-"],
+  pre[class*="language-"] {
+    color: #333 !important;
+    background: transparent !important;
+  }
+
+  /* Syntax highlighting — print-safe colors (GitHub light theme)
+     Every rule includes -webkit-text-fill-color to override any hidden fills. */
+  .token.comment, .token.block-comment, .token.cdata,
+  .token.doctype, .token.prolog,
+  body.dark-mode .token.comment, body.dark-mode .token.block-comment,
+  body.dark-mode .token.cdata, body.dark-mode .token.doctype,
+  body.dark-mode .token.prolog {
+    color: #6a737d !important;
+    -webkit-text-fill-color: #6a737d !important;
+  }
+
+  .token.punctuation, body.dark-mode .token.punctuation {
+    color: #333 !important;
+    -webkit-text-fill-color: #333 !important;
+  }
+
+  .token.tag, .token.attr-name, .token.deleted, .token.namespace,
+  body.dark-mode .token.tag, body.dark-mode .token.attr-name,
+  body.dark-mode .token.deleted, body.dark-mode .token.namespace {
+    color: #b31d28 !important;
+    -webkit-text-fill-color: #b31d28 !important;
+  }
+
+  .token.function-name, .token.function,
+  body.dark-mode .token.function-name, body.dark-mode .token.function {
+    color: #6f42c1 !important;
+    -webkit-text-fill-color: #6f42c1 !important;
+  }
+
+  .token.boolean, .token.number,
+  body.dark-mode .token.boolean, body.dark-mode .token.number {
+    color: #005cc5 !important;
+    -webkit-text-fill-color: #005cc5 !important;
+  }
+
+  .token.class-name, .token.constant, .token.property, .token.symbol,
+  body.dark-mode .token.class-name, body.dark-mode .token.constant,
+  body.dark-mode .token.property, body.dark-mode .token.symbol {
+    color: #e36209 !important;
+    -webkit-text-fill-color: #e36209 !important;
+  }
+
+  .token.atrule, .token.builtin, .token.important,
+  .token.keyword, .token.selector,
+  body.dark-mode .token.atrule, body.dark-mode .token.builtin,
+  body.dark-mode .token.important, body.dark-mode .token.keyword,
+  body.dark-mode .token.selector {
+    color: #d73a49 !important;
+    -webkit-text-fill-color: #d73a49 !important;
+  }
+
+  .token.attr-value, .token.char, .token.regex,
+  .token.string, .token.variable,
+  body.dark-mode .token.attr-value, body.dark-mode .token.char,
+  body.dark-mode .token.regex, body.dark-mode .token.string,
+  body.dark-mode .token.variable {
+    color: #22863a !important;
+    -webkit-text-fill-color: #22863a !important;
+  }
+
+  .token.entity, .token.operator, .token.url,
+  body.dark-mode .token.entity, body.dark-mode .token.operator,
+  body.dark-mode .token.url {
+    color: #005cc5 !important;
+    -webkit-text-fill-color: #005cc5 !important;
+    background: transparent !important;
+  }
+
+  .token.inserted, body.dark-mode .token.inserted {
+    color: #22863a !important;
+    -webkit-text-fill-color: #22863a !important;
+  }
+
+  /* Catch-all: any token not matched above */
+  [class*="token"], body.dark-mode [class*="token"] {
+    background: transparent !important;
+  }
+
+  /* Blockquotes */
+  .markdown-body blockquote, body.dark-mode .markdown-body blockquote {
+    color: #444 !important;
+    border-left-color: #1a7f87 !important;
+    background: #f8f8f8 !important;
+  }
+
+  /* List markers */
+  .markdown-body li::marker, body.dark-mode .markdown-body li::marker {
+    color: #1a7f87 !important;
+  }
+
+  /* Horizontal rules */
+  .markdown-body hr, body.dark-mode .markdown-body hr {
+    background: #ccc !important;
   }
 }
 

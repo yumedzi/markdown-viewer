@@ -1,6 +1,6 @@
 {
   "name": "omnicore-markdown-viewer",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Omnicore Markdown Viewer - A sleek cross-platform markdown viewer with Mermaid support",
   "main": "main.js",
   "scripts": {
@@ -66,6 +66,7 @@
       "omnicore_ico.png",
       "file-icon.png",
       "file-icon.ico",
+      "corporate-logo.png",
       "libs/**/*",
       "omniwire/**/*",
       "omniware-config.js",
