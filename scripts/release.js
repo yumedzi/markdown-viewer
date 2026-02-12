@@ -301,7 +301,7 @@ function getArtifacts(version) {
     // Show expected artifacts in dry-run mode
     const expectedArtifacts = [
       `Omnicore-Markdown-Viewer-Setup-${version}.exe`,
-      `Omnicore Markdown Viewer Setup ${version}.exe`,
+      `Omnicore-Markdown-Viewer-${version}.exe`,
       `Omnicore.Markdown.Viewer-${version}.AppImage`,
       `omnicore-markdown-viewer_${version}_amd64.deb`,
       'latest.yml',
@@ -354,19 +354,9 @@ function getArtifacts(version) {
 }
 
 function renameWindowsInstaller(version) {
-  // Rename installer to use dashes (required for auto-update)
-  const spaceName = path.join(DIST_DIR, `Omnicore Markdown Viewer Setup ${version}.exe`);
-  const dashName = path.join(DIST_DIR, `Omnicore-Markdown-Viewer-Setup-${version}.exe`);
-
-  if (dryRun) {
-    logDryRun(`Would copy installer with dashes: Omnicore-Markdown-Viewer-Setup-${version}.exe`);
-    return;
-  }
-
-  if (fs.existsSync(spaceName) && !fs.existsSync(dashName)) {
-    fs.copyFileSync(spaceName, dashName);
-    logSuccess(`Created: Omnicore-Markdown-Viewer-Setup-${version}.exe`);
-  }
+  // No longer needed - artifactName in package.json ensures consistent naming
+  // Kept for backward compatibility but now a no-op
+  logInfo('Artifact naming handled by electron-builder config (artifactName)');
 }
 
 function createGitHubRelease(version, artifacts) {

@@ -1,6 +1,6 @@
 {
   "name": "omnicore-markdown-viewer",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Omnicore Markdown Viewer - A sleek cross-platform markdown viewer with Mermaid support",
   "main": "main.js",
   "scripts": {
@@ -168,6 +168,12 @@
           "role": "Viewer"
         }
       ]
+    },
+    "nsis": {
+      "artifactName": "Omnicore-Markdown-Viewer-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Omnicore-Markdown-Viewer-${version}.${ext}"
     },
     "linux": {
       "target": [
