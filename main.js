@@ -1855,7 +1855,7 @@ async function checkGitHubForMajorUpdate() {
   return new Promise((resolve) => {
     const options = {
       hostname: 'api.github.com',
-      path: '/repos/OmniCoreST/omnicore-markdown-viewer/releases/latest',
+      path: '/repos/OmniCoreST/omnicore-markdown-viewer/releases',
       headers: { 'User-Agent': 'OmnicoreMarkdownViewer' }
     };
 
@@ -1864,20 +1864,35 @@ async function checkGitHubForMajorUpdate() {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
-          const release = JSON.parse(data);
-          const latestTag = release.tag_name || '';
-          const latestVersion = latestTag.replace(/^v/, '');
+          const releases = JSON.parse(data);
+          if (!Array.isArray(releases)) {
+            resolve(null);
+            return;
+          }
 
-          // Compare major versions
           const currentMajor = parseInt(currentVersion.split('.')[0], 10);
-          const latestMajor = parseInt(latestVersion.split('.')[0], 10);
 
-          if (latestMajor > currentMajor) {
-            log('Major update available:', latestVersion);
+          // Find the highest major version release
+          let bestRelease = null;
+          let bestMajor = currentMajor;
+
+          for (const release of releases) {
+            if (release.draft || release.prerelease) continue;
+            const tag = (release.tag_name || '').replace(/^v/, '');
+            const major = parseInt(tag.split('.')[0], 10);
+            if (major > bestMajor) {
+              bestMajor = major;
+              bestRelease = release;
+            }
+          }
+
+          if (bestRelease) {
+            const version = (bestRelease.tag_name || '').replace(/^v/, '');
+            log('Major update available:', version);
             resolve({
-              version: latestVersion,
-              url: release.html_url,
-              body: release.body || ''
+              version: version,
+              url: bestRelease.html_url,
+              body: bestRelease.body || ''
             });
           } else {
             resolve(null);
