@@ -1847,15 +1847,81 @@ ipcMain.on('install-update', () => {
   }
 });
 
+// Check GitHub releases for major version upgrades (e.g. Tauri v2.0.0)
+async function checkGitHubForMajorUpdate() {
+  const https = require('https');
+  const currentVersion = app.getVersion();
+
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'api.github.com',
+      path: '/repos/OmniCoreST/omnicore-markdown-viewer/releases/latest',
+      headers: { 'User-Agent': 'OmnicoreMarkdownViewer' }
+    };
+
+    https.get(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const release = JSON.parse(data);
+          const latestTag = release.tag_name || '';
+          const latestVersion = latestTag.replace(/^v/, '');
+
+          // Compare major versions
+          const currentMajor = parseInt(currentVersion.split('.')[0], 10);
+          const latestMajor = parseInt(latestVersion.split('.')[0], 10);
+
+          if (latestMajor > currentMajor) {
+            log('Major update available:', latestVersion);
+            resolve({
+              version: latestVersion,
+              url: release.html_url,
+              body: release.body || ''
+            });
+          } else {
+            resolve(null);
+          }
+        } catch (err) {
+          log('GitHub release check parse error:', err.message);
+          resolve(null);
+        }
+      });
+    }).on('error', (err) => {
+      log('GitHub release check error:', err.message);
+      resolve(null);
+    });
+  });
+}
+
+// IPC handler: open release page in browser
+ipcMain.on('open-release-page', (event, url) => {
+  shell.openExternal(url);
+});
+
 // Check for updates after app is ready (only in production)
 function checkForUpdatesOnStartup() {
-  if (app.isPackaged && autoUpdater) {
-    // Wait a few seconds after app starts before checking for updates
-    setTimeout(() => {
-      log('Checking for updates on startup...');
-      autoUpdater.checkForUpdates().catch(err => {
-        log('Error checking for updates:', err.message);
-      });
+  if (app.isPackaged) {
+    setTimeout(async () => {
+      // First check GitHub for major version upgrades (Electron → Tauri)
+      const majorUpdate = await checkGitHubForMajorUpdate();
+      if (majorUpdate && mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('update-status', {
+          status: 'major-update',
+          version: majorUpdate.version,
+          url: majorUpdate.url,
+          body: majorUpdate.body
+        });
+        return; // Skip electron-updater if major update found
+      }
+
+      // Fall back to electron-updater for minor updates
+      if (autoUpdater) {
+        log('Checking for updates on startup...');
+        autoUpdater.checkForUpdates().catch(err => {
+          log('Error checking for updates:', err.message);
+        });
+      }
     }, 5000);
   }
 }
