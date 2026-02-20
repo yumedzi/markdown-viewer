@@ -9,18 +9,10 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Electron](https://img.shields.io/badge/Electron-27.0-blue)
 
-## What's New in v2.0.4
+## What's New in v2.0.5
 
-- **Image Slider** - Embed auto-playing image carousels with `<!-- slider-start/end -->` syntax; per-slide zoom popup
-- **Mermaid Template Dialog** - 12 built-in diagram templates, insert or edit via right-click with live preview
-- **Table Insert Dialog** - Configure rows, columns, and header — live preview before inserting
-- **Edit Mermaid / Edit Table** - Right-click any diagram or table to edit it inline (partial DOM patch, no full re-render)
-- **Image Zoom Popup** - Open any image in a dedicated popup window with pan, zoom, and PNG/JPG export
-- **Undo / Redo** - Full undo/redo stack for all view-mode edits (Ctrl+Z / Ctrl+Y)
-- **Instant Dark Mode** - Theme switch no longer re-renders the page; only diagram SVGs are redrawn
-- **Non-Blocking Translation** - Translation runs in the background; keep working while the document translates
-- **OS-level File Watching** - Instant file reload on external changes (replaces 5-second polling)
-- **400ms Editor Debounce** - Preview updates 7× faster than before (was 3 seconds)
+- **Fixed** - *Bold* and **italic** formatting applied incorrectly in certain cases
+- **Fixed** - Ctrl+Z / Ctrl+Y undo and redo not working correctly in some scenarios
 
 ## Features
 
