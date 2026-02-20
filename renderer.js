@@ -12,6 +12,7 @@ const { getMermaidConfig } = require('./mermaid-config');
 const OmniWare = require('./omniwire/omniware');
 const { getOmniWareDarkCSS } = require('./omniware-config');
 const { positionContextMenu, hideContextMenu: hideContextMenuHelper } = require('./context-menu-utils');
+const { parseEmojis } = require('./emoji-parser');
 
 // Libraries loaded from CDN in index.html
 // marked, mermaid, and DOMPurify are available globally
@@ -3003,6 +3004,9 @@ async function renderMarkdownFull(content, generation) {
   try {
     // Remove BOM (Byte Order Mark) if present
     content = removeBOM(content);
+
+    // Parse emoji shortcodes (e.g., :star: -> ⭐)
+    content = parseEmojis(content);
 
     // Extract image slider blocks and replace with placeholders
     const sliderBlocks = [];

@@ -77,6 +77,8 @@
       "context-menu-utils.js",
       "notification-helpers.js",
       "file-helpers.js",
+      "emoji-map.js",
+      "emoji-parser.js",
       "node_modules/**/*",
       "!**/*.md",
       "!dist/**/*",
