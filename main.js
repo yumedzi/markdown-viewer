@@ -439,8 +439,8 @@ function buildCorporateTemplates(label) {
   } catch (e) {
     console.warn('Corporate logo not found:', logoPath);
   }
-  const headerTemplate = `<div style="-webkit-print-color-adjust:exact;color-adjust:exact;width:100%;padding:10px 36px 0 36px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:flex-start;">
-    <div style="-webkit-print-color-adjust:exact;color-adjust:exact;height:36px;width:160px;background-image:url('${logoDataUri}');background-size:contain;background-repeat:no-repeat;background-position:left center;flex-shrink:0;"></div>
+  const headerTemplate = `<div style="-webkit-print-color-adjust:exact;color-adjust:exact;width:100%;padding:5px 36px 0 31px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:flex-start;">
+    <div style="-webkit-print-color-adjust:exact;color-adjust:exact;height:26px;width:115px;background-image:url('${logoDataUri}');background-size:contain;background-repeat:no-repeat;background-position:left center;flex-shrink:0;"></div>
     <span style="font-size:9px;color:#999999;font-family:Arial,sans-serif;padding-top:4px;">${label || ''}</span>
   </div>`;
   const footerTemplate = `<div style="-webkit-print-color-adjust:exact;color-adjust:exact;width:100%;height:100%;padding:4px 0 0 36px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:flex-end;font-family:Arial,sans-serif;overflow:visible;">

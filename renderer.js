@@ -415,6 +415,7 @@ let currentFilePath = null;
 const MAX_UNDO_HISTORY = 100;
 let undoHistory = [];   // past states (string[])
 let redoHistory = [];   // future states (string[])
+let undoRedoRendering = false; // suppress loading screen & scrollTop reset during undo/redo
 
 function historyPush(content) {
   if (undoHistory.length > 0 && undoHistory[undoHistory.length - 1] === content) return;
@@ -428,17 +429,25 @@ function historyUndo() {
   const currentContent = isEditMode ? markdownEditor.value : originalMarkdown;
   redoHistory.push(currentContent);
   const prevContent = undoHistory.pop();
+  const scrollPos = contentWrapper.scrollTop;
 
+  undoRedoRendering = true;
   if (isEditMode) {
     markdownEditor.value = prevContent;
     hasUnsavedChanges = (prevContent !== originalMarkdown);
     updateUnsavedIndicator();
     clearTimeout(previewDebounceTimer);
-    previewDebounceTimer = setTimeout(() => renderMarkdown(prevContent), TIMING.previewDebounceDelay);
+    renderMarkdown(prevContent).then(() => {
+      contentWrapper.scrollTop = scrollPos;
+      undoRedoRendering = false;
+    });
   } else {
     originalMarkdown = prevContent;
     invalidateTranslationCache();
-    renderMarkdown(prevContent);
+    renderMarkdown(prevContent).then(() => {
+      contentWrapper.scrollTop = scrollPos;
+      undoRedoRendering = false;
+    });
   }
 }
 
@@ -447,17 +456,25 @@ function historyRedo() {
   const currentContent = isEditMode ? markdownEditor.value : originalMarkdown;
   undoHistory.push(currentContent);
   const nextContent = redoHistory.pop();
+  const scrollPos = contentWrapper.scrollTop;
 
+  undoRedoRendering = true;
   if (isEditMode) {
     markdownEditor.value = nextContent;
     hasUnsavedChanges = (nextContent !== originalMarkdown);
     updateUnsavedIndicator();
     clearTimeout(previewDebounceTimer);
-    previewDebounceTimer = setTimeout(() => renderMarkdown(nextContent), TIMING.previewDebounceDelay);
+    renderMarkdown(nextContent).then(() => {
+      contentWrapper.scrollTop = scrollPos;
+      undoRedoRendering = false;
+    });
   } else {
     originalMarkdown = nextContent;
     invalidateTranslationCache();
-    renderMarkdown(nextContent);
+    renderMarkdown(nextContent).then(() => {
+      contentWrapper.scrollTop = scrollPos;
+      undoRedoRendering = false;
+    });
   }
 }
 
@@ -945,6 +962,7 @@ let enViewResyncTimer = null;
 
 // Apply a view-mode content change and keep both markdowns in sync
 function commitViewModeEdit(newContent, scrollPosition, syncFn) {
+  historyPush(originalMarkdown);
   if (isShowingTranslation && translatedMarkdown) {
     translatedMarkdown = newContent;
     if (syncFn) syncFn();
@@ -967,7 +985,8 @@ function commitViewModeEdit(newContent, scrollPosition, syncFn) {
 }
 
 // Update markdown source without triggering a full re-render (used when DOM is already patched).
-function updateSourceSilently(newContent, syncFn) {
+function replaceSourceSilently(newContent, syncFn) {
+  historyPush(originalMarkdown);
   if (isShowingTranslation && translatedMarkdown) {
     translatedMarkdown = newContent;
     if (syncFn) syncFn();
@@ -981,6 +1000,15 @@ function updateSourceSilently(newContent, syncFn) {
     if (syncFn) syncFn();
   }
   hasUnsavedChanges = true;
+  updateUnsavedIndicator();
+}
+
+// Clear the block-level hash of the viewer child that contains `node`,
+// so patchViewerDOM will re-render it on the next renderLightFormat call.
+function _invalidateBlockHash(node) {
+  let block = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+  while (block && block.parentElement !== viewer) block = block.parentElement;
+  if (block) delete block.dataset.blockHash;
 }
 
 // Wrap the saved DOM range in an inline element (strong/em/code) without re-rendering.
@@ -990,6 +1018,7 @@ function patchInlineFormatInDOM(tagName) {
   try {
     const el = document.createElement(tagName);
     savedRange.surroundContents(el);
+    _invalidateBlockHash(el);
     return true;
   } catch (e) {
     return false;
@@ -1007,6 +1036,7 @@ function patchRemoveFormatInDOM() {
       if (['STRONG', 'EM', 'CODE'].includes(node.tagName)) {
         const textNode = document.createTextNode(node.textContent);
         node.parentNode.replaceChild(textNode, node);
+        _invalidateBlockHash(textNode);
         return true;
       }
       node = node.parentElement;
@@ -1693,6 +1723,7 @@ function showNotification(message, duration = 3000) {
 
 // Loading screen functions
 function showLoadingScreen() {
+  if (undoRedoRendering) return;
   loadingScreen.classList.add('active');
 }
 
@@ -3249,8 +3280,8 @@ async function renderMarkdownFull(content, generation) {
     // Build table of contents
     buildTableOfContents();
 
-    // Scroll to top
-    viewer.parentElement.scrollTop = 0;
+    // Scroll to top (skip during undo/redo to preserve position)
+    if (!undoRedoRendering) viewer.parentElement.scrollTop = 0;
 
     // Apply syntax highlighting with PrismJS (asynchronously to avoid blocking)
     if (typeof Prism !== 'undefined') {
@@ -4125,87 +4156,139 @@ ctxSelectAll.addEventListener('click', () => {
   hideContextMenu();
 });
 
+// Check if wrapper chars in markdown source indicate already-formatted text.
+// For '*' (italic), requires the char before/after is NOT also '*' (to avoid matching '**bold**').
+function _isAlreadyWrapped(markdownContent, textIndex, selLen, wrapper) {
+  const wLen = wrapper.length;
+  if (textIndex < wLen) return false;
+  const before = markdownContent.substring(textIndex - wLen, textIndex);
+  const after  = markdownContent.substring(textIndex + selLen, textIndex + selLen + wLen);
+  if (before !== wrapper || after !== wrapper) return false;
+  if (wLen === 1) {
+    // Single-char wrapper: make sure it's not part of a longer marker (e.g. '**')
+    const charBefore = textIndex - wLen - 1 >= 0 ? markdownContent[textIndex - wLen - 1] : '';
+    const charAfter  = textIndex + selLen + wLen < markdownContent.length
+      ? markdownContent[textIndex + selLen + wLen] : '';
+    if (charBefore === wrapper || charAfter === wrapper) return false;
+  }
+  return true;
+}
+
 // Formatting functions - work in both view and edit mode
 function applyMarkdownFormat(wrapper, multiline = false) {
   if (!savedSelection || !currentFilePath) return;
 
-  let formattedText;
-  if (multiline) {
-    // For lists - apply to each line
-    const lines = savedSelection.split('\n');
-    formattedText = lines.map(line => line.trim() ? wrapper + line : line).join('\n');
-  } else {
-    // For inline formatting - wrap the text
-    formattedText = wrapper + savedSelection + wrapper;
-  }
-
   if (isEditMode) {
-    // Edit mode: Replace in editor
+    // Edit mode: toggle or apply formatting in editor
+    historyPush(markdownEditor.value);
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
+    const selectedText = markdownEditor.value.substring(start, end);
+
+    let formattedText;
+    if (multiline) {
+      const lines = selectedText.split('\n');
+      formattedText = lines.map(line => line.trim() ? wrapper + line : line).join('\n');
+    } else {
+      // Toggle: if selection is already wrapped with this marker, remove it
+      const wLen = wrapper.length;
+      const alreadyWrapped = selectedText.length > wLen * 2
+        && selectedText.startsWith(wrapper) && selectedText.endsWith(wrapper)
+        && !(wLen === 1 && selectedText.startsWith(wrapper + wrapper));
+      formattedText = alreadyWrapped
+        ? selectedText.slice(wLen, -wLen)
+        : wrapper + selectedText + wrapper;
+    }
 
     markdownEditor.value =
       markdownEditor.value.substring(0, start) +
       formattedText +
       markdownEditor.value.substring(end);
 
-    // Restore selection
     markdownEditor.focus();
     markdownEditor.selectionStart = start;
     markdownEditor.selectionEnd = start + formattedText.length;
 
-    // Mark as unsaved
     hasUnsavedChanges = true;
     updateUnsavedIndicator();
 
-    // Trigger preview update
     clearTimeout(previewDebounceTimer);
     previewDebounceTimer = setTimeout(() => {
       renderMarkdown(markdownEditor.value);
     }, PREVIEW_DEBOUNCE_DELAY);
   } else {
-    // View mode: Apply formatting to active markdown
+    // View mode: Apply or remove formatting in markdown source
     const markdownContent = getActiveMarkdown();
-
-    // Find the correct occurrence of selected text in markdown
     const textIndex = findNthOccurrence(markdownContent, savedSelection, savedSelectionOccurrence);
 
     if (textIndex !== -1) {
-      // Save current scroll position
       const scrollPosition = contentWrapper.scrollTop;
-
-      // Replace the text with formatted version
-      const newContent =
-        markdownContent.substring(0, textIndex) +
-        formattedText +
-        markdownContent.substring(textIndex + savedSelection.length);
-
-      const syncFn = () => {
-        // Sync formatting to originalMarkdown
-        const origText = findOriginalForTranslated(savedSelection);
-        if (origText) {
-          const oi = findNthOccurrence(originalMarkdown, origText, savedSelectionOccurrence);
-          if (oi !== -1) {
-            let origFormatted;
-            if (formattedText.startsWith('- ')) {
-              const lines = origText.split('\n');
-              origFormatted = lines.map(line => line.trim() ? '- ' + line : line).join('\n');
-            } else {
-              const w = formattedText.substring(0, formattedText.indexOf(savedSelection));
-              origFormatted = w + origText + w;
-            }
-            originalMarkdown = originalMarkdown.substring(0, oi) + origFormatted + originalMarkdown.substring(oi + origText.length);
-          }
-        }
-      };
-
-      // For inline formats (bold/italic), try direct DOM patch to avoid full re-render
       const domTagMap = { '**': 'strong', '*': 'em' };
       const domTag = !multiline ? domTagMap[wrapper] : null;
-      if (domTag && patchInlineFormatInDOM(domTag)) {
-        updateSourceSilently(newContent, syncFn);
+
+      // Check if text is already wrapped with this marker → toggle (remove)
+      const alreadyFormatted = !multiline &&
+        _isAlreadyWrapped(markdownContent, textIndex, savedSelection.length, wrapper);
+
+      if (alreadyFormatted) {
+        // REMOVE formatting
+        const wLen = wrapper.length;
+        const newContent =
+          markdownContent.substring(0, textIndex - wLen) +
+          savedSelection +
+          markdownContent.substring(textIndex + savedSelection.length + wLen);
+
+        const syncFn = () => {
+          const origText = findOriginalForTranslated(savedSelection);
+          const srcText = origText || savedSelection;
+          const oi = findNthOccurrence(originalMarkdown, wrapper + srcText + wrapper, savedSelectionOccurrence);
+          if (oi !== -1) {
+            originalMarkdown =
+              originalMarkdown.substring(0, oi) +
+              srcText +
+              originalMarkdown.substring(oi + wrapper.length + srcText.length + wrapper.length);
+          }
+        };
+
+        if (domTag && patchRemoveFormatInDOM()) {
+          replaceSourceSilently(newContent, syncFn);
+        } else {
+          commitViewModeEdit(newContent, scrollPosition, syncFn);
+        }
       } else {
-        commitViewModeEdit(newContent, scrollPosition, syncFn);
+        // ADD formatting
+        const formattedText = multiline
+          ? savedSelection.split('\n').map(line => line.trim() ? wrapper + line : line).join('\n')
+          : wrapper + savedSelection + wrapper;
+
+        const newContent =
+          markdownContent.substring(0, textIndex) +
+          formattedText +
+          markdownContent.substring(textIndex + savedSelection.length);
+
+        const syncFn = () => {
+          const origText = findOriginalForTranslated(savedSelection);
+          if (origText) {
+            const oi = findNthOccurrence(originalMarkdown, origText, savedSelectionOccurrence);
+            if (oi !== -1) {
+              let origFormatted;
+              if (formattedText.startsWith('- ')) {
+                const lines = origText.split('\n');
+                origFormatted = lines.map(line => line.trim() ? '- ' + line : line).join('\n');
+              } else {
+                const w = formattedText.substring(0, formattedText.indexOf(savedSelection));
+                origFormatted = w + origText + w;
+              }
+              originalMarkdown = originalMarkdown.substring(0, oi) + origFormatted + originalMarkdown.substring(oi + origText.length);
+            }
+          }
+        };
+
+        if (domTag && patchInlineFormatInDOM(domTag)) {
+          replaceSourceSilently(newContent, syncFn);
+        } else {
+          commitViewModeEdit(newContent, scrollPosition, syncFn);
+        }
       }
     } else {
       showNotification(i18n('notif.textNotFound'), 2000);
@@ -4250,6 +4333,7 @@ ctxCode.addEventListener('click', () => {
 
   if (isEditMode) {
     // Edit mode: Replace in editor
+    historyPush(markdownEditor.value);
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
 
@@ -4300,7 +4384,7 @@ ctxCode.addEventListener('click', () => {
 
       // For single-line (inline) code, try direct DOM patch to avoid full re-render
       if (!isMultiline && patchInlineFormatInDOM('code')) {
-        updateSourceSilently(newContent, syncFn);
+        replaceSourceSilently(newContent, syncFn);
       } else {
         commitViewModeEdit(newContent, scrollPosition, syncFn);
       }
@@ -4328,6 +4412,7 @@ ctxRemoveFormat.addEventListener('click', () => {
 
   if (isEditMode) {
     // Edit mode: Remove formatting from selected markdown text
+    historyPush(markdownEditor.value);
     const start = markdownEditor.selectionStart;
     const end = markdownEditor.selectionEnd;
     const selectedText = markdownEditor.value.substring(start, end);
@@ -4419,7 +4504,7 @@ ctxRemoveFormat.addEventListener('click', () => {
 
       // Try direct DOM patch to avoid full re-render
       if (patchRemoveFormatInDOM()) {
-        updateSourceSilently(newContent, syncFn);
+        replaceSourceSilently(newContent, syncFn);
       } else {
         commitViewModeEdit(newContent, scrollPosition, syncFn);
       }
@@ -4659,6 +4744,7 @@ ctxDeleteNote.addEventListener('click', () => {
     const editorVal = markdownEditor.value;
     const match = findNoteSpanInSource(editorVal, noteEl);
     if (match) {
+      historyPush(markdownEditor.value);
       // For labels, remove the entire span (no original content to restore)
       // For noted-text/noted-image, restore inner content
       const replacement = isLabel ? '' : match[1];
@@ -4681,6 +4767,7 @@ ctxDeleteNote.addEventListener('click', () => {
     }
   } else {
     // View mode
+    historyPush(originalMarkdown);
     const activeSource = getActiveMarkdown();
     const match = findNoteSpanInSource(activeSource, noteEl);
     if (match) {
@@ -4770,6 +4857,7 @@ noteSaveBtn.addEventListener('click', () => {
       const editorVal = markdownEditor.value;
       const match = findNoteSpanInSource(editorVal, editingNoteElement);
       if (match) {
+        historyPush(markdownEditor.value);
         let newNoteHtml;
         if (isNoteLabel) {
           const escLabel = labelName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -4806,6 +4894,7 @@ noteSaveBtn.addEventListener('click', () => {
       }
     } else {
       // View mode
+      historyPush(originalMarkdown);
       const activeSource = getActiveMarkdown();
       const match = findNoteSpanInSource(activeSource, editingNoteElement);
       if (match) {
@@ -4927,6 +5016,7 @@ noteSaveBtn.addEventListener('click', () => {
     }
 
     if (isEditMode) {
+      historyPush(markdownEditor.value);
       const editorVal = markdownEditor.value;
       const start = markdownEditor.selectionStart;
       const end = markdownEditor.selectionEnd;
@@ -5025,6 +5115,7 @@ noteSaveBtn.addEventListener('click', () => {
     const noteHtml = `<span class="note-label" data-note-id="${noteId}" data-note-title="${escTitle}" data-note-content="${escContent}" style="background-color:${color};left:${Math.round(pos.left)}px;top:${Math.round(pos.top)}px">${escLabel}</span>`;
 
     if (isEditMode) {
+      historyPush(markdownEditor.value);
       const editorVal = markdownEditor.value;
       markdownEditor.value = editorVal + '\n' + noteHtml;
 
@@ -5232,6 +5323,7 @@ function partialDOMReplace(container, oldText, newText, occurrence) {
 
 // Update markdown source silently (no re-render)
 function updateSourceSilently(oldText, newText, occurrence) {
+  historyPush(originalMarkdown);
   if (isShowingTranslation && translatedMarkdown) {
     const ti = findNthOccurrence(translatedMarkdown, oldText, occurrence);
     if (ti !== -1) {
