@@ -2983,14 +2983,6 @@ body.dark-mode .context-menu {
    CORPORATE MODE
    ============================================ */
 
-body.corporate-mode .markdown-body::before {
-  content: '';
-  display: block;
-  height: 4px;
-  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-  margin-bottom: 20px;
-  border-radius: 2px;
-}
 
 body.corporate-mode .markdown-body::after {
   content: 'CONFIDENTIAL — OMNICORE DOCUMENT';
