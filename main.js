@@ -104,6 +104,13 @@ function createWindow() {
     mainWindow = null;
   });
 
+  // Check for file changes when window regains focus
+  mainWindow.on('focus', () => {
+    if (watchedFilePath) {
+      checkFileChanges();
+    }
+  });
+
   // Register keyboard shortcuts
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.control || input.meta) {

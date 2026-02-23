@@ -1,6 +1,6 @@
 {
   "name": "omnicore-markdown-viewer",
-  "version": "2.0.4",
+  "version": "2.0.7",
   "description": "Omnicore Markdown Viewer - A sleek cross-platform markdown viewer with Mermaid support",
   "main": "main.js",
   "scripts": {
@@ -62,6 +62,7 @@
       "renderer.js",
       "styles.css",
       "README.md",
+      "LICENSE.txt",
       "logo.ico",
       "logo.png",
       "logo_dark.png",
@@ -216,7 +217,24 @@
       }
     ],
     "nsis": {
-      "artifactName": "Omnicore.Markdown.Viewer.Setup.${version}.${ext}"
+      "artifactName": "Omnicore.Markdown.Viewer.Setup.${version}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "logo.ico",
+      "uninstallerIcon": "logo.ico",
+      "installerHeaderIcon": "logo.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Omnicore Markdown Viewer",
+      "runAfterFinish": true,
+      "menuCategory": true,
+      "displayLanguageSelector": false,
+      "installerLanguages": ["en_US"],
+      "language": "1033",
+      "perMachine": true,
+      "deleteAppDataOnUninstall": false,
+      "license": "LICENSE.txt"
     }
   }
 }

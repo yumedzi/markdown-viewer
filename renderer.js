@@ -2262,6 +2262,9 @@ function buildTableOfContents() {
     item.addEventListener('click', () => {
       const targetHeader = document.getElementById(header.id);
       if (targetHeader) {
+        // Auto-expand any collapsed sections containing this header
+        expandToHeader(header.id);
+
         // Calculate the scroll position relative to contentWrapper
         const contentRect = contentWrapper.getBoundingClientRect();
         const headerRect = targetHeader.getBoundingClientRect();
@@ -2281,6 +2284,78 @@ function buildTableOfContents() {
 
     indexList.appendChild(item);
   });
+}
+
+// Collapsible headers - wrap content between headers in collapsible sections
+const collapsedHeaders = new Map(); // persist collapsed state across re-renders by header id
+
+function makeHeadersCollapsible() {
+  const headers = viewer.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  if (headers.length === 0) return;
+
+  headers.forEach(header => {
+    // Ensure header has an id
+    if (!header.id) return;
+
+    const level = parseInt(header.tagName.substring(1));
+
+    // Collect sibling elements between this header and next same/higher level header
+    const sectionElements = [];
+    let sibling = header.nextElementSibling;
+    while (sibling) {
+      const tagMatch = sibling.tagName && sibling.tagName.match(/^H([1-6])$/);
+      if (tagMatch && parseInt(tagMatch[1]) <= level) break;
+      sectionElements.push(sibling);
+      sibling = sibling.nextElementSibling;
+    }
+
+    if (sectionElements.length === 0) return;
+
+    // Wrap in a collapsible div
+    const wrapper = document.createElement('div');
+    wrapper.className = 'collapsible-section';
+    wrapper.dataset.forHeader = header.id;
+    header.after(wrapper);
+    sectionElements.forEach(el => wrapper.appendChild(el));
+
+    // Restore collapsed state
+    if (collapsedHeaders.get(header.id)) {
+      header.classList.add('collapsed');
+      wrapper.classList.add('collapsed');
+    }
+
+    // Click handler
+    header.addEventListener('click', (e) => {
+      // Don't toggle if user is selecting text or clicking a link inside header
+      if (e.target.tagName === 'A') return;
+
+      const isCollapsed = header.classList.toggle('collapsed');
+      wrapper.classList.toggle('collapsed', isCollapsed);
+      collapsedHeaders.set(header.id, isCollapsed);
+    });
+  });
+}
+
+// Auto-expand collapsed sections when navigating via TOC
+function expandToHeader(headerId) {
+  // Find the header element
+  const target = document.getElementById(headerId);
+  if (!target) return;
+
+  // Expand any collapsed ancestor sections that contain this header
+  let el = target.parentElement;
+  while (el && el !== viewer) {
+    if (el.classList.contains('collapsible-section') && el.classList.contains('collapsed')) {
+      el.classList.remove('collapsed');
+      const parentHeaderId = el.dataset.forHeader;
+      if (parentHeaderId) {
+        const parentHeader = document.getElementById(parentHeaderId);
+        if (parentHeader) parentHeader.classList.remove('collapsed');
+        collapsedHeaders.set(parentHeaderId, false);
+      }
+    }
+    el = el.parentElement;
+  }
 }
 
 // Index panel toggle
@@ -2931,6 +3006,7 @@ function renderLightFormat(content, generation) {
   addTableMaximizeButtons();
   initImageZoom();
   buildTableOfContents();
+  makeHeadersCollapsible();
   updateShowNotesToggleVisibility();
   updateNotesList();
   highlightNewElements();
@@ -3252,6 +3328,9 @@ async function renderMarkdownFull(content, generation) {
 
     // Build table of contents
     buildTableOfContents();
+
+    // Make headers collapsible
+    makeHeadersCollapsible();
 
     // Scroll to top
     viewer.parentElement.scrollTop = 0;

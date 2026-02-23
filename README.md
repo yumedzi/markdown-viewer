@@ -9,7 +9,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Electron](https://img.shields.io/badge/Electron-27.0-blue)
 
-## What's New in v2.0.4
+## What's New in v2.0.7
 
 - **Image Slider** - Embed auto-playing image carousels with `<!-- slider-start/end -->` syntax; per-slide zoom popup
 - **Mermaid Template Dialog** - 12 built-in diagram templates, insert or edit via right-click with live preview
