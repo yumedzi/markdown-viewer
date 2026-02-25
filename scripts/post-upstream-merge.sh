@@ -50,6 +50,7 @@ MISSING_REFS=0
 check_line "$ROOT/index.html" 'custom-styles.css'      '<link rel="stylesheet" href="custom-styles.css">'
 check_line "$ROOT/index.html" 'custom-tabs.js'         '<script src="custom-tabs.js"></script>'
 check_line "$ROOT/index.html" 'custom-performance.js'  '<script src="custom-performance.js"></script>'
+check_line "$ROOT/index.html" 'custom-theme.js'        '<script src="custom-theme.js"></script>'
 check_line "$ROOT/index.html" 'tabsContainer'          '<div id="tabsContainer" ...> - must be just before <div class="main-content">'
 check_line "$ROOT/index.html" 'app-title'              '<span class="app-title">Markdown Viewer</span> - inside #logoLink'
 check_line "$ROOT/index.html" 'app-title-short'        '<span class="app-title-short">MV</span> - after app-title, inside #logoLink'
@@ -90,6 +91,7 @@ MISSING_BUILD=0
 check_build_file "custom-styles.css"
 check_build_file "custom-tabs.js"
 check_build_file "custom-performance.js"
+check_build_file "custom-theme.js"
 check_build_file "markdown_viewer_icon.png"
 
 if [ "$MISSING_BUILD" -eq 1 ]; then
