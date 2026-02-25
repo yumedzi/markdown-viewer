@@ -39,12 +39,106 @@ div.container div.header,
   vertical-align: middle;
 }
 
+/* Short title shown only in compact mode */
+.app-title-short {
+  display: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
 /* Ensure logo link is flex so logo + title align inline */
 #logoLink {
   display: inline-flex !important;
   align-items: center !important;
   text-decoration: none !important;
   gap: 0 !important;
+}
+
+/* ============================================
+   CUSTOM: Merged single-row header
+   ============================================ */
+
+/* | separator between logo area and file info */
+.header-integrated .header-left::after {
+  content: "|";
+  color: var(--border-color, #ccc);
+  opacity: 0.5;
+  margin: 0 8px 0 10px;
+  font-weight: 300;
+  line-height: 1;
+  align-self: center;
+}
+
+/* File info bar becomes an inline flex item inside the header */
+.header-integrated #fileInfoBar {
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  animation: none !important;
+}
+
+/* File name: slightly bolder */
+.header-integrated #fileName {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* File path: dimmed, truncated, ~-shortened (via JS) */
+.header-integrated #filePath {
+  opacity: 0.6;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 35vw;
+}
+
+/* Separator dot between name and path */
+.header-integrated .file-separator {
+  opacity: 0.4;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Refresh button: keep compact */
+.header-integrated #refreshBtn {
+  flex-shrink: 0;
+}
+
+/* Hide back / forward nav buttons (tabs handle navigation) */
+#navBackBtn,
+#navForwardBtn {
+  display: none !important;
+}
+
+/* ============================================
+   CUSTOM: Responsive compact mode (< 780px)
+   ============================================ */
+body.compact-header .app-title {
+  display: none !important;
+}
+body.compact-header .app-title-short {
+  display: inline !important;
+}
+/* Hide text labels from File / View / Tools buttons */
+body.compact-header .btn span[data-i18n] {
+  display: none !important;
+}
+/* Tighten button padding in compact mode */
+body.compact-header .header .btn {
+  padding: 3px 6px !important;
+}
+/* Shorten max path width on narrow windows */
+body.compact-header .header-integrated #filePath {
+  max-width: 20vw;
 }
 
 /* Make buttons more compact */

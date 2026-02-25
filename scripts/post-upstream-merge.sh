@@ -52,6 +52,7 @@ check_line "$ROOT/index.html" 'custom-tabs.js'         '<script src="custom-tabs
 check_line "$ROOT/index.html" 'custom-performance.js'  '<script src="custom-performance.js"></script>'
 check_line "$ROOT/index.html" 'tabsContainer'          '<div id="tabsContainer" ...> - must be just before <div class="main-content">'
 check_line "$ROOT/index.html" 'app-title'              '<span class="app-title">Markdown Viewer</span> - inside #logoLink'
+check_line "$ROOT/index.html" 'app-title-short'        '<span class="app-title-short">MV</span> - after app-title, inside #logoLink'
 check_line "$ROOT/index.html" 'Markdown Viewer'        '<title>Markdown Viewer</title>'
 
 if [ "$MISSING_REFS" -eq 1 ]; then
@@ -123,10 +124,45 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 5. Reinstall dependencies with updated Electron version
+# 5. Ensure renderer.js exposes window.* exports for custom overlay modules
+#    (custom-tabs.js and custom-performance.js depend on these)
 # -----------------------------------------------------------------------------
 echo ""
-echo "5. Running npm install to apply Electron upgrade..."
+echo "5. Checking renderer.js window exports..."
+
+check_renderer() {
+  local symbol="$1"
+  local hint="$2"
+  if grep -q "$symbol" "$ROOT/renderer.js"; then
+    echo "   ✓ $symbol exported"
+  else
+    echo "   ✗ MISSING: $symbol not found in renderer.js"
+    echo "     → $hint"
+    MISSING_RENDERER=1
+  fi
+}
+
+MISSING_RENDERER=0
+check_renderer "window\.renderMarkdown"    "Append 'window.renderMarkdown = renderMarkdown;' at end of renderer.js"
+check_renderer "window\.fs"               "Append 'window.fs = fs;' at end of renderer.js"
+check_renderer "window\.ipcRenderer"      "Append 'window.ipcRenderer = ipcRenderer;' at end of renderer.js"
+check_renderer "window\.updateFileInfo"   "Append 'window.updateFileInfo = updateFileInfo;' at end of renderer.js"
+check_renderer "Object.defineProperty.*currentFilePath" \
+               "Append Object.defineProperty getter/setter for currentFilePath at end of renderer.js"
+check_renderer "Object.defineProperty.*originalMarkdown" \
+               "Append Object.defineProperty getter/setter for originalMarkdown at end of renderer.js"
+
+if [ "$MISSING_RENDERER" -eq 1 ]; then
+  echo ""
+  echo "   ⚠ renderer.js is missing window exports — custom tabs/performance overlays will break."
+  echo "     See CUSTOMIZATIONS.md section 'renderer.js exports' for the full block to append."
+fi
+
+# -----------------------------------------------------------------------------
+# 6. Reinstall dependencies with updated Electron version
+# -----------------------------------------------------------------------------
+echo ""
+echo "6. Running npm install to apply Electron upgrade..."
 npm install
 echo "   ✓ Dependencies installed"
 
