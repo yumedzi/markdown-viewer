@@ -7,7 +7,90 @@
 
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Electron](https://img.shields.io/badge/Electron-27.0-blue)
+![Electron](https://img.shields.io/badge/Electron-37.0-blue)
+
+---
+
+## This Fork — Extra Features
+
+> This is a fork of [OmniCoreST/omnicore-markdown-viewer](https://github.com/OmniCoreST/omnicore-markdown-viewer).
+> All upstream features are preserved. The additions below are layered on top via a
+> **non-invasive overlay system** (`custom-styles.css`, `custom-tabs.js`, `custom-performance.js`)
+> so they survive future upstream merges with minimal effort.
+
+### Tab System
+
+Open multiple files at once — each gets its own tab.
+
+- Tabs appear automatically when 2+ files are open
+- Each tab is closable and shows an unsaved-changes dot (•)
+- Active tab is highlighted with the accent colour border
+- **Sessions persist across restarts** — open tabs are saved to `localStorage` and restored on next launch
+- Switching tabs restores the previous scroll position
+- When only one file is open the compact file-info bar is shown instead
+
+### Merged Single-Row Header
+
+The logo bar and file-info bar are merged into **one row**, saving vertical space:
+
+```
+[M] Markdown Viewer | ↺ | filename.md • ~/path/to/dir     [File] [View] [Tools]
+```
+
+- Back / Forward navigation buttons hidden (tabs replace that workflow)
+- Home directory auto-shortened to `~` in the path display
+- **Responsive compact mode** — when the window is narrower than ~780 px the title
+  collapses to **MV** and button text labels are hidden, leaving only icons
+
+### Performance Optimisations (macOS)
+
+Upstream Electron 27 triggers a macOS `WindowServer` bug that causes ~10 % CPU
+usage even when the app is idle and not focused.  This fork ships the following fixes:
+
+| Fix | Detail |
+|-----|--------|
+| **Electron 37** | Upgrades the bundled runtime to fix the `_cornerMask` API misuse ([electron#48376](https://github.com/electron/electron/pull/48376)) |
+| `backgroundThrottling: true` | Lets Electron reduce JS timer activity when the window is not visible |
+| Window-visibility IPC | Main process notifies the renderer on minimise / hide / restore so it can pause work proactively |
+| **Throttled `mousemove`** | Global mouse events are dropped when the window is unfocused and throttled to 80 ms intervals otherwise |
+| **Targeted CSS transitions** | Replaces 20+ upstream `transition: all` rules with property-specific transitions, reducing GPU compositing work |
+| **Fixed idle animation** | Upstream's `.file-update-icon` spun infinitely (even when hidden); the fork fixes it to only animate while the toast is visible |
+
+Result: **< 1–2 % CPU** at idle vs ~10 % upstream (measured in macOS Activity Monitor).
+
+### PDF Export Improvements
+
+- Header, tabs, and file-info bar are hidden in print output
+- Forces **light-mode colours** (white background, dark text) regardless of app theme
+- Ensures exports are printer-friendly even when the app is in dark mode
+
+### Compact Header & Wide Scrollbar
+
+- Reduced header padding (`12 px → 6 px`) and logo size (`32 px → 24 px`)
+- Always-visible **16 px scrollbar** (upstream default is a thin auto-hiding one)
+
+### Bug Fixes
+
+- **EPIPE crash on double-click launch** — replaced bare `console.log` calls in `main.js`
+  with a safe wrapper that silently drops writes when no terminal is attached
+
+---
+
+### Maintaining Customisations After an Upstream Merge
+
+All overlay files live in the repo root (`custom-*.css / custom-*.js`).
+After pulling upstream changes run:
+
+```bash
+./scripts/post-upstream-merge.sh
+```
+
+The script validates **20 check-points** across `index.html`, `main.js`, `renderer.js`,
+and `package.json`, reports anything missing with a fix hint, and re-pins Electron to `^37`.
+
+See [`CUSTOMIZATIONS.md`](CUSTOMIZATIONS.md) for the full technical reference.
+
+---
 
 ## What's New in v2.0.7
 
