@@ -219,6 +219,27 @@
     el.dataset.lang = lang;
     el.dataset.section = section;
     el.innerHTML = `<span>${label}</span><span class="lang-check">✓</span>`;
+
+    // renderer.js registers click handlers only on items present at startup,
+    // so we must attach ours manually using the same top-level functions.
+    el.addEventListener("click", async () => {
+      // Close the tools menu (mirrors renderer.js behaviour)
+      const toolsMenu = document.getElementById("toolsMenu");
+      if (toolsMenu) toolsMenu.classList.remove("visible");
+
+      if (section === "doc") {
+        // switchToLanguage is a top-level function in renderer.js
+        if (typeof switchToLanguage === "function") {
+          await switchToLanguage(lang);
+        }
+      } else if (section === "ui") {
+        // applyInterfaceLang is a top-level function in renderer.js
+        if (typeof applyInterfaceLang === "function") {
+          applyInterfaceLang(lang);
+        }
+      }
+    });
+
     return el;
   }
 
