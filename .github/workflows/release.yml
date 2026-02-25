@@ -6,13 +6,16 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - name: Check out Git repository
@@ -38,6 +41,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build macOS packages
+        if: matrix.os == 'macos-latest'
+        run: npm run build-mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload Linux artifacts
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
@@ -46,6 +55,7 @@ jobs:
           path: |
             dist/*.AppImage
             dist/*.deb
+            dist/latest-linux.yml
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
@@ -54,6 +64,17 @@ jobs:
           name: windows-builds
           path: |
             dist/*.exe
+            dist/*.blockmap
+            dist/latest.yml
+
+      - name: Upload macOS artifacts
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-builds
+          path: |
+            dist/*.dmg
+            dist/latest-mac.yml
 
   create-release:
     needs: release
@@ -70,6 +91,7 @@ jobs:
           files: |
             linux-builds/*
             windows-builds/*
+            mac-builds/*
           draft: false
           prerelease: false
         env:
