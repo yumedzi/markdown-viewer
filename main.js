@@ -5,6 +5,47 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+
+// ============================================
+// WINDOW STATE PERSISTENCE
+// Saves/restores window bounds and maximised state between launches.
+// File lives in the Electron userData directory so it survives app updates.
+// ============================================
+const WINDOW_STATE_FILE = path.join(
+  app.getPath("userData"),
+  "window-state.json",
+);
+
+function loadWindowState() {
+  try {
+    return JSON.parse(fs.readFileSync(WINDOW_STATE_FILE, "utf8"));
+  } catch (_) {
+    return null;
+  }
+}
+
+let _saveStateTimer = null;
+function saveWindowState() {
+  if (!mainWindow) return;
+  clearTimeout(_saveStateTimer);
+  _saveStateTimer = setTimeout(() => {
+    try {
+      const bounds = mainWindow.getNormalBounds();
+      fs.writeFileSync(
+        WINDOW_STATE_FILE,
+        JSON.stringify({
+          x: bounds.x,
+          y: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+          isMaximized: mainWindow.isMaximized(),
+        }),
+      );
+    } catch (_) {
+      // non-fatal
+    }
+  }, 400);
+}
 const { exec } = require("child_process");
 const HTMLtoDOCX = require("html-to-docx");
 
@@ -70,9 +111,14 @@ let lastModifiedTime = null;
 // ============================================
 
 function createWindow() {
+  const savedState = loadWindowState();
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    // Restore saved position/size; fall back to 1200×800 centred on first run
+    x: savedState ? savedState.x : undefined,
+    y: savedState ? savedState.y : undefined,
+    width: savedState ? savedState.width : 1200,
+    height: savedState ? savedState.height : 800,
     show: false, // Don't show until ready
     title: "Markdown Viewer",
     backgroundColor: "#f5f5f5",
@@ -92,9 +138,16 @@ function createWindow() {
 
   // Show window only when content is ready (prevents flicker)
   mainWindow.once("ready-to-show", () => {
-    mainWindow.maximize();
+    if (savedState && savedState.isMaximized) {
+      mainWindow.maximize();
+    }
     mainWindow.show();
   });
+
+  // Persist bounds/maximised state on every move, resize, and close
+  mainWindow.on("resize", saveWindowState);
+  mainWindow.on("move", saveWindowState);
+  mainWindow.on("close", saveWindowState);
 
   // Performance: notify renderer when window is hidden/minimized/restored
   mainWindow.on("hide", () => {
