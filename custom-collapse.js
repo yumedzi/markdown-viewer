@@ -1,8 +1,16 @@
 /**
  * Custom Collapse/Expand Module
  * Adds "Collapse All" and "Expand All" to the top of the View menu.
- * Wraps heading sections so individual headings can also be toggled
- * by clicking them directly in the rendered document.
+ *
+ * The upstream renderer already implements per-heading collapsible sections
+ * via makeHeadersCollapsible() (called after every render). It creates
+ * .collapsible-section wrappers, persists state in the collapsedHeaders Map,
+ * and handles individual heading clicks with ▼/▶ indicators.
+ *
+ * This overlay only adds the two "Collapse/Expand All" shortcuts to the View
+ * menu and wires them to the upstream infrastructure.
+ * H1 headings are intentionally skipped by Collapse All — collapsing the
+ * document title makes no practical sense.
  *
  * Overlay file — never touched by upstream merges.
  * Load after renderer.js in index.html.
@@ -11,85 +19,44 @@
 (function initCustomCollapse() {
   "use strict";
 
-  // ── Section wrapping ───────────────────────────────────────────────────────
-  // After each render, group content following each heading into a
-  // .section-content wrapper so we can collapse/expand it.
-  // Click handling is done via event delegation (see initHeadingDelegation),
-  // not per-heading listeners, so there are no stale-closure issues.
-
-  function wrapSections() {
-    const viewer = document.getElementById("viewer");
-    if (!viewer) return;
-
-    const headings = viewer.querySelectorAll("h1,h2,h3,h4,h5,h6");
-    headings.forEach((heading) => {
-      // Skip if already wrapped during a previous render
-      if (heading.dataset.collapsible) return;
-      heading.dataset.collapsible = "true";
-
-      // Collect all following siblings until the next heading
-      const siblings = [];
-      let next = heading.nextElementSibling;
-      while (next && !next.matches("h1,h2,h3,h4,h5,h6")) {
-        siblings.push(next);
-        next = next.nextElementSibling;
-      }
-      if (siblings.length === 0) return;
-
-      // Wrap siblings in a collapsible container
-      const wrapper = document.createElement("div");
-      wrapper.className = "section-content";
-      heading.parentNode.insertBefore(wrapper, siblings[0]);
-      siblings.forEach((el) => wrapper.appendChild(el));
-    });
-  }
-
-  // ── Event delegation for heading toggle ───────────────────────────────────
-  // A single delegated listener on #viewer is used instead of per-heading
-  // listeners. This avoids stale closure references (e.g. after a file
-  // reload the heading DOM nodes are replaced but the old listeners still
-  // hold references to old — possibly removed — wrapper nodes).
-  // The wrapper is always re-fetched as heading.nextElementSibling at click time.
-
-  function initHeadingDelegation() {
-    const viewer = document.getElementById("viewer");
-    if (!viewer) return;
-
-    viewer.addEventListener("click", (e) => {
-      // Walk up from the click target to find a collapsible heading
-      const heading = e.target.closest("[data-collapsible]");
-      if (!heading) return;
-
-      // Don't hijack clicks on links that happen to be inside headings
-      if (e.target.closest("a")) return;
-
-      // The wrapper is always the immediate next element sibling of the heading
-      const wrapper = heading.nextElementSibling;
-      if (!wrapper || !wrapper.classList.contains("section-content")) return;
-
-      wrapper.classList.toggle("collapsed");
-      heading.classList.toggle("section-collapsed");
-    });
-  }
-
   // ── Collapse / Expand all ─────────────────────────────────────────────────
+  // Uses the same .collapsed class + collapsedHeaders Map that the upstream
+  // makeHeadersCollapsible() uses, so state is consistent across re-renders.
 
   function collapseAll() {
-    document
-      .querySelectorAll("#viewer .section-content")
-      .forEach((el) => el.classList.add("collapsed"));
-    document
-      .querySelectorAll("#viewer [data-collapsible]")
-      .forEach((el) => el.classList.add("section-collapsed"));
+    const v = document.getElementById("viewer");
+    if (!v) return;
+
+    // Collapse each heading's section, skip H1 (top-level title)
+    v.querySelectorAll("h2,h3,h4,h5,h6").forEach((header) => {
+      if (!header.id) return;
+      header.classList.add("collapsed");
+      const section = v.querySelector(
+        `.collapsible-section[data-for-header="${CSS.escape(header.id)}"]`,
+      );
+      if (section) section.classList.add("collapsed");
+      // Persist state in the upstream Map so re-renders restore it correctly
+      if (typeof collapsedHeaders !== "undefined") {
+        collapsedHeaders.set(header.id, true);
+      }
+    });
   }
 
   function expandAll() {
-    document
-      .querySelectorAll("#viewer .section-content")
-      .forEach((el) => el.classList.remove("collapsed"));
-    document
-      .querySelectorAll("#viewer [data-collapsible]")
-      .forEach((el) => el.classList.remove("section-collapsed"));
+    const v = document.getElementById("viewer");
+    if (!v) return;
+
+    v.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach((header) => {
+      if (!header.id) return;
+      header.classList.remove("collapsed");
+      const section = v.querySelector(
+        `.collapsible-section[data-for-header="${CSS.escape(header.id)}"]`,
+      );
+      if (section) section.classList.remove("collapsed");
+      if (typeof collapsedHeaders !== "undefined") {
+        collapsedHeaders.set(header.id, false);
+      }
+    });
   }
 
   // ── Inject View menu items ────────────────────────────────────────────────
@@ -114,7 +81,8 @@
     collapseItem.addEventListener("click", (e) => {
       e.stopPropagation();
       collapseAll();
-      setTimeout(() => document.body.click(), 10);
+      // Close the View dropdown by simulating a document click
+      setTimeout(() => document.dispatchEvent(new MouseEvent("click")), 10);
     });
 
     const expandItem = document.createElement("div");
@@ -124,7 +92,7 @@
     expandItem.addEventListener("click", (e) => {
       e.stopPropagation();
       expandAll();
-      setTimeout(() => document.body.click(), 10);
+      setTimeout(() => document.dispatchEvent(new MouseEvent("click")), 10);
     });
 
     const separator = document.createElement("div");
@@ -136,30 +104,10 @@
     viewMenu.prepend(collapseItem);
   }
 
-  // ── Re-wrap after each document render ───────────────────────────────────
-  // Watch only direct children of #viewer so our own DOM mutations
-  // (wrapping siblings) don't re-trigger the observer.
-
-  function observeViewer() {
-    const viewer = document.getElementById("viewer");
-    if (!viewer) return;
-
-    let wrapTimer = null;
-    const observer = new MutationObserver(() => {
-      clearTimeout(wrapTimer);
-      wrapTimer = setTimeout(wrapSections, 200);
-    });
-    observer.observe(viewer, { childList: true });
-  }
-
   // ── Init ──────────────────────────────────────────────────────────────────
 
   function init() {
     injectViewMenuItems();
-    initHeadingDelegation();
-    observeViewer();
-    // Wrap any content already present (e.g. restored from tabs)
-    wrapSections();
   }
 
   if (

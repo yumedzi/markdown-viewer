@@ -648,38 +648,9 @@ body.dark-mode .file-info-bar {
 }
 
 /* ============================================
-   CUSTOM: Collapsible Sections
+   CUSTOM: Collapsible Sections (View menu items only)
+   Individual heading collapse is handled by upstream makeHeadersCollapsible().
    ============================================ */
-
-/* Hidden section content */
-#viewer .section-content.collapsed {
-  display: none !important;
-}
-
-/* Clickable headings get a pointer and a subtle collapse indicator */
-#viewer [data-collapsible] {
-  cursor: pointer;
-  position: relative;
-  padding-right: 1.4em;
-}
-
-#viewer [data-collapsible]::after {
-  content: "▾";
-  position: absolute;
-  right: 0.2em;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.7em;
-  opacity: 0.35;
-  transition:
-    transform 0.15s ease,
-    opacity 0.15s ease;
-}
-
-#viewer [data-collapsible].section-collapsed::after {
-  transform: translateY(-50%) rotate(-90deg);
-  opacity: 0.55;
-}
 
 /* View menu Collapse/Expand items */
 .custom-collapse-item {
@@ -699,10 +670,7 @@ body.dark-mode .file-info-bar {
 
 /* Print: always expand all sections */
 @media print {
-  #viewer .section-content.collapsed {
+  .collapsible-section.collapsed {
     display: block !important;
-  }
-  #viewer [data-collapsible]::after {
-    display: none !important;
   }
 }
