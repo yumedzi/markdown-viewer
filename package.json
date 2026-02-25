@@ -87,7 +87,8 @@
       "!.git/**/*",
       "custom-styles.css",
       "custom-tabs.js",
-      "custom-performance.js"
+      "custom-performance.js",
+      "custom-theme.js"
     ],
     "win": {
       "target": [

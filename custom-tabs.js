@@ -427,30 +427,42 @@
     if (navBack) navBack.style.display = "none";
     if (navForward) navForward.style.display = "none";
 
-    // Watch #filePath for text changes and replace home dir with ~
+    // Watch #filePath for text changes.
+    // renderer.js sets filePath = directory and fileName = filename separately.
+    // We combine them into a single "~/dir/filename.md" string so the tab name
+    // is not repeated in the bar. Clicking still copies the full path (handled
+    // by the existing click listener in renderer.js which uses currentFilePath).
     const filePathEl = document.getElementById("filePath");
+    const fileNameEl = document.getElementById("fileName");
+
+    function buildFullPath() {
+      const dir = filePathEl ? filePathEl.textContent : "";
+      const name = fileNameEl ? fileNameEl.textContent : "";
+      // Guard: don't append if already ends with the filename (e.g. "✓" feedback)
+      if (!name || dir.endsWith("/" + name)) return dir;
+      return dir ? dir + "/" + name : name;
+    }
+
     if (filePathEl) {
-      const observer = new MutationObserver(() => {
-        const shortened = shortenPath(filePathEl.textContent);
-        if (shortened !== filePathEl.textContent) {
-          // Temporarily disconnect to avoid re-triggering
-          observer.disconnect();
-          filePathEl.textContent = shortened;
-          observer.observe(filePathEl, {
-            childList: true,
-            characterData: true,
-            subtree: true,
-          });
-        }
-      });
-      observer.observe(filePathEl, {
+      const observerOpts = {
         childList: true,
         characterData: true,
         subtree: true,
+      };
+
+      const observer = new MutationObserver(() => {
+        const combined = shortenPath(buildFullPath());
+        if (combined !== filePathEl.textContent) {
+          observer.disconnect();
+          filePathEl.textContent = combined;
+          observer.observe(filePathEl, observerOpts);
+        }
       });
-      // Apply to any value already present
+      observer.observe(filePathEl, observerOpts);
+
+      // Apply immediately if a path is already set
       if (filePathEl.textContent) {
-        filePathEl.textContent = shortenPath(filePathEl.textContent);
+        filePathEl.textContent = shortenPath(buildFullPath());
       }
     }
 

@@ -34,11 +34,14 @@ Open multiple files at once — each gets its own tab.
 The logo bar and file-info bar are merged into **one row**, saving vertical space:
 
 ```
-[M] Markdown Viewer | ↺ | filename.md • ~/path/to/dir     [File] [View] [Tools]
+[M] Markdown Viewer | ↺ | ~/path/to/dir/filename.md          [File] [View] [Tools]
 ```
 
+- Full path (directory + filename) shown as a single grey string — no duplication with the tab label
+- Clicking the path copies it to the clipboard
+- Home directory auto-shortened to `~`
+- Path grows to fill all available space and only truncates when the window is genuinely too narrow
 - Back / Forward navigation buttons hidden (tabs replace that workflow)
-- Home directory auto-shortened to `~` in the path display
 - **Responsive compact mode** — when the window is narrower than ~780 px the title
   collapses to **MV** and button text labels are hidden, leaving only icons
 
@@ -63,6 +66,21 @@ Result: **< 1–2 % CPU** at idle vs ~10 % upstream (measured in macOS Activity 
 - Header, tabs, and file-info bar are hidden in print output
 - Forces **light-mode colours** (white background, dark text) regardless of app theme
 - Ensures exports are printer-friendly even when the app is in dark mode
+
+### Theme Selector (Light / Dark / Follow Desktop)
+
+The upstream binary Dark Mode toggle is replaced with a three-way **Theme** submenu inside the Tools menu:
+
+| Option | Behaviour |
+|--------|-----------|
+| **Light** | Always light |
+| **Dark** | Always dark |
+| **Follow Desktop** | Tracks the OS `prefers-color-scheme` setting in real time |
+
+- Preference stored in `localStorage` and restored on startup
+- Migrates from the old binary `darkMode` key on first launch
+- Theme switches instantly when OS appearance changes — no restart needed
+- Implemented in `custom-theme.js` (overlay file, never touched by upstream merges)
 
 ### Compact Header & Wide Scrollbar
 

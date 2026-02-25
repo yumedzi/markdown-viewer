@@ -85,10 +85,10 @@ div.container div.header,
   animation: none !important;
 }
 
-/* File name: slightly bolder */
-.header-integrated #fileName {
-  font-weight: 500;
-  white-space: nowrap;
+/* Hide filename element — it is now merged into the #filePath full-path display */
+.header-integrated #fileName,
+.header-integrated .file-separator {
+  display: none !important;
 }
 
 /* File path: dimmed, truncated, ~-shortened (via JS) */
@@ -98,7 +98,10 @@ div.container div.header,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 35vw;
+  /* Grow to fill all available space in the flex bar,
+     truncate only when the window is genuinely too narrow */
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 /* Separator dot between name and path */
@@ -136,10 +139,7 @@ body.compact-header .btn span[data-i18n] {
 body.compact-header .header .btn {
   padding: 3px 6px !important;
 }
-/* Shorten max path width on narrow windows */
-body.compact-header .header-integrated #filePath {
-  max-width: 20vw;
-}
+/* In compact mode the path still grows to fill available space — no change needed */
 
 /* Make buttons more compact */
 .header .btn {
@@ -468,6 +468,34 @@ body.dark-mode .file-info-bar {
 /* Animations are paused via JavaScript in custom-performance.js
    when the window loses focus or is minimized.
    CSS approach avoided as it breaks entrance animations on elements. */
+
+/* ============================================
+   CUSTOM: Theme submenu
+   ============================================ */
+
+/* JS controls this submenu entirely (grace-period hover logic).
+   Force hidden by default with high specificity so neither the
+   upstream :hover rule nor anything else can show it.
+   Only .theme-open (added by mouseenter JS) reveals the panel. */
+#customThemeMenuItem > #customThemeSubmenu {
+  display: none !important;
+}
+#customThemeMenuItem.theme-open > #customThemeSubmenu {
+  display: block !important;
+}
+
+/* Active option checkmark */
+.custom-theme-option.active::before {
+  content: "✓";
+  margin-right: 6px;
+  color: var(--primary-color, #2d9cdb);
+  font-weight: 700;
+}
+.custom-theme-option:not(.active)::before {
+  content: "";
+  margin-right: 20px; /* keep labels aligned when no checkmark */
+  display: inline-block;
+}
 
 /* ============================================
    CUSTOM: Fix upstream bug - file-update-icon spins infinitely even
