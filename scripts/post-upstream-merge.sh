@@ -193,6 +193,44 @@ npm install
 echo "   ✓ Dependencies installed"
 
 # -----------------------------------------------------------------------------
+# 7. Verify custom overlay scripts are loaded in index.html
+# -----------------------------------------------------------------------------
+echo ""
+echo "7. Checking index.html loads all custom overlay scripts..."
+
+check_html_script() {
+  local script="$1"
+  if grep -q "src=\"$script\"" "$ROOT/index.html"; then
+    echo "   ✓ $script present"
+  else
+    echo "   ✗ MISSING: $script not found in index.html"
+    echo "     → Add '<script src=\"$script\"></script>' before </body>"
+  fi
+}
+
+check_html_script "custom-language.js"
+check_html_script "custom-collapse.js"
+
+# -----------------------------------------------------------------------------
+# 8. Verify custom overlay scripts are in build.files (package.json)
+# -----------------------------------------------------------------------------
+echo ""
+echo "8. Checking package.json build.files for overlay scripts..."
+
+check_build_custom() {
+  local file="$1"
+  if grep -q "\"$file\"" "$ROOT/package.json"; then
+    echo "   ✓ $file in build.files"
+  else
+    echo "   ✗ MISSING: $file not in package.json build.files"
+    echo "     → Add \"$file\" to the build.files array in package.json"
+  fi
+}
+
+check_build_custom "custom-language.js"
+check_build_custom "custom-collapse.js"
+
+# -----------------------------------------------------------------------------
 # Summary
 # -----------------------------------------------------------------------------
 echo ""
@@ -200,9 +238,13 @@ echo "=== Done ==="
 echo ""
 echo "Customizations applied:"
 echo "  • Electron pinned to ^37 (fixes macOS idle CPU usage)"
+echo "  • Ukrainian language + Turkish removal overlay (custom-language.js)"
+echo "  • Collapse/Expand All overlay (custom-collapse.js)"
 echo ""
 echo "Next steps:"
 echo "  1. Run 'npm start' to test the app"
 echo "  2. Verify: tabs (tabsContainer div in index.html), scrollbar, compact header, PDF export"
 echo "  3. Check CPU usage in Activity Monitor when app is idle"
+echo "  4. Test Tools > Language submenu: Ukrainian present, Turkish absent"
+echo "  5. Test View > Collapse All / Expand All with a document open"
 echo ""

@@ -646,3 +646,63 @@ body.dark-mode .file-info-bar {
     background 0.15s ease,
     color 0.15s ease !important;
 }
+
+/* ============================================
+   CUSTOM: Collapsible Sections
+   ============================================ */
+
+/* Hidden section content */
+#viewer .section-content.collapsed {
+  display: none !important;
+}
+
+/* Clickable headings get a pointer and a subtle collapse indicator */
+#viewer [data-collapsible] {
+  cursor: pointer;
+  position: relative;
+  padding-right: 1.4em;
+}
+
+#viewer [data-collapsible]::after {
+  content: "▾";
+  position: absolute;
+  right: 0.2em;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7em;
+  opacity: 0.35;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+#viewer [data-collapsible].section-collapsed::after {
+  transform: translateY(-50%) rotate(-90deg);
+  opacity: 0.55;
+}
+
+/* View menu Collapse/Expand items */
+.custom-collapse-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-collapse-item svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.custom-collapse-item:hover svg {
+  opacity: 1;
+}
+
+/* Print: always expand all sections */
+@media print {
+  #viewer .section-content.collapsed {
+    display: block !important;
+  }
+  #viewer [data-collapsible]::after {
+    display: none !important;
+  }
+}
