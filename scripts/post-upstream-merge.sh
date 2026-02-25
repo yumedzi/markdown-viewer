@@ -117,6 +117,14 @@ else
   echo "     → Add mainWindow.on('hide'/'show'/'minimize'/'restore') IPC sends"
 fi
 
+if grep -q "window-state.json\|loadWindowState\|saveWindowState" "$ROOT/main.js"; then
+  echo "   ✓ Window state persistence (loadWindowState/saveWindowState) present"
+else
+  echo "   ✗ MISSING: window state persistence not found in main.js"
+  echo "     → Add loadWindowState/saveWindowState functions and wire into createWindow()"
+  echo "     → See CUSTOMIZATIONS.md section 'Window state persistence'"
+fi
+
 if grep -q "title:.*Markdown Viewer" "$ROOT/main.js"; then
   echo "   ✓ BrowserWindow title is 'Markdown Viewer'"
 else
