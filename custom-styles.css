@@ -317,3 +317,153 @@ body.dark-mode .tab-close:hover {
     color: #279EA7 !important;
   }
 }
+
+/* ============================================
+   CUSTOM: File Info Bar - Performance Optimizations
+   The upstream file-info-bar has box-shadow overlapping scrollable
+   content (forces separate compositing layers), a linear-gradient
+   background (expensive repaint), and a transform-based animation
+   (creates/destroys compositing layers). These cause continuous CPU
+   usage in the Renderer process. Replace with cheap equivalents.
+   ============================================ */
+.file-info-bar {
+  /* Replace linear-gradient with solid color - no GPU texture upload */
+  background: var(--bg-secondary) !important;
+  /* Remove box-shadow - already has border-bottom for visual separation */
+  box-shadow: none !important;
+  /* Replace transform-based slideDown with opacity-only fade - no compositing layer */
+  animation: customFadeIn 0.15s ease !important;
+}
+
+body.dark-mode .file-info-bar {
+  background: var(--bg-secondary) !important;
+  box-shadow: none !important;
+}
+
+@keyframes customFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ============================================
+   CUSTOM: Stop Animations When Window Unfocused (Performance)
+   ============================================ */
+/* Animations are paused via JavaScript in custom-performance.js
+   when the window loses focus or is minimized.
+   CSS approach avoided as it breaks entrance animations on elements. */
+
+/* ============================================
+   CUSTOM: Fix upstream bug - file-update-icon spins infinitely even
+   when the toast is hidden. The upstream logic is backwards:
+   it animates when hidden and stops when shown. This wastes CPU 100%
+   of the time since the toast is almost always hidden.
+   ============================================ */
+.file-update-icon {
+  animation: none !important;
+}
+.file-update-toast.show .file-update-icon {
+  animation: rotate 2s linear infinite !important;
+}
+
+/* ============================================
+   CUSTOM: Replace "transition: all" with targeted transitions
+   to reduce GPU Code Helper CPU usage.
+   "transition: all" forces the GPU to watch every CSS property
+   on an element continuously. Targeting only properties that
+   actually change eliminates that overhead.
+   ============================================ */
+
+/* Buttons - change: background, color, border-color, transform */
+.btn {
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease !important;
+}
+
+/* Nav buttons (back/forward/refresh) - change: background, color */
+.nav-btn {
+  transition: background 0.2s ease, color 0.2s ease !important;
+}
+
+/* Editor save button - change: background, transform, box-shadow */
+.editor-save-btn {
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* Markdown links - change: border-bottom-color */
+.markdown-body a {
+  transition: border-bottom-color 0.2s ease !important;
+}
+
+/* Search buttons - change: background, border-color */
+.search-btn {
+  transition: background 0.2s ease, border-color 0.2s ease !important;
+}
+
+/* Pin button in recent panel - change: color, background */
+.pin-btn {
+  transition: color 0.2s ease, background 0.2s ease !important;
+}
+
+/* Clear all button - change: color */
+.clear-all-btn {
+  transition: color 0.2s ease !important;
+}
+
+/* Recent file items - change: background, border-color */
+.recent-item {
+  transition: background 0.2s ease, border-color 0.2s ease !important;
+}
+
+/* Recent delete button - change: opacity, color */
+.recent-delete-btn {
+  transition: opacity 0.2s ease, color 0.2s ease !important;
+}
+
+/* Index/TOC items - change: background, color, border-left-color */
+.index-item {
+  transition: background 0.2s ease, color 0.2s ease, border-left-color 0.2s ease !important;
+}
+
+/* Notification toast - change: opacity, transform */
+.notification-toast {
+  transition: opacity 0.3s ease, transform 0.3s ease !important;
+}
+
+/* File update toast - change: opacity, transform */
+.file-update-toast {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* File update action buttons - change: background */
+.file-update-btn {
+  transition: background 0.2s ease !important;
+}
+
+/* Mermaid diagram maximize button - change: opacity, transform */
+.mermaid-maximize-btn {
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+}
+
+/* Table maximize button - change: opacity, transform */
+.table-maximize-btn {
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+}
+
+/* App update toast - change: opacity, transform */
+.app-update-toast {
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* App update close button - change: color, background */
+.app-update-close {
+  transition: color 0.2s ease, background 0.2s ease !important;
+}
+
+/* App update action buttons - change: background */
+.app-update-btn {
+  transition: background 0.2s ease !important;
+}
+
+/* Context menu items - change: background, color */
+.context-menu-item {
+  transition: background 0.15s ease, color 0.15s ease !important;
+}

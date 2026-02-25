@@ -87,7 +87,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      enableRemoteModule: true
+      enableRemoteModule: true,
+      backgroundThrottling: true  // Throttle background renderers to save CPU
     },
     icon: path.join(__dirname, 'logo.ico')
   });
@@ -104,6 +105,35 @@ function createWindow() {
       mainWindow.maximize();
     }
     mainWindow.show();
+  });
+
+  // Performance: Reduce CPU usage when window is hidden/minimized
+  mainWindow.on('hide', () => {
+    log('Window hidden - reducing activity');
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('window-visibility-changed', { visible: false });
+    }
+  });
+
+  mainWindow.on('show', () => {
+    log('Window shown - resuming activity');
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('window-visibility-changed', { visible: true });
+    }
+  });
+
+  mainWindow.on('minimize', () => {
+    log('Window minimized - reducing activity');
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('window-visibility-changed', { visible: false });
+    }
+  });
+
+  mainWindow.on('restore', () => {
+    log('Window restored - resuming activity');
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('window-visibility-changed', { visible: true });
+    }
   });
 
   // Save window state on close
@@ -137,7 +167,7 @@ function createWindow() {
   });
 
   // Open DevTools in development (F12 to toggle)
-  // mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools({ mode: 'detach' });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
