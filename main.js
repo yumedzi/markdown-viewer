@@ -1,10 +1,19 @@
+// ============================================
+// IMPORTS
+// ============================================
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { exec } = require('child_process');
 const HTMLtoDOCX = require('html-to-docx');
 
-// Conditionally load electron-updater (may not be available in dev or if not installed)
+// Helper modules
+const { isMermaidFile, wrapMermaidContent, removeBOM, readMarkdownFile, sendIPCResult } = require('./file-helpers');
+
+// ============================================
+// CONDITIONAL IMPORTS
+// ============================================
 let autoUpdater = null;
 try {
   autoUpdater = require('electron-updater').autoUpdater;
@@ -12,19 +21,9 @@ try {
   console.log('electron-updater not available:', err.message);
 }
 
-// Enable live reload in development
-if (process.env.NODE_ENV === 'development') {
-  try {
-    require('electron-reload')(__dirname, {
-      electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
-      hardResetMethod: 'exit'
-    });
-  } catch (e) {
-    console.log('electron-reload not available');
-  }
-}
-
-// Setup logging to file for debugging packaged app
+// ============================================
+// LOGGING
+// ============================================
 const logFilePath = path.join(app.getPath('userData'), 'debug.log');
 const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
 
@@ -47,42 +46,27 @@ log('=== Application started ===');
 log('User data path:', app.getPath('userData'));
 log('Log file:', logFilePath);
 
-let mainWindow;
+// ============================================
+// APPLICATION STATE
+// ============================================
+let mainWindow = null;
 let fileToOpen = null;
-let fileWatcher = null; // File watching state
+
+// File watching state
+let fileWatcher = null;
 let watchedFilePath = null;
 let lastModifiedTime = null;
 
+// ============================================
+// WINDOW MANAGEMENT
+// ============================================
+
 function createWindow() {
-  const { screen } = require('electron');
-  const stateFilePath = path.join(app.getPath('userData'), 'window-state.json');
-
-  let windowState = {};
-  try {
-    if (fs.existsSync(stateFilePath)) {
-      windowState = JSON.parse(fs.readFileSync(stateFilePath, 'utf8'));
-    }
-  } catch (e) {
-    log('Failed to load window state:', e);
-  }
-
-  // Default to 65% width if no state exists
-  if (!windowState.width || !windowState.height) {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.workAreaSize;
-    windowState.width = Math.round(width * 0.65);
-    windowState.height = Math.round(height * 0.8);
-    windowState.x = Math.round((width - windowState.width) / 2);
-    windowState.y = Math.round((height - windowState.height) / 2);
-  }
-
   mainWindow = new BrowserWindow({
-    width: windowState.width,
-    height: windowState.height,
-    x: windowState.x,
-    y: windowState.y,
+    width: 1200,
+    height: 800,
     show: false, // Don't show until ready
-    title: 'Markdown Viewer',
+    title: 'Omnicore Markdown Viewer',
     backgroundColor: '#f5f5f5',
     webPreferences: {
       nodeIntegration: true,
@@ -100,61 +84,23 @@ function createWindow() {
 
   // Show window only when content is ready (prevents flicker)
   mainWindow.once('ready-to-show', () => {
-    // Only maximize if it was maximized before, otherwise show with calculated bounds
-    if (windowState.isMaximized) {
-      mainWindow.maximize();
-    }
+    mainWindow.maximize();
     mainWindow.show();
   });
 
-  // Performance: Reduce CPU usage when window is hidden/minimized
+  // Performance: notify renderer when window is hidden/minimized/restored
   mainWindow.on('hide', () => {
-    log('Window hidden - reducing activity');
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('window-visibility-changed', { visible: false });
-    }
+    if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('window-visibility-changed', { visible: false });
   });
-
   mainWindow.on('show', () => {
-    log('Window shown - resuming activity');
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('window-visibility-changed', { visible: true });
-    }
+    if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('window-visibility-changed', { visible: true });
   });
-
   mainWindow.on('minimize', () => {
-    log('Window minimized - reducing activity');
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('window-visibility-changed', { visible: false });
-    }
+    if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('window-visibility-changed', { visible: false });
   });
-
   mainWindow.on('restore', () => {
-    log('Window restored - resuming activity');
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.send('window-visibility-changed', { visible: true });
-    }
+    if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('window-visibility-changed', { visible: true });
   });
-
-  // Save window state on close
-  const saveState = () => {
-    if (!mainWindow) return;
-    const bounds = mainWindow.getBounds();
-    const isMaximized = mainWindow.isMaximized();
-    const state = {
-      ...bounds,
-      isMaximized
-    };
-    try {
-      fs.writeFileSync(stateFilePath, JSON.stringify(state));
-    } catch (e) {
-      log('Failed to save window state:', e);
-    }
-  };
-
-  mainWindow.on('close', saveState);
-  mainWindow.on('resize', saveState);
-  mainWindow.on('move', saveState);
 
   // Load file from command line after window loads
   mainWindow.webContents.on('did-finish-load', () => {
@@ -167,21 +113,32 @@ function createWindow() {
   });
 
   // Open DevTools in development (F12 to toggle)
-  // mainWindow.webContents.openDevTools({ mode: 'detach' });
+  // mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 
+  // Check for file changes when window regains focus
+  mainWindow.on('focus', () => {
+    if (watchedFilePath) {
+      checkFileChanges();
+    }
+  });
+
   // Register keyboard shortcuts
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.control || input.meta) {
-      if (input.key === 'o' && input.type === 'keyDown') {
+      if (input.key === 'o' && input.type === 'keyDown' && !input.shift) {
         event.preventDefault();
         openFileDialog();
       } else if (input.key === 'q' && input.type === 'keyDown') {
         event.preventDefault();
         app.quit();
+      } else if (input.key === 'O' && input.type === 'keyDown' && input.shift) {
+        // Ctrl+Shift+O → Corporate mode toggle (forwarded to renderer)
+        event.preventDefault();
+        mainWindow.webContents.send('toggle-corporate-mode');
       }
     }
 
@@ -199,13 +156,19 @@ function createWindow() {
   });
 }
 
-// File watching functions
+// ============================================
+// FILE WATCHING
+// ============================================
+
+// Debounce helper for file change events
+let fileChangeDebounce = null;
+
 function startFileWatching(filePath) {
   // Stop any existing watcher
   stopFileWatching();
 
   if (!fs.existsSync(filePath)) {
-    log('Cannot watch non-existent file:', filePath);
+    console.error('Cannot watch non-existent file:', filePath);
     return;
   }
 
@@ -216,23 +179,51 @@ function startFileWatching(filePath) {
     const stats = fs.statSync(filePath);
     lastModifiedTime = stats.mtimeMs;
   } catch (err) {
-    log('Error getting file stats:', err);
+    console.error('Error getting file stats:', err);
     return;
   }
 
-  // Check for changes every 5 seconds
-  fileWatcher = setInterval(() => {
-    checkFileChanges();
-  }, 5000);
+  // Use OS-level fs.watch for instant detection
+  try {
+    fileWatcher = fs.watch(filePath, { persistent: false }, (eventType) => {
+      if (eventType === 'rename') {
+        // File renamed or deleted
+        if (!fs.existsSync(filePath)) {
+          if (mainWindow && mainWindow.webContents) {
+            mainWindow.webContents.send('file-deleted', { path: filePath });
+          }
+          stopFileWatching();
+        }
+        return;
+      }
+      // Debounce 'change' events (editors may fire multiple events rapidly)
+      clearTimeout(fileChangeDebounce);
+      fileChangeDebounce = setTimeout(() => checkFileChanges(), 150);
+    });
 
-  log('Started watching file:', filePath);
+    fileWatcher.on('error', (err) => {
+      console.error('fs.watch error, falling back to polling:', err.message);
+      fileWatcher = null;
+      // Fallback to polling every 2 seconds (faster than before)
+      fileWatcher = setInterval(() => checkFileChanges(), 2000);
+    });
+
+    console.log('Started watching file (OS-level):', filePath);
+  } catch (err) {
+    console.error('fs.watch not available, using polling:', err.message);
+    // Fallback to polling every 2 seconds
+    fileWatcher = setInterval(() => checkFileChanges(), 2000);
+    console.log('Started watching file (polling):', filePath);
+  }
 }
 
 function checkFileChanges() {
   if (!watchedFilePath || !fs.existsSync(watchedFilePath)) {
     if (watchedFilePath && !fs.existsSync(watchedFilePath)) {
       // File was deleted
-      mainWindow.webContents.send('file-deleted', { path: watchedFilePath });
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('file-deleted', { path: watchedFilePath });
+      }
       stopFileWatching();
     }
     return;
@@ -244,67 +235,62 @@ function checkFileChanges() {
 
     // Check if file has been modified
     if (currentModTime > lastModifiedTime) {
-      log('File modified externally:', watchedFilePath);
+      console.log('File modified externally:', watchedFilePath);
       lastModifiedTime = currentModTime;
 
       // Notify renderer about file change
-      mainWindow.webContents.send('file-changed-externally', {
-        path: watchedFilePath,
-        modifiedTime: currentModTime
-      });
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('file-changed-externally', {
+          path: watchedFilePath,
+          modifiedTime: currentModTime
+        });
+      }
     }
   } catch (err) {
-    log('Error checking file changes:', err);
+    console.error('Error checking file changes:', err);
   }
 }
 
 function stopFileWatching() {
   if (fileWatcher) {
-    clearInterval(fileWatcher);
+    if (typeof fileWatcher.close === 'function') {
+      // fs.watch FSWatcher
+      try { fileWatcher.close(); } catch (e) { /* ignore */ }
+    } else {
+      // setInterval fallback
+      clearInterval(fileWatcher);
+    }
     fileWatcher = null;
     watchedFilePath = null;
     lastModifiedTime = null;
-    // Use log() instead of console.log to avoid EPIPE errors when no terminal
+    clearTimeout(fileChangeDebounce);
+    fileChangeDebounce = null;
+    console.log('Stopped file watching');
   }
 }
 
 function pauseFileWatching() {
   if (fileWatcher) {
-    clearInterval(fileWatcher);
+    if (typeof fileWatcher.close === 'function') {
+      try { fileWatcher.close(); } catch (e) { /* ignore */ }
+    } else {
+      clearInterval(fileWatcher);
+    }
     fileWatcher = null;
-    log('Paused file watching');
+    console.log('Paused file watching');
   }
 }
 
 function resumeFileWatching() {
   if (watchedFilePath && !fileWatcher) {
-    // Restart the interval
-    fileWatcher = setInterval(() => {
-      checkFileChanges();
-    }, 5000);
-    log('Resumed file watching');
+    startFileWatching(watchedFilePath);
+    console.log('Resumed file watching');
   }
 }
 
-// Check if file is a Mermaid diagram file
-function isMermaidFile(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  return ['.mmd', '.mermaid'].includes(ext);
-}
-
-// Wrap content in mermaid code block if it's a mermaid file
-function wrapMermaidContent(content, filePath) {
-  if (isMermaidFile(filePath)) {
-    // Check if already wrapped in mermaid code block
-    const trimmed = content.trim();
-    if (trimmed.startsWith('```mermaid') || trimmed.startsWith('~~~mermaid')) {
-      return content; // Already wrapped
-    }
-    // Wrap in mermaid code block
-    return '```mermaid\n' + content + '\n```';
-  }
-  return content;
-}
+// ============================================
+// FILE OPERATIONS
+// ============================================
 
 function openFile(filePath) {
   log('Attempting to open file:', filePath);
@@ -323,19 +309,13 @@ function openFile(filePath) {
     return;
   }
 
-  fs.readFile(filePath, 'utf8', (err, data) => {
+  // Use helper function for reading markdown files
+  readMarkdownFile(filePath, (err, data) => {
     if (err) {
       log('ERROR: Error reading file:', err);
       mainWindow.webContents.send('show-error', `Error reading file: ${err.message}`);
       return;
     }
-    // Remove BOM if present
-    if (data.charCodeAt(0) === 0xFEFF) {
-      data = data.substring(1);
-    }
-
-    // Wrap mermaid files in code block for rendering
-    data = wrapMermaidContent(data, filePath);
 
     log('File read successfully, sending to renderer');
     mainWindow.webContents.send('file-opened', {
@@ -355,26 +335,20 @@ function openFileDialog() {
     filters: [
       { name: 'Markdown Files', extensions: ['md', 'markdown', 'mdown', 'mkd', 'mkdn'] },
       { name: 'Mermaid Files', extensions: ['mmd', 'mermaid'] },
+      { name: 'OmniWare Files', extensions: ['ow'] },
       { name: 'All Files', extensions: ['*'] }
     ]
   }).then(result => {
     if (!result.canceled && result.filePaths.length > 0) {
       const filePaths = result.filePaths;
-
-      // Read the first file to display
       const firstFilePath = filePaths[0];
-      fs.readFile(firstFilePath, 'utf8', (err, data) => {
+
+      // Use helper function for reading markdown files
+      readMarkdownFile(firstFilePath, (err, data) => {
         if (err) {
-          log('Error reading file:', err);
+          console.error('Error reading file:', err);
           return;
         }
-        // Remove BOM if present
-        if (data.charCodeAt(0) === 0xFEFF) {
-          data = data.substring(1);
-        }
-
-        // Wrap mermaid files in code block for rendering
-        data = wrapMermaidContent(data, firstFilePath);
 
         // Send first file content and all selected paths
         mainWindow.webContents.send('file-opened', {
@@ -388,13 +362,48 @@ function openFileDialog() {
       });
     }
   }).catch(err => {
-    log('Error opening file:', err);
+    console.error('Error opening file:', err);
   });
 }
 
-// Handle file open request from renderer
+// ============================================
+// IPC HANDLERS - File Operations
+// ============================================
+
 ipcMain.on('open-file-dialog', () => {
   openFileDialog();
+});
+
+// Handle image insert dialog
+ipcMain.on('open-image-dialog', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select Image',
+    filters: [
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'] }
+    ],
+    properties: ['openFile']
+  });
+
+  if (result.canceled || result.filePaths.length === 0) return;
+
+  const filePath = result.filePaths[0];
+  const ext = path.extname(filePath).toLowerCase().replace('.', '');
+  const fileName = path.basename(filePath);
+
+  const mimeTypes = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp'
+  };
+  const mimeType = mimeTypes[ext] || 'image/png';
+
+  try {
+    const data = fs.readFileSync(filePath);
+    const base64 = data.toString('base64');
+    mainWindow.webContents.send('image-selected', { base64, mimeType, fileName });
+  } catch (err) {
+    console.error('Image read error:', err);
+    mainWindow.webContents.send('image-selected', { error: err.message });
+  }
 });
 
 // Handle direct file path open request from renderer (for markdown links)
@@ -415,7 +424,115 @@ ipcMain.on('open-folder-in-explorer', (event, filePath) => {
   }
 });
 
-// Handle PDF export request from renderer
+// ============================================
+// IPC HANDLERS - Export
+// ============================================
+
+// Open a file with the system default app; handles WSL2 by converting to Windows path
+function openFileAfterExport(filePath) {
+  if (process.platform === 'linux') {
+    // In WSL2, use wslpath to get the Windows UNC path, then open with explorer.exe
+    exec(`wslpath -w "${filePath}"`, (err, winPath) => {
+      if (!err && winPath && winPath.trim()) {
+        exec(`explorer.exe "${winPath.trim()}"`, (err2) => {
+          if (err2) shell.showItemInFolder(filePath);
+        });
+      } else {
+        // Not WSL2 or wslpath unavailable, fall back to xdg-open
+        shell.openPath(filePath).then(errMsg => {
+          if (errMsg) shell.showItemInFolder(filePath);
+        });
+      }
+    });
+  } else {
+    shell.openPath(filePath).then(errMsg => {
+      if (errMsg) shell.showItemInFolder(filePath);
+    });
+  }
+}
+
+// Build corporate letterhead header/footer templates for printToPDF
+function buildCorporateTemplates(label) {
+  const logoPath = path.join(__dirname, 'omnicore-letterhead-logo.png');
+  let logoDataUri = '';
+  try {
+    const logoData = fs.readFileSync(logoPath);
+    logoDataUri = 'data:image/png;base64,' + logoData.toString('base64');
+  } catch (e) {
+    console.warn('Corporate logo not found:', logoPath);
+  }
+  const headerTemplate = `<div style="-webkit-print-color-adjust:exact;color-adjust:exact;width:100%;padding:5px 36px 0 31px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:flex-start;">
+    <div style="-webkit-print-color-adjust:exact;color-adjust:exact;height:26px;width:115px;background-image:url('${logoDataUri}');background-size:contain;background-repeat:no-repeat;background-position:left center;flex-shrink:0;"></div>
+    <span style="font-size:9px;color:#999999;font-family:Arial,sans-serif;padding-top:4px;">${label || ''}</span>
+  </div>`;
+  const footerTemplate = `<div style="-webkit-print-color-adjust:exact;color-adjust:exact;width:100%;height:100%;padding:4px 0 0 36px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:flex-end;font-family:Arial,sans-serif;overflow:visible;">
+    <div style="line-height:1.5;">
+      <div style="font-size:7px;font-weight:bold;font-style:italic;color:#279EA7;">OMNICORE STRATEJİK TEKNOLOJİLER LİMİTED ŞİRKETİ</div>
+      <div style="font-size:6px;color:#1F3244;">KÜÇÜKBAKKALKÖY MAH. SELVİLİ SK. NO: 4 İÇ KAPI NO: 20 ATAŞEHİR</div>
+      <div style="font-size:6px;color:#1F3244;">1074342 / 0642108183700001</div>
+      <div style="font-size:6px;color:#279EA7;">www.omnicore.com.tr</div>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:22px;overflow:visible;align-self:stretch;">
+      <div style="display:flex;gap:3px;height:70%;align-self:flex-end;margin-bottom:-20px;overflow:visible;">
+        <div style="width:1px;background:#279EA7;"></div>
+        <div style="width:1px;background:#279EA7;"></div>
+        <div style="width:1px;background:#279EA7;"></div>
+      </div>
+      <span class="pageNumber" style="font-size:20px;font-weight:300;color:#1F3244;padding-right:28px;"></span>
+    </div>
+  </div>`;
+  return { headerTemplate, footerTemplate };
+}
+
+// Handle corporate PDF export (with letterhead)
+ipcMain.on('export-pdf-corporate', async (event, data) => {
+  try {
+    const { currentFileName } = data;
+
+    let defaultFilename = 'document-corporate.pdf';
+    if (currentFileName) {
+      const nameWithoutExt = currentFileName.replace(/\.[^/.]+$/, '');
+      defaultFilename = `${nameWithoutExt}-corporate.pdf`;
+    }
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export to PDF (Corporate)',
+      defaultPath: defaultFilename,
+      filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+    });
+
+    if (result.canceled || !result.filePath) return;
+
+    // Ask renderer to switch to light mode so PDF is always captured in light theme
+    mainWindow.webContents.send('prepare-for-pdf-export');
+    await new Promise(resolve => ipcMain.once('pdf-export-ready', resolve));
+
+    // Build corporate letterhead templates (header/footer appear on every page via Chromium)
+    const { headerTemplate, footerTemplate } = buildCorporateTemplates(currentFileName);
+
+    const pdfData = await mainWindow.webContents.printToPDF({
+      printBackground: true,
+      landscape: false,
+      pageSize: 'A4',
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate,
+      margins: { top: 1.2, bottom: 1.0, left: 0.8, right: 0.8 }
+    });
+
+    fs.writeFile(result.filePath, pdfData, (err) => {
+      if (err) {
+        mainWindow.webContents.send('pdf-export-result', { success: false, error: err.message });
+      } else {
+        openFileAfterExport(result.filePath);
+        mainWindow.webContents.send('pdf-export-result', { success: true, path: result.filePath });
+      }
+    });
+  } catch (error) {
+    mainWindow.webContents.send('pdf-export-result', { success: false, error: error.message });
+  }
+});
+
 ipcMain.on('export-pdf', async (event, data) => {
   try {
     const { currentFileName } = data;
@@ -441,6 +558,10 @@ ipcMain.on('export-pdf', async (event, data) => {
       return;
     }
 
+    // Ask renderer to switch to light mode so PDF is always captured in light theme
+    mainWindow.webContents.send('prepare-for-pdf-export');
+    await new Promise(resolve => ipcMain.once('pdf-export-ready', resolve));
+
     // Generate PDF from current page
     const pdfData = await mainWindow.webContents.printToPDF({
       printBackground: true,
@@ -453,13 +574,14 @@ ipcMain.on('export-pdf', async (event, data) => {
     // Write PDF to file
     fs.writeFile(result.filePath, pdfData, (err) => {
       if (err) {
-        log('Error saving PDF:', err);
+        console.error('Error saving PDF:', err);
         mainWindow.webContents.send('pdf-export-result', {
           success: false,
           error: err.message
         });
       } else {
-        log('PDF saved successfully:', result.filePath);
+        console.log('PDF saved successfully:', result.filePath);
+        openFileAfterExport(result.filePath);
         mainWindow.webContents.send('pdf-export-result', {
           success: true,
           path: result.filePath
@@ -467,7 +589,7 @@ ipcMain.on('export-pdf', async (event, data) => {
       }
     });
   } catch (error) {
-    log('Error exporting PDF:', error);
+    console.error('Error exporting PDF:', error);
     mainWindow.webContents.send('pdf-export-result', {
       success: false,
       error: error.message
@@ -477,10 +599,10 @@ ipcMain.on('export-pdf', async (event, data) => {
 
 // Handle Word export request from renderer
 ipcMain.on('export-word', async (event, data) => {
-  log('Received export-word request');
+  console.log('Received export-word request');
   try {
     const { currentFileName, htmlContent } = data;
-    log('Processing Word export for:', currentFileName, 'HTML length:', htmlContent?.length);
+    console.log('Processing Word export for:', currentFileName, 'HTML length:', htmlContent?.length);
 
     // Determine default filename
     let defaultFilename = 'document.docx';
@@ -555,13 +677,13 @@ ipcMain.on('export-word', async (event, data) => {
     // Write DOCX to file
     fs.writeFile(result.filePath, docxBuffer, (err) => {
       if (err) {
-        log('Error saving Word document:', err);
+        console.error('Error saving Word document:', err);
         mainWindow.webContents.send('word-export-result', {
           success: false,
           error: err.message
         });
       } else {
-        log('Word document saved successfully:', result.filePath);
+        console.log('Word document saved successfully:', result.filePath);
         mainWindow.webContents.send('word-export-result', {
           success: true,
           path: result.filePath
@@ -569,11 +691,103 @@ ipcMain.on('export-word', async (event, data) => {
       }
     });
   } catch (error) {
-    log('Error exporting Word document:', error);
+    console.error('Error exporting Word document:', error);
     mainWindow.webContents.send('word-export-result', {
       success: false,
       error: error.message
     });
+  }
+});
+
+// Handle corporate Word export (with letterhead)
+ipcMain.on('export-word-corporate', async (event, data) => {
+  try {
+    const { currentFileName, htmlContent } = data;
+
+    let defaultFilename = 'document-corporate.docx';
+    if (currentFileName) {
+      const nameWithoutExt = currentFileName.replace(/\.[^/.]+$/, '');
+      defaultFilename = `${nameWithoutExt}-corporate.docx`;
+    }
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export to Word (Corporate)',
+      defaultPath: defaultFilename,
+      filters: [{ name: 'Word Documents', extensions: ['docx'] }]
+    });
+
+    if (result.canceled || !result.filePath) return;
+
+    // Corporate letterhead HTML wrapper
+    const corporateHeader = `
+      <div style="border-bottom: 3pt solid #279EA7; padding-bottom: 8pt; margin-bottom: 16pt;">
+        <p style="font-size: 10pt; color: #279EA7; font-weight: bold; letter-spacing: 2pt; margin: 0;">OMNICORE</p>
+      </div>
+    `;
+    const corporateFooter = `
+      <div style="border-top: 2pt solid #279EA7; padding-top: 8pt; margin-top: 32pt;">
+        <p style="font-size: 9pt; color: #666; text-align: center; letter-spacing: 2pt; margin: 0;">CONFIDENTIAL &mdash; OMNICORE DOCUMENT</p>
+      </div>
+    `;
+
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: 'Calibri', 'Arial', sans-serif; font-size: 11pt; line-height: 1.6; color: #333; }
+          h1 { font-size: 24pt; color: #1F3244; margin-top: 24pt; margin-bottom: 12pt; }
+          h2 { font-size: 18pt; color: #1F3244; margin-top: 18pt; margin-bottom: 10pt; }
+          h3 { font-size: 14pt; color: #1F3244; margin-top: 14pt; margin-bottom: 8pt; }
+          h4, h5, h6 { font-size: 12pt; color: #1F3244; margin-top: 12pt; margin-bottom: 6pt; }
+          p { margin-bottom: 10pt; }
+          code { font-family: 'Consolas', 'Courier New', monospace; background-color: #f5f5f5; padding: 2pt 4pt; font-size: 10pt; }
+          pre { font-family: 'Consolas', 'Courier New', monospace; background-color: #f5f5f5; padding: 10pt; font-size: 10pt; border: 1pt solid #ddd; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 12pt; }
+          th, td { border: 1pt solid #ddd; padding: 8pt; text-align: left; }
+          th { background-color: #1F3244; color: white; }
+          blockquote { border-left: 3pt solid #279EA7; padding-left: 12pt; margin-left: 0; color: #666; }
+          a { color: #279EA7; }
+          ul, ol { margin-bottom: 10pt; }
+          li { margin-bottom: 4pt; }
+          img { max-width: 100%; height: auto; }
+        </style>
+      </head>
+      <body>
+        ${corporateHeader}
+        ${htmlContent}
+        ${corporateFooter}
+      </body>
+      </html>
+    `;
+
+    const docxBuffer = await HTMLtoDOCX(fullHtml, null, {
+      table: { row: { cantSplit: true } },
+      footer: true,
+      pageNumber: true,
+      font: 'Calibri',
+      fontSize: 22,
+      margins: {
+        top: 1440,
+        right: 1440,
+        bottom: 1440,
+        left: 1440,
+        header: 720,
+        footer: 720,
+        gutter: 0
+      }
+    });
+
+    fs.writeFile(result.filePath, docxBuffer, (err) => {
+      if (err) {
+        mainWindow.webContents.send('word-export-result', { success: false, error: err.message });
+      } else {
+        mainWindow.webContents.send('word-export-result', { success: true, path: result.filePath });
+      }
+    });
+  } catch (error) {
+    mainWindow.webContents.send('word-export-result', { success: false, error: error.message });
   }
 });
 
@@ -593,22 +807,22 @@ ipcMain.on('save-markdown-file', (event, data) => {
     // Write file to disk
     fs.writeFile(filePath, content, 'utf8', (err) => {
       if (err) {
-        log('Error saving file:', err);
+        console.error('Error saving file:', err);
         mainWindow.webContents.send('save-markdown-result', {
           success: false,
           error: err.message
         });
       } else {
-        log('File saved successfully:', filePath);
+        console.log('File saved successfully:', filePath);
 
         // Update lastModifiedTime to prevent false "external change" detection
         if (watchedFilePath === filePath) {
           try {
             const stats = fs.statSync(filePath);
             lastModifiedTime = stats.mtimeMs;
-            log('Updated lastModifiedTime after save:', lastModifiedTime);
+            console.log('Updated lastModifiedTime after save:', lastModifiedTime);
           } catch (statErr) {
-            log('Error updating file stats after save:', statErr);
+            console.error('Error updating file stats after save:', statErr);
           }
         }
 
@@ -619,7 +833,7 @@ ipcMain.on('save-markdown-file', (event, data) => {
       }
     });
   } catch (error) {
-    log('Error in save handler:', error);
+    console.error('Error in save handler:', error);
     mainWindow.webContents.send('save-markdown-result', {
       success: false,
       error: error.message
@@ -627,7 +841,10 @@ ipcMain.on('save-markdown-file', (event, data) => {
   }
 });
 
-// Handle file watching control requests
+// ============================================
+// IPC HANDLERS - File Watching
+// ============================================
+
 ipcMain.on('start-file-watching', (event, data) => {
   const { filePath } = data;
   startFileWatching(filePath);
@@ -650,49 +867,35 @@ ipcMain.on('reload-file', (event, data) => {
   const { filePath } = data;
 
   if (!fs.existsSync(filePath)) {
-    mainWindow.webContents.send('file-reload-result', {
-      success: false,
-      error: 'File not found'
-    });
+    sendIPCResult(mainWindow.webContents, 'file-reload-result', false, { error: 'File not found' });
     return;
   }
 
-  fs.readFile(filePath, 'utf8', (err, content) => {
+  // Use helper function for reading markdown files
+  readMarkdownFile(filePath, (err, content) => {
     if (err) {
-      log('Error reloading file:', err);
-      mainWindow.webContents.send('file-reload-result', {
-        success: false,
-        error: err.message
-      });
+      console.error('Error reloading file:', err);
+      sendIPCResult(mainWindow.webContents, 'file-reload-result', false, { error: err.message });
     } else {
-      // Remove BOM if present
-      if (content.charCodeAt(0) === 0xFEFF) {
-        content = content.substring(1);
-      }
-
-      // Wrap mermaid files in code block for rendering
-      content = wrapMermaidContent(content, filePath);
-
       // Update the last modified time after successful reload
       try {
         const stats = fs.statSync(filePath);
         lastModifiedTime = stats.mtimeMs;
       } catch (statErr) {
-        log('Error updating file stats:', statErr);
+        console.error('Error updating file stats:', statErr);
       }
 
-      mainWindow.webContents.send('file-reload-result', {
-        success: true,
-        content: content,
-        path: filePath
-      });
+      sendIPCResult(mainWindow.webContents, 'file-reload-result', true, { content, path: filePath });
     }
   });
 });
 
-// Handle Mermaid diagram popup request
+// ============================================
+// IPC HANDLERS - Popups
+// ============================================
+
 ipcMain.on('open-mermaid-popup', (event, data) => {
-  const { svgContent, isDarkMode } = data;
+  const { svgContent, isDarkMode, isCorporateMode } = data;
 
   // Create popup window
   const popupWindow = new BrowserWindow({
@@ -1016,17 +1219,25 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
   });
 
   // Handle PDF export request from this popup window
-  ipcMain.once('mermaid-export-pdf', async (event) => {
+  const mermaidPdfHandler = async (ev) => {
+    if (BrowserWindow.fromWebContents(ev.sender) !== popupWindow) return;
     try {
-      // Generate PDF from current window view
-      const pdfData = await popupWindow.webContents.printToPDF({
+      const printOptions = isCorporateMode ? {
+        printBackground: true,
+        landscape: true,
+        pageSize: 'A4',
+        displayHeaderFooter: true,
+        ...buildCorporateTemplates('mermaid-diagram.pdf'),
+        margins: { top: 1.2, bottom: 1.0, left: 0.8, right: 0.8 }
+      } : {
         printBackground: true,
         landscape: true,
         pageSize: 'A4',
         margins: { top: 0, bottom: 0, left: 0, right: 0 }
-      });
+      };
 
-      // Show save dialog
+      const pdfData = await popupWindow.webContents.printToPDF(printOptions);
+
       const result = await dialog.showSaveDialog(popupWindow, {
         title: 'Save Mermaid Diagram as PDF',
         defaultPath: path.join(os.homedir(), 'mermaid-diagram.pdf'),
@@ -1035,15 +1246,424 @@ ipcMain.on('open-mermaid-popup', (event, data) => {
 
       if (!result.canceled && result.filePath) {
         fs.writeFileSync(result.filePath, pdfData);
+        openFileAfterExport(result.filePath);
         popupWindow.webContents.send('mermaid-pdf-result', { success: true });
       } else {
         popupWindow.webContents.send('mermaid-pdf-result', { canceled: true });
       }
     } catch (err) {
-      log('Mermaid PDF export error:', err);
+      console.error('Mermaid PDF export error:', err);
       popupWindow.webContents.send('mermaid-pdf-result', { success: false, error: err.message });
     }
+  };
+  ipcMain.on('mermaid-export-pdf', mermaidPdfHandler);
+
+  popupWindow.on('closed', () => {
+    ipcMain.removeListener('mermaid-export-pdf', mermaidPdfHandler);
   });
+});
+
+// Handle OmniWare wireframe popup request
+ipcMain.on('open-omniware-popup', (event, data) => {
+  const { dslCode, isDarkMode, isCorporateMode } = data;
+
+  const popupWindow = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    backgroundColor: isDarkMode ? '#1a1a1a' : '#f8f6f1',
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    },
+    title: 'OmniWare Wireframe',
+    icon: path.join(__dirname, 'logo.ico')
+  });
+
+  popupWindow.setMenu(null);
+
+  // Read the OmniWare library
+  const omniwareJsPath = path.join(__dirname, 'omniwire', 'omniware.js');
+  const omniwareJs = fs.readFileSync(omniwareJsPath, 'utf8');
+
+  // Dark mode CSS overrides
+  const { getOmniWareDarkCSS } = require('./omniware-config');
+  const darkCSS = isDarkMode ? `<style>${getOmniWareDarkCSS(true)}</style>` : '';
+
+  const escapedDsl = dslCode.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
+  const tempHtmlPath = path.join(os.tmpdir(), 'omnicore-temp-omniware.html');
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniWare Wireframe</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 20px;
+            background-color: ${isDarkMode ? '#2d2d2d' : '#f0ede6'};
+            min-height: 100vh;
+        }
+        .toolbar {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 8px;
+        }
+        .toolbar button {
+            padding: 6px 14px;
+            border: 1px solid ${isDarkMode ? '#555' : '#ccc'};
+            background: ${isDarkMode ? '#333' : '#fff'};
+            color: ${isDarkMode ? '#e0e0e0' : '#333'};
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .toolbar button:hover {
+            background: ${isDarkMode ? '#444' : '#eee'};
+        }
+    </style>
+    ${darkCSS}
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="exportPDF()">Export PDF</button>
+    </div>
+    <div id="render-target"></div>
+
+    <script>${omniwareJs}</script>
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        const dsl = \`${escapedDsl}\`;
+        OmniWare.render(dsl, document.getElementById('render-target'));
+
+        function exportPDF() {
+            ipcRenderer.send('omniware-export-pdf');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') window.close();
+        });
+    </script>
+</body>
+</html>`;
+
+  fs.writeFileSync(tempHtmlPath, htmlContent, 'utf8');
+  popupWindow.loadFile(tempHtmlPath);
+
+  // Handle PDF export from popup
+  const omniwarePdfHandler = async (event) => {
+    // Only handle events coming from this specific popup window
+    if (BrowserWindow.fromWebContents(event.sender) !== popupWindow) return;
+    try {
+      const saveResult = await dialog.showSaveDialog(popupWindow, {
+        title: 'Export Wireframe as PDF',
+        defaultPath: 'wireframe.pdf',
+        filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+      });
+      if (!saveResult.canceled && saveResult.filePath) {
+        const printOptions = isCorporateMode ? {
+          landscape: false,
+          printBackground: true,
+          pageSize: 'A4',
+          displayHeaderFooter: true,
+          ...buildCorporateTemplates('wireframe.pdf'),
+          margins: { top: 1.2, bottom: 1.0, left: 0.8, right: 0.8 }
+        } : {
+          landscape: false,
+          printBackground: true,
+          margins: { top: 0.4, bottom: 0.4, left: 0.4, right: 0.4 }
+        };
+        const pdfData = await popupWindow.webContents.printToPDF(printOptions);
+        fs.writeFileSync(saveResult.filePath, pdfData);
+        openFileAfterExport(saveResult.filePath);
+      }
+    } catch (err) {
+      console.error('OmniWare PDF export error:', err);
+    }
+  };
+  ipcMain.on('omniware-export-pdf', omniwarePdfHandler);
+
+  // Clean up temp file and listener on close
+  popupWindow.on('closed', () => {
+    ipcMain.removeListener('omniware-export-pdf', omniwarePdfHandler);
+    try { fs.unlinkSync(tempHtmlPath); } catch (e) { /* ignore */ }
+  });
+});
+
+// Handle Image popup request
+ipcMain.on('open-image-popup', (event, data) => {
+  const { src, alt, isDarkMode } = data;
+
+  const title = alt ? `Image — ${alt}` : 'Image Viewer';
+  const popupWindow = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    backgroundColor: isDarkMode ? '#1a1a1a' : '#f0f0f0',
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    },
+    title,
+    icon: path.join(__dirname, 'logo.ico')
+  });
+
+  popupWindow.setMenu(null);
+
+  const tempHtmlPath = path.join(os.tmpdir(), 'omnicore-temp-image.html');
+  const bg = isDarkMode ? '#1a1a1a' : '#f0f0f0';
+  const uiBg = isDarkMode ? '#2d2d2d' : '#ffffff';
+  const uiBorder = isDarkMode ? '#404040' : 'transparent';
+  const textColor = isDarkMode ? '#e0e0e0' : '#333';
+  const accentColor = isDarkMode ? '#3DBDC6' : '#279EA7';
+  const accentHover = isDarkMode ? '#4FCDD6' : '#1f8089';
+  const subTextColor = isDarkMode ? '#a0a0a0' : '#666';
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${alt || 'Image Viewer'}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: ${bg};
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #canvas {
+      width: 100%; height: 100%;
+      cursor: grab;
+      overflow: hidden;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #canvas:active { cursor: grabbing; }
+    #viewport {
+      will-change: transform;
+      transform-origin: 0 0;
+    }
+    #viewport img {
+      display: block;
+      max-width: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .ui-overlay {
+      position: absolute;
+      top: 20px; left: 20px;
+      background: ${uiBg};
+      border: 1px solid ${uiBorder};
+      padding: 14px 16px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,${isDarkMode ? '0.4' : '0.12'});
+      z-index: 10;
+      min-width: 160px;
+    }
+    .ui-overlay h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: ${accentColor};
+      margin-bottom: 6px;
+    }
+    .ui-overlay p {
+      font-size: 11px;
+      color: ${subTextColor};
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+    .ui-overlay button {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      margin-bottom: 6px;
+      background: ${accentColor};
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .ui-overlay button:last-child { margin-bottom: 0; }
+    .ui-overlay button:hover { background: ${accentHover}; }
+    .ui-overlay button:disabled { opacity: 0.55; cursor: not-allowed; background: ${accentColor}; }
+    #zoom-label {
+      display: block;
+      text-align: center;
+      font-size: 12px;
+      color: ${textColor};
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .btn-secondary {
+      background: ${isDarkMode ? '#3a3a3a' : '#e8e8e8'} !important;
+      color: ${isDarkMode ? '#e0e0e0' : '#444'} !important;
+    }
+    .btn-secondary:hover { background: ${isDarkMode ? '#4a4a4a' : '#d4d4d4'} !important; }
+    .divider {
+      border: none;
+      border-top: 1px solid ${isDarkMode ? '#404040' : '#e0e0e0'};
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="ui-overlay">
+    <h1>Image Viewer</h1>
+    <p>• Scroll to zoom (at cursor)<br>• Drag to pan</p>
+    <span id="zoom-label">100%</span>
+    <button onclick="resetView()">Reset View</button>
+    <hr class="divider">
+    <button id="btn-png" class="btn-secondary" onclick="saveImage('png')">⬇ Save as PNG</button>
+    <button id="btn-jpg" class="btn-secondary" onclick="saveImage('jpeg')">⬇ Save as JPG</button>
+  </div>
+  <div id="canvas">
+    <div id="viewport">
+      <img id="the-img" src="${src}" alt="${alt || ''}">
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const viewport = document.getElementById('viewport');
+    const theImg = document.getElementById('the-img');
+    const zoomLabel = document.getElementById('zoom-label');
+
+    let state = { scale: 1, panning: false, pointX: 0, pointY: 0, startX: 0, startY: 0 };
+    const MIN_SCALE = 0.05, MAX_SCALE = 20, ZOOM_SPEED = 0.12;
+
+    function updateTransform() {
+      viewport.style.transform = \`translate(\${state.pointX}px, \${state.pointY}px) scale(\${state.scale})\`;
+      zoomLabel.textContent = Math.round(state.scale * 100) + '%';
+    }
+
+    // Fit image to window on load
+    theImg.onload = function() {
+      const cw = canvas.clientWidth, ch = canvas.clientHeight;
+      const iw = theImg.naturalWidth, ih = theImg.naturalHeight;
+      const scale = Math.min(cw * 0.9 / iw, ch * 0.9 / ih, 1);
+      state.scale = scale;
+      state.pointX = (cw - iw * scale) / 2;
+      state.pointY = (ch - ih * scale) / 2;
+      updateTransform();
+    };
+
+    // Wheel zoom toward cursor
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const delta = -Math.sign(e.deltaY);
+      const factor = 1 + ZOOM_SPEED * delta;
+      let newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, state.scale * factor));
+      const ratio = newScale / state.scale;
+      state.pointX = mouseX - (mouseX - state.pointX) * ratio;
+      state.pointY = mouseY - (mouseY - state.pointY) * ratio;
+      state.scale = newScale;
+      updateTransform();
+    }, { passive: false });
+
+    // Pan
+    canvas.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      state.panning = true;
+      state.startX = e.clientX - state.pointX;
+      state.startY = e.clientY - state.pointY;
+    });
+    window.addEventListener('mousemove', e => {
+      if (!state.panning) return;
+      e.preventDefault();
+      state.pointX = e.clientX - state.startX;
+      state.pointY = e.clientY - state.startY;
+      updateTransform();
+    });
+    window.addEventListener('mouseup', () => { state.panning = false; });
+
+    window.resetView = function() {
+      const cw = canvas.clientWidth, ch = canvas.clientHeight;
+      const iw = theImg.naturalWidth, ih = theImg.naturalHeight;
+      const scale = Math.min(cw * 0.9 / iw, ch * 0.9 / ih, 1);
+      state = { scale, panning: false, pointX: (cw - iw * scale) / 2, pointY: (ch - ih * scale) / 2, startX: 0, startY: 0 };
+      updateTransform();
+    };
+
+    window.saveImage = function(format) {
+      const { ipcRenderer } = require('electron');
+      const btnId = format === 'jpeg' ? 'btn-jpg' : 'btn-png';
+      const btn = document.getElementById(btnId);
+      const origText = btn.textContent;
+      btn.textContent = 'Saving…';
+      btn.disabled = true;
+
+      const offscreen = document.createElement('canvas');
+      offscreen.width = theImg.naturalWidth;
+      offscreen.height = theImg.naturalHeight;
+      const ctx = offscreen.getContext('2d');
+      if (format === 'jpeg') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, offscreen.width, offscreen.height);
+      }
+      ctx.drawImage(theImg, 0, 0);
+      const dataUrl = offscreen.toDataURL(format === 'jpeg' ? 'image/jpeg' : 'image/png', 0.95);
+
+      ipcRenderer.send('image-popup-save', { dataUrl, format });
+      ipcRenderer.once('image-popup-save-result', (_, result) => {
+        if (result.success) {
+          btn.textContent = 'Saved!';
+          setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 1500);
+        } else if (result.canceled) {
+          btn.textContent = origText;
+          btn.disabled = false;
+        } else {
+          btn.textContent = 'Error!';
+          setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 1500);
+        }
+      });
+    };
+  </script>
+</body>
+</html>`;
+
+  fs.writeFileSync(tempHtmlPath, htmlContent, 'utf8');
+  popupWindow.loadFile(tempHtmlPath);
+  popupWindow.on('closed', () => {
+    try { fs.unlinkSync(tempHtmlPath); } catch (e) { /* ignore */ }
+  });
+});
+
+// Handle image save request from image popup
+ipcMain.on('image-popup-save', async (event, { dataUrl, format }) => {
+  const ext = format === 'jpeg' ? 'jpg' : 'png';
+  const filterName = format === 'jpeg' ? 'JPEG Image' : 'PNG Image';
+  const win = BrowserWindow.fromWebContents(event.sender);
+
+  try {
+    const result = await dialog.showSaveDialog(win, {
+      defaultPath: `image.${ext}`,
+      filters: [{ name: filterName, extensions: [ext] }]
+    });
+
+    if (result.canceled) {
+      event.reply('image-popup-save-result', { canceled: true });
+      return;
+    }
+
+    const base64 = dataUrl.split(',')[1];
+    const buffer = Buffer.from(base64, 'base64');
+    fs.writeFileSync(result.filePath, buffer);
+    event.reply('image-popup-save-result', { success: true });
+  } catch (err) {
+    event.reply('image-popup-save-result', { success: false, error: err.message });
+  }
 });
 
 // Handle Table popup request
@@ -1323,7 +1943,7 @@ ipcMain.on('open-table-popup', (event, data) => {
 
         // Export functions
         function exportCSV() {
-            table.download("csv", "table-export.csv");
+            table.download("csv", "table-export.csv", {bom: true});
         }
 
         function exportJSON() {
@@ -1357,12 +1977,15 @@ ipcMain.on('open-table-popup', (event, data) => {
         fs.unlinkSync(tempHtmlPath);
       }
     } catch (err) {
-      log('Error cleaning up temp file:', err);
+      console.error('Error cleaning up temp file:', err);
     }
   });
 });
 
-// Handle file argument from command line or "Open with"
+// ============================================
+// COMMAND LINE HANDLING
+// ============================================
+
 function handleFileArgument(argv) {
   log('handleFileArgument called with argv:', argv);
   log('app.isPackaged:', app.isPackaged);
@@ -1384,7 +2007,7 @@ function handleFileArgument(argv) {
     // Check if it's a file path
     if (fs.existsSync(arg)) {
       const ext = path.extname(arg).toLowerCase();
-      if (['.md', '.markdown', '.mdown', '.mkd', '.mkdn', '.mmd', '.mermaid'].includes(ext)) {
+      if (['.md', '.markdown', '.mdown', '.mkd', '.mkdn', '.mmd', '.mermaid', '.ow'].includes(ext)) {
         filePath = arg;
         break;
       }
@@ -1409,7 +2032,6 @@ function handleFileArgument(argv) {
 log('Initial process.argv:', process.argv);
 handleFileArgument(process.argv);
 
-// Handle request to open a file (with unsaved changes check in renderer)
 ipcMain.on('request-open-file', (event, data) => {
   const { filePath } = data;
   if (filePath && fs.existsSync(filePath)) {
@@ -1417,35 +2039,10 @@ ipcMain.on('request-open-file', (event, data) => {
   }
 });
 
-// Handle restore tabs on startup
-ipcMain.on('restore-tabs', (event, tabsData) => {
-  tabsData.forEach((tabData, index) => {
-    if (fs.existsSync(tabData.filePath)) {
-      fs.readFile(tabData.filePath, 'utf8', (err, data) => {
-        if (!err) {
-          // Remove BOM if present
-          if (data.charCodeAt(0) === 0xFEFF) {
-            data = data.substring(1);
-          }
-          mainWindow.webContents.send('file-opened', {
-            content: data,
-            path: tabData.filePath,
-            allPaths: [tabData.filePath]
-          });
-        }
-      });
-    }
-  });
-});
+// ============================================
+// SINGLE INSTANCE LOCK & APP LIFECYCLE
+// ============================================
 
-// Handle active file change
-ipcMain.on('set-active-file', (event, filePath) => {
-  if (filePath && fs.existsSync(filePath)) {
-    startFileWatching(filePath);
-  }
-});
-
-// Handle second-instance (when app is already running and user opens another file)
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
@@ -1493,40 +2090,6 @@ if (!gotTheLock) {
   });
 }
 
-// Handle macOS open-file event (when a file is opened from Finder or set as default app)
-app.on('open-file', (event, filePath) => {
-  event.preventDefault();
-  log('macOS open-file event triggered with path:', filePath);
-
-  // Check if it's a markdown file
-  const ext = path.extname(filePath).toLowerCase();
-  if (!['.md', '.markdown', '.mdown', '.mkd', '.mkdn'].includes(ext)) {
-    log('Not a markdown file, ignoring');
-    return;
-  }
-
-  if (mainWindow && mainWindow.webContents) {
-    // Window already exists, send file open request to renderer for unsaved changes check
-    if (mainWindow.webContents.isLoading()) {
-      log('WebContents is loading, waiting for did-finish-load');
-      mainWindow.webContents.once('did-finish-load', () => {
-        log('Sending external-file-open-request after load');
-        mainWindow.webContents.send('external-file-open-request', { filePath });
-      });
-    } else {
-      log('Sending external-file-open-request immediately');
-      mainWindow.webContents.send('external-file-open-request', { filePath });
-    }
-    // Bring window to front
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  } else {
-    // Window doesn't exist yet, store the file to open after window is ready
-    log('Window not ready yet, storing file to open later');
-    fileToOpen = filePath;
-  }
-});
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
@@ -1538,10 +2101,14 @@ app.on('window-all-closed', () => {
 // ============================================
 
 // Only configure auto-updater if it's available
+// Portable .exe detection: electron-builder sets PORTABLE_EXECUTABLE_DIR for portable builds.
+const isPortable = !!process.env.PORTABLE_EXECUTABLE_DIR;
+let downloadedUpdatePath = null; // path to downloaded installer, set in update-downloaded event
+
 if (autoUpdater) {
   // Configure auto-updater
   autoUpdater.autoDownload = false; // Don't download automatically, let user decide
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = !isPortable; // Pointless for portable builds
 
   // Auto-updater event handlers
   autoUpdater.on('checking-for-update', () => {
@@ -1552,7 +2119,7 @@ if (autoUpdater) {
   });
 
   autoUpdater.on('update-available', (info) => {
-    log('Auto-updater: Update available:', info.version);
+    log('Auto-updater: Update available:', info.version, isPortable ? '(portable)' : '(installer)');
     if (mainWindow && mainWindow.webContents) {
       mainWindow.webContents.send('update-status', {
         status: 'available',
@@ -1587,7 +2154,8 @@ if (autoUpdater) {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    log('Auto-updater: Update downloaded:', info.version);
+    log('Auto-updater: Update downloaded:', info.version, info.downloadedFile || '');
+    downloadedUpdatePath = info.downloadedFile || null;
     if (mainWindow && mainWindow.webContents) {
       mainWindow.webContents.send('update-status', {
         status: 'downloaded',
@@ -1602,6 +2170,20 @@ if (autoUpdater) {
     log('Auto-updater error (silent):', err.message);
   });
 }
+
+// Return current app version to renderer
+ipcMain.handle('get-version', () => app.getVersion());
+
+// Return app root path so renderer can construct paths like README.md
+ipcMain.handle('get-app-path', () => app.getAppPath());
+
+// Return README.md path — works in dev (next to main.js) and packaged (extraResources)
+ipcMain.handle('get-readme-path', () => {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'README.md');
+  }
+  return path.join(__dirname, 'README.md');
+});
 
 // IPC handlers for update actions
 ipcMain.on('check-for-updates', () => {
@@ -1638,7 +2220,28 @@ ipcMain.on('download-update', () => {
 
 ipcMain.on('install-update', () => {
   log('Install update requested');
-  if (autoUpdater) {
+  if (!autoUpdater) return;
+
+  if (isPortable && downloadedUpdatePath) {
+    // Portable .exe: quitAndInstall() doesn't work.
+    // Launch the downloaded NSIS installer via a temp batch script (waits for app to exit first).
+    try {
+      const batchPath = path.join(os.tmpdir(), 'omnicore-update.bat');
+      const batch = [
+        '@echo off',
+        'timeout /t 2 /nobreak > nul',
+        `start "" "${downloadedUpdatePath}"`,
+        'del "%~f0"'
+      ].join('\r\n') + '\r\n';
+      fs.writeFileSync(batchPath, batch, 'utf8');
+      const { exec } = require('child_process');
+      exec(`start /min "" cmd /c "${batchPath}"`);
+      log('Portable update: batch script launched, quitting app');
+      app.quit();
+    } catch (err) {
+      log('Portable update batch failed:', err.message);
+    }
+  } else if (!isPortable) {
     autoUpdater.quitAndInstall(false, true);
   }
 });
