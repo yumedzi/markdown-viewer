@@ -8,6 +8,7 @@ We use an **overlay customization system** to make it easy to maintain customiza
 
 - **custom-styles.css** - Style overrides loaded after base styles.css
 - **custom-tabs.js** - Tab management functionality loaded after renderer.js
+- **custom-performance.js** - Performance optimizations loaded after renderer.js
 
 This approach means after an upstream merge, you only need to ensure these files are:
 1. Still present in the repository
@@ -42,13 +43,48 @@ This approach means after an upstream merge, you only need to ensure these files
 - Prevents crashes when app is launched by double-clicking .md files (no terminal attached)
 - Fixes "write EPIPE" errors in stopFileWatching and other functions
 
+### 5. PDF Export Optimizations (custom-styles.css)
+- Hides header, tabs, and file info bar in PDF exports
+- Forces light mode colors for PDF (white background, dark text)
+- Ensures PDFs are printer-friendly regardless of app theme
+- Removes editor view from exports if in split mode
+
+### 6. Performance Optimizations (custom-performance.js + main.js + package.json)
+
+**Problem**: ~10% CPU usage when app is visible but unfocused.
+
+**Root cause**: Two compounding issues:
+1. Electron 27 overrides a private macOS API (`_cornerMask`) forcing macOS WindowServer to recalculate window shadows every display frame
+2. Upstream has an unthrottled global `mousemove` listener firing on every pixel of movement
+
+**Solutions**:
+- **Electron upgraded to ^37** — fixes the `_cornerMask` bug (merged in [electron/electron#48376](https://github.com/electron/electron/pull/48376))
+- **`backgroundThrottling: true`** in `main.js` BrowserWindow options — lets Electron reduce activity when window is in background
+- **`custom-performance.js`** — throttles mousemove to 80ms intervals, drops events entirely when window is unfocused, dismisses floating panels (recent files, toasts) on blur
+- **Electron upgrade is protected** via `scripts/post-upstream-merge.sh` which re-pins to `^37` after any upstream merge
+
+**Important**: If upstream merges reset `package.json` electron to `^27`, run `./scripts/post-upstream-merge.sh` to restore `^37`.
+
 ## How to Maintain After Upstream Merge
 
-After merging from upstream:
+**After every upstream merge, run the post-merge script:**
+
+```bash
+./scripts/post-upstream-merge.sh
+```
+
+This script automatically:
+- Re-pins Electron to `^37` (overwriting any upstream downgrade)
+- Checks all custom file references in `index.html`
+- Checks all custom files in `package.json` build list
+- Verifies `backgroundThrottling: true` in `main.js`
+- Runs `npm install` with the correct Electron version
+
+### Manual Checklist (if not using the script)
 
 ### 1. Check Files Exist
 ```bash
-ls custom-styles.css custom-tabs.js
+ls custom-styles.css custom-tabs.js custom-performance.js scripts/post-upstream-merge.sh
 ```
 
 ### 2. Verify index.html References
@@ -63,6 +99,7 @@ Ensure index.html contains:
   ...
   <script src="renderer.js"></script>
   <script src="custom-tabs.js"></script>  <!-- This line -->
+  <script src="custom-performance.js"></script>  <!-- This line -->
 </body>
 ```
 
@@ -77,6 +114,8 @@ Verify:
 - [ ] Opening multiple files creates tabs
 - [ ] Tabs can be switched and closed
 - [ ] Tabs persist after restart
+- [ ] CPU usage is low when app is idle (~0-1% instead of ~10%)
+- [ ] PDF exports don't include header/tabs and use light colors
 
 ### 4. If Something Breaks
 
