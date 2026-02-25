@@ -90,6 +90,7 @@ MISSING_BUILD=0
 check_build_file "custom-styles.css"
 check_build_file "custom-tabs.js"
 check_build_file "custom-performance.js"
+check_build_file "markdown_viewer_icon.png"
 
 if [ "$MISSING_BUILD" -eq 1 ]; then
   echo ""

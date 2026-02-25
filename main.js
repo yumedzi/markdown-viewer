@@ -2213,7 +2213,11 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     // Set dock icon on macOS (applies in dev mode where the .icns bundle isn't used)
     if (process.platform === "darwin" && app.dock) {
-      app.dock.setIcon(path.join(__dirname, "markdown_viewer_icon.png"));
+      try {
+        app.dock.setIcon(path.join(__dirname, "markdown_viewer_icon.png"));
+      } catch (e) {
+        // Non-fatal: window still opens even if icon file is missing
+      }
     }
 
     createWindow();
