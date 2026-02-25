@@ -82,7 +82,7 @@ function createWindow() {
       enableRemoteModule: true,
       backgroundThrottling: true, // Throttle background renderers to save CPU
     },
-    icon: path.join(__dirname, "logo.ico"),
+    icon: path.join(__dirname, "markdown_viewer_icon.png"),
   });
 
   mainWindow.loadFile("index.html");
@@ -991,7 +991,7 @@ ipcMain.on("open-mermaid-popup", (event, data) => {
       contextIsolation: false,
     },
     title: "Mermaid Diagram - Zoom with mouse wheel, Pan by dragging",
-    icon: path.join(__dirname, "logo.ico"),
+    icon: path.join(__dirname, "markdown_viewer_icon.png"),
   });
 
   popupWindow.setMenu(null);
@@ -1365,7 +1365,7 @@ ipcMain.on("open-omniware-popup", (event, data) => {
       contextIsolation: false,
     },
     title: "OmniWare Wireframe",
-    icon: path.join(__dirname, "logo.ico"),
+    icon: path.join(__dirname, "markdown_viewer_icon.png"),
   });
 
   popupWindow.setMenu(null);
@@ -1510,7 +1510,7 @@ ipcMain.on("open-image-popup", (event, data) => {
       contextIsolation: false,
     },
     title,
-    icon: path.join(__dirname, "logo.ico"),
+    icon: path.join(__dirname, "markdown_viewer_icon.png"),
   });
 
   popupWindow.setMenu(null);
@@ -1787,7 +1787,7 @@ ipcMain.on("open-table-popup", (event, data) => {
       contextIsolation: true,
     },
     title: "Interactive Table - Sort, Filter, Export",
-    icon: path.join(__dirname, "logo.ico"),
+    icon: path.join(__dirname, "markdown_viewer_icon.png"),
   });
 
   popupWindow.setMenu(null);
@@ -2211,6 +2211,11 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    // Set dock icon on macOS (applies in dev mode where the .icns bundle isn't used)
+    if (process.platform === "darwin" && app.dock) {
+      app.dock.setIcon(path.join(__dirname, "markdown_viewer_icon.png"));
+    }
+
     createWindow();
 
     app.on("activate", () => {
