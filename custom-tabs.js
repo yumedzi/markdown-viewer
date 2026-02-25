@@ -438,9 +438,14 @@
     function buildFullPath() {
       const dir = filePathEl ? filePathEl.textContent : "";
       const name = fileNameEl ? fileNameEl.textContent : "";
-      // Guard: don't append if already ends with the filename (e.g. "✓" feedback)
-      if (!name || dir.endsWith("/" + name)) return dir;
-      return dir ? dir + "/" + name : name;
+      // Only combine when the dir looks like a real path.
+      // Notification strings (e.g. "✓ Path copied to clipboard") start with
+      // neither "/" nor "~", so we leave them untouched.
+      if (!name || !dir || (!dir.startsWith("/") && !dir.startsWith("~")))
+        return dir;
+      // Guard: already ends with the filename — nothing to do
+      if (dir.endsWith("/" + name)) return dir;
+      return dir + "/" + name;
     }
 
     if (filePathEl) {

@@ -484,6 +484,17 @@ body.dark-mode .file-info-bar {
   display: block !important;
 }
 
+/* Align SVG icons vertically with the text label */
+.custom-theme-option .theme-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 2px;
+  opacity: 0.75;
+}
+.custom-theme-option.active .theme-icon {
+  opacity: 1;
+}
+
 /* Active option checkmark */
 .custom-theme-option.active::before {
   content: "✓";
