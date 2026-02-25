@@ -2,17 +2,17 @@
  * Custom Tabs Functionality
  * This module adds tab management to the markdown viewer.
  * Can be easily reapplied after upstream merges.
- * 
+ *
  * Load this after renderer.js in index.html
  */
 
-(function() {
-  'use strict';
+(function () {
+  "use strict";
 
   // Get DOM elements for tabs
-  const tabsContainer = document.getElementById('tabsContainer');
-  const tabsElement = document.getElementById('tabs');
-  const fileInfoBar = document.getElementById('fileInfoBar');
+  const tabsContainer = document.getElementById("tabsContainer");
+  const tabsElement = document.getElementById("tabs");
+  const fileInfoBar = document.getElementById("fileInfoBar");
 
   // Tab management state
   let tabs = [];
@@ -35,11 +35,16 @@
       content: content,
       originalContent: content,
       hasUnsavedChanges: false,
-      scrollPosition: 0
+      scrollPosition: 0,
     };
 
     tabs.push(tab);
-    console.log('[CustomTabs] Created tab:', filename, 'Total tabs:', tabs.length);
+    console.log(
+      "[CustomTabs] Created tab:",
+      filename,
+      "Total tabs:",
+      tabs.length,
+    );
     renderTabs();
     switchToTab(tabId);
     saveTabs();
@@ -48,40 +53,41 @@
   }
 
   function renderTabs() {
-    console.log('[CustomTabs] Rendering tabs, count:', tabs.length);
+    console.log("[CustomTabs] Rendering tabs, count:", tabs.length);
 
     if (tabs.length === 0) {
-      tabsContainer.style.display = 'none';
-      fileInfoBar.style.display = 'none';
+      tabsContainer.style.display = "none";
+      fileInfoBar.style.display = "none";
       return;
     }
 
     // Show tabs when 2+ files open, otherwise show file info bar
     if (tabs.length >= 2) {
-      tabsContainer.style.display = 'flex';
-      fileInfoBar.style.display = 'none';
+      tabsContainer.style.display = "flex";
+      fileInfoBar.style.display = "none";
     } else {
-      tabsContainer.style.display = 'none';
-      fileInfoBar.style.display = 'flex';
+      tabsContainer.style.display = "none";
+      fileInfoBar.style.display = "flex";
     }
 
     // Clear and rebuild tabs
-    tabsElement.innerHTML = '';
+    tabsElement.innerHTML = "";
 
-    tabs.forEach(tab => {
-      const tabElement = document.createElement('div');
-      tabElement.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
+    tabs.forEach((tab) => {
+      const tabElement = document.createElement("div");
+      tabElement.className = "tab" + (tab.id === activeTabId ? " active" : "");
       tabElement.dataset.tabId = tab.id;
 
-      const titleSpan = document.createElement('span');
-      titleSpan.className = 'tab-title';
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "tab-title";
       titleSpan.textContent = tab.filename;
       titleSpan.title = tab.filePath;
 
-      const closeButton = document.createElement('span');
-      closeButton.className = 'tab-close';
-      closeButton.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="4" x2="12" y2="12"></line><line x1="12" y1="4" x2="4" y2="12"></line></svg>';
-      closeButton.addEventListener('click', (e) => {
+      const closeButton = document.createElement("span");
+      closeButton.className = "tab-close";
+      closeButton.innerHTML =
+        '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="4" x2="12" y2="12"></line><line x1="12" y1="4" x2="4" y2="12"></line></svg>';
+      closeButton.addEventListener("click", (e) => {
         e.stopPropagation();
         closeTab(tab.id);
       });
@@ -89,14 +95,14 @@
       tabElement.appendChild(titleSpan);
 
       if (tab.hasUnsavedChanges) {
-        const unsavedDot = document.createElement('span');
-        unsavedDot.className = 'tab-unsaved';
+        const unsavedDot = document.createElement("span");
+        unsavedDot.className = "tab-unsaved";
         tabElement.appendChild(unsavedDot);
       }
 
       tabElement.appendChild(closeButton);
 
-      tabElement.addEventListener('click', () => {
+      tabElement.addEventListener("click", () => {
         switchToTab(tab.id);
       });
 
@@ -105,12 +111,12 @@
   }
 
   function switchToTab(tabId) {
-    const tab = tabs.find(t => t.id === tabId);
+    const tab = tabs.find((t) => t.id === tabId);
     if (!tab) return;
 
     // Save current tab state
     if (activeTabId) {
-      const currentTab = tabs.find(t => t.id === activeTabId);
+      const currentTab = tabs.find((t) => t.id === activeTabId);
       if (currentTab && window.viewer) {
         currentTab.scrollPosition = window.viewer.scrollTop;
         if (window.isEditMode && window.markdownEditor) {
@@ -120,22 +126,22 @@
     }
 
     activeTabId = tabId;
-    console.log('[CustomTabs] Switched to tab:', tab.filename);
+    console.log("[CustomTabs] Switched to tab:", tab.filename);
 
     // Update UI
     renderTabs();
-    
+
     // Update file info if present
     if (window.updateFileInfo) {
       window.updateFileInfo(tab.filePath);
     }
-    
+
     // Set global current file path and originalMarkdown
     window.currentFilePath = tab.filePath;
     if (window.originalMarkdown !== undefined) {
       window.originalMarkdown = tab.originalContent;
     }
-    
+
     // Render content
     if (window.renderMarkdown) {
       window.renderMarkdown(tab.content).then(() => {
@@ -152,25 +158,27 @@
 
     // Notify main process
     if (window.ipcRenderer) {
-      window.ipcRenderer.send('set-active-file', tab.filePath);
+      window.ipcRenderer.send("set-active-file", tab.filePath);
     }
 
     saveTabs();
   }
 
   function closeTab(tabId) {
-    const tabIndex = tabs.findIndex(t => t.id === tabId);
+    const tabIndex = tabs.findIndex((t) => t.id === tabId);
     if (tabIndex === -1) return;
 
     const tab = tabs[tabIndex];
 
     // Check for unsaved changes
     if (tab.hasUnsavedChanges) {
-      const userConfirmed = confirm(`"${tab.filename}" has unsaved changes. Close anyway?`);
+      const userConfirmed = confirm(
+        `"${tab.filename}" has unsaved changes. Close anyway?`,
+      );
       if (!userConfirmed) return;
     }
 
-    console.log('[CustomTabs] Closing tab:', tab.filename);
+    console.log("[CustomTabs] Closing tab:", tab.filename);
     tabs.splice(tabIndex, 1);
 
     // Switch to another tab if closing active
@@ -199,7 +207,7 @@
   }
 
   function updateTabContent(content, hasChanges) {
-    const tab = tabs.find(t => t.id === activeTabId);
+    const tab = tabs.find((t) => t.id === activeTabId);
     if (tab) {
       tab.content = content;
       tab.hasUnsavedChanges = hasChanges;
@@ -209,67 +217,74 @@
   }
 
   function saveTabs() {
-    const tabsData = tabs.map(tab => ({
+    const tabsData = tabs.map((tab) => ({
       filePath: tab.filePath,
-      scrollPosition: tab.scrollPosition
+      scrollPosition: tab.scrollPosition,
     }));
-    localStorage.setItem('openTabs', JSON.stringify(tabsData));
-    localStorage.setItem('activeTabId', activeTabId);
-    console.log('[CustomTabs] Saved tabs to localStorage');
+    localStorage.setItem("openTabs", JSON.stringify(tabsData));
+    localStorage.setItem("activeTabId", activeTabId);
+    console.log("[CustomTabs] Saved tabs to localStorage");
   }
 
   function loadSavedTabs() {
     try {
-      const savedTabs = localStorage.getItem('openTabs');
-      const savedActiveTabId = localStorage.getItem('activeTabId');
-      
+      const savedTabs = localStorage.getItem("openTabs");
+      const savedActiveTabId = localStorage.getItem("activeTabId");
+
       if (savedTabs) {
         const tabsData = JSON.parse(savedTabs);
-        console.log('[CustomTabs] Restoring', tabsData.length, 'tabs');
-        
+        console.log("[CustomTabs] Restoring", tabsData.length, "tabs");
+
         // Load files directly using fs (available since nodeIntegration: true)
         if (tabsData.length > 0 && window.fs) {
           tabsData.forEach((tabData, index) => {
             try {
               if (window.fs.existsSync(tabData.filePath)) {
-                let content = window.fs.readFileSync(tabData.filePath, 'utf8');
+                let content = window.fs.readFileSync(tabData.filePath, "utf8");
                 // Remove BOM if present
-                if (content.charCodeAt(0) === 0xFEFF) {
+                if (content.charCodeAt(0) === 0xfeff) {
                   content = content.substring(1);
                 }
                 const tab = createTab(tabData.filePath, content);
                 tab.scrollPosition = tabData.scrollPosition || 0;
-                console.log('[CustomTabs] Restored tab:', tabData.filePath);
+                console.log("[CustomTabs] Restored tab:", tabData.filePath);
               } else {
-                console.log('[CustomTabs] File no longer exists:', tabData.filePath);
+                console.log(
+                  "[CustomTabs] File no longer exists:",
+                  tabData.filePath,
+                );
               }
             } catch (error) {
-              console.error('[CustomTabs] Error restoring tab:', tabData.filePath, error);
+              console.error(
+                "[CustomTabs] Error restoring tab:",
+                tabData.filePath,
+                error,
+              );
             }
           });
-          
+
           // Switch to previously active tab if it exists
           if (savedActiveTabId && tabs.length > 0) {
             const activeTab = tabs[0]; // Just use first tab for now
             switchToTab(activeTab.id);
           }
         } else {
-          console.log('[CustomTabs] No fs module or no tabs to restore');
+          console.log("[CustomTabs] No fs module or no tabs to restore");
         }
       } else {
-        console.log('[CustomTabs] No saved tabs in localStorage');
+        console.log("[CustomTabs] No saved tabs in localStorage");
       }
     } catch (error) {
-      console.error('[CustomTabs] Error loading saved tabs:', error);
+      console.error("[CustomTabs] Error loading saved tabs:", error);
     }
   }
 
   function findTabByPath(filePath) {
-    return tabs.find(t => t.filePath === filePath);
+    return tabs.find((t) => t.filePath === filePath);
   }
 
   function getActiveTab() {
-    return tabs.find(t => t.id === activeTabId);
+    return tabs.find((t) => t.id === activeTabId);
   }
 
   // ============================================
@@ -278,37 +293,38 @@
 
   if (window.ipcRenderer) {
     // Store original listener
-    const originalListeners = window.ipcRenderer._events ? 
-      window.ipcRenderer._events['file-opened'] : null;
+    const originalListeners = window.ipcRenderer._events
+      ? window.ipcRenderer._events["file-opened"]
+      : null;
 
     // Remove existing listeners and add our interceptor
-    window.ipcRenderer.removeAllListeners('file-opened');
-    
-    window.ipcRenderer.on('file-opened', (event, data) => {
-      console.log('[CustomTabs] Intercepted file-opened:', data.path);
-      
+    window.ipcRenderer.removeAllListeners("file-opened");
+
+    window.ipcRenderer.on("file-opened", (event, data) => {
+      console.log("[CustomTabs] Intercepted file-opened:", data.path);
+
       const { content, path: filePath, allPaths } = data;
-      
+
       // Check if file already open
       const existingTab = findTabByPath(filePath);
       if (existingTab) {
-        console.log('[CustomTabs] File already open, switching to tab');
+        console.log("[CustomTabs] File already open, switching to tab");
         switchToTab(existingTab.id);
         return;
       }
 
       // Create new tab
       createTab(filePath, content);
-      
+
       // If multiple files selected, open them all
       if (allPaths && allPaths.length > 1) {
-        allPaths.slice(1).forEach(path => {
+        allPaths.slice(1).forEach((path) => {
           if (!findTabByPath(path) && window.fs) {
             try {
-              const fileContent = window.fs.readFileSync(path, 'utf8');
+              const fileContent = window.fs.readFileSync(path, "utf8");
               createTab(path, fileContent);
             } catch (error) {
-              console.error('[CustomTabs] Error loading file:', path, error);
+              console.error("[CustomTabs] Error loading file:", path, error);
             }
           }
         });
@@ -321,16 +337,17 @@
   // ============================================
 
   // Monitor edit button clicks to track edit mode state
-  document.addEventListener('DOMContentLoaded', () => {
-    const toggleEditBtn = document.getElementById('toggleEdit');
+  document.addEventListener("DOMContentLoaded", () => {
+    const toggleEditBtn = document.getElementById("toggleEdit");
     if (toggleEditBtn) {
-      toggleEditBtn.addEventListener('click', () => {
+      toggleEditBtn.addEventListener("click", () => {
         // Wait a tick for renderer.js to update isEditMode
         setTimeout(() => {
           // Check if we're in edit mode by checking the class
-          const contentWrapper = document.querySelector('.content-wrapper');
-          window.isEditMode = contentWrapper && contentWrapper.classList.contains('split-view');
-          console.log('[CustomTabs] Edit mode changed to:', window.isEditMode);
+          const contentWrapper = document.querySelector(".content-wrapper");
+          window.isEditMode =
+            contentWrapper && contentWrapper.classList.contains("split-view");
+          console.log("[CustomTabs] Edit mode changed to:", window.isEditMode);
         }, 10);
       });
     }
@@ -349,24 +366,108 @@
     findTabByPath,
     getActiveTab,
     getTabs: () => tabs,
-    getActiveTabId: () => activeTabId
+    getActiveTabId: () => activeTabId,
   };
 
   // ============================================
   // Initialize
   // ============================================
 
-  console.log('[CustomTabs] Module loaded');
-  
+  console.log("[CustomTabs] Module loaded");
+
   // Load saved tabs on startup
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('[CustomTabs] DOM loaded, restoring tabs');
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("[CustomTabs] DOM loaded, restoring tabs");
     loadSavedTabs();
   });
 
   // If DOM already loaded
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
     setTimeout(loadSavedTabs, 100);
   }
+})();
 
+// ============================================
+// Header Integration
+// Merges the file-info-bar into the header row,
+// hides back/forward nav buttons, shortens the
+// home-dir portion of the path to ~, and adds
+// responsive compact mode for narrow windows.
+// ============================================
+(function initHeaderIntegration() {
+  "use strict";
+
+  const os = require("os");
+  const homeDir = os.homedir();
+
+  function shortenPath(text) {
+    if (text && text.startsWith(homeDir)) {
+      return text.replace(homeDir, "~");
+    }
+    return text;
+  }
+
+  function integrateFileInfoBar() {
+    const header = document.querySelector(".header");
+    const controls = document.querySelector(".controls");
+    const fileInfoBarEl = document.getElementById("fileInfoBar");
+
+    if (!header || !controls || !fileInfoBarEl) return;
+
+    // Move fileInfoBar into .header before the controls group
+    header.insertBefore(fileInfoBarEl, controls);
+    header.classList.add("header-integrated");
+
+    // Hide back / forward navigation buttons (tabs replace this workflow)
+    const navBack = document.getElementById("navBackBtn");
+    const navForward = document.getElementById("navForwardBtn");
+    if (navBack) navBack.style.display = "none";
+    if (navForward) navForward.style.display = "none";
+
+    // Watch #filePath for text changes and replace home dir with ~
+    const filePathEl = document.getElementById("filePath");
+    if (filePathEl) {
+      const observer = new MutationObserver(() => {
+        const shortened = shortenPath(filePathEl.textContent);
+        if (shortened !== filePathEl.textContent) {
+          // Temporarily disconnect to avoid re-triggering
+          observer.disconnect();
+          filePathEl.textContent = shortened;
+          observer.observe(filePathEl, {
+            childList: true,
+            characterData: true,
+            subtree: true,
+          });
+        }
+      });
+      observer.observe(filePathEl, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+      // Apply to any value already present
+      if (filePathEl.textContent) {
+        filePathEl.textContent = shortenPath(filePathEl.textContent);
+      }
+    }
+
+    // Responsive compact mode: narrow window → "MV" + icon-only buttons
+    function applyCompact() {
+      document.body.classList.toggle("compact-header", window.innerWidth < 780);
+    }
+    applyCompact();
+    window.addEventListener("resize", applyCompact);
+  }
+
+  if (
+    document.readyState === "complete" ||
+    document.readyState === "interactive"
+  ) {
+    setTimeout(integrateFileInfoBar, 150);
+  } else {
+    document.addEventListener("DOMContentLoaded", integrateFileInfoBar);
+  }
 })();
