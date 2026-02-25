@@ -50,11 +50,18 @@ MISSING_REFS=0
 check_line "$ROOT/index.html" 'custom-styles.css'      '<link rel="stylesheet" href="custom-styles.css">'
 check_line "$ROOT/index.html" 'custom-tabs.js'         '<script src="custom-tabs.js"></script>'
 check_line "$ROOT/index.html" 'custom-performance.js'  '<script src="custom-performance.js"></script>'
+check_line "$ROOT/index.html" 'tabsContainer'          '<div id="tabsContainer" ...> - must be just before <div class="main-content">'
+check_line "$ROOT/index.html" 'app-title'              '<span class="app-title">Markdown Viewer</span> - inside #logoLink'
+check_line "$ROOT/index.html" 'Markdown Viewer'        '<title>Markdown Viewer</title>'
 
 if [ "$MISSING_REFS" -eq 1 ]; then
   echo ""
   echo "   ⚠ Some custom references are missing from index.html."
   echo "     See CUSTOMIZATIONS.md for where to add them."
+  echo "     KEY POINTS:"
+  echo "       - tabsContainer div must be added just before <div class=\"main-content\">"
+  echo "       - app-title span must be inside #logoLink (after logo img tags)"
+  echo "       - <title> must say 'Markdown Viewer', not 'Omnicore Markdown Viewer'"
 fi
 
 # -----------------------------------------------------------------------------
@@ -90,15 +97,29 @@ if [ "$MISSING_BUILD" -eq 1 ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# 4. Ensure backgroundThrottling is enabled (performance fix in main.js)
+# 4. Ensure main.js has performance fixes and correct branding
 # -----------------------------------------------------------------------------
 echo ""
-echo "4. Checking main.js backgroundThrottling..."
+echo "4. Checking main.js..."
 if grep -q 'backgroundThrottling.*true' "$ROOT/main.js"; then
   echo "   ✓ backgroundThrottling: true is present"
 else
   echo "   ✗ MISSING: backgroundThrottling: true not found in main.js"
   echo "     → Add 'backgroundThrottling: true' to webPreferences in new BrowserWindow()"
+fi
+
+if grep -q "window-visibility-changed" "$ROOT/main.js"; then
+  echo "   ✓ window-visibility-changed IPC events present"
+else
+  echo "   ✗ MISSING: window-visibility-changed IPC not found in main.js"
+  echo "     → Add mainWindow.on('hide'/'show'/'minimize'/'restore') IPC sends"
+fi
+
+if grep -q "title:.*Markdown Viewer" "$ROOT/main.js"; then
+  echo "   ✓ BrowserWindow title is 'Markdown Viewer'"
+else
+  echo "   ✗ WRONG TITLE: main.js BrowserWindow title should be 'Markdown Viewer'"
+  echo "     → Set title: 'Markdown Viewer' in new BrowserWindow()"
 fi
 
 # -----------------------------------------------------------------------------
@@ -120,6 +141,6 @@ echo "  • Electron pinned to ^37 (fixes macOS idle CPU usage)"
 echo ""
 echo "Next steps:"
 echo "  1. Run 'npm start' to test the app"
-echo "  2. Verify: tabs, scrollbar, compact header, PDF export"
+echo "  2. Verify: tabs (tabsContainer div in index.html), scrollbar, compact header, PDF export"
 echo "  3. Check CPU usage in Activity Monitor when app is idle"
 echo ""
