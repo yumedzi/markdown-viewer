@@ -123,6 +123,21 @@ else
   echo "     → Set title: 'Markdown Viewer' in new BrowserWindow()"
 fi
 
+if grep -q "markdown_viewer_icon" "$ROOT/main.js"; then
+  echo "   ✓ BrowserWindow / dock icon uses markdown_viewer_icon.png"
+else
+  echo "   ✗ WRONG ICON in main.js: icon references should use 'markdown_viewer_icon.png'"
+  echo "     → Replace all 'logo.ico' with 'markdown_viewer_icon.png' in BrowserWindow options"
+  echo "     → Ensure app.dock.setIcon uses 'markdown_viewer_icon.png' (macOS dev mode)"
+fi
+
+if grep -q "markdown_viewer_icon" "$ROOT/package.json"; then
+  echo "   ✓ package.json build icons use markdown_viewer_icon.png"
+else
+  echo "   ✗ WRONG ICON in package.json: build.mac.icon and build.linux.icon should be 'markdown_viewer_icon.png'"
+  echo "     → Set mac.icon and linux.icon to 'markdown_viewer_icon.png' in the build section"
+fi
+
 # -----------------------------------------------------------------------------
 # 5. Ensure renderer.js exposes window.* exports for custom overlay modules
 #    (custom-tabs.js and custom-performance.js depend on these)

@@ -142,7 +142,7 @@
       "target": [
         "dmg"
       ],
-      "icon": "omnicore_ico.png",
+      "icon": "markdown_viewer_icon.png",
       "fileAssociations": [
         {
           "ext": "md",
@@ -177,7 +177,7 @@
       ],
       "category": "Utility",
       "maintainer": "Omnicore <info@omnicore.com.tr>",
-      "icon": "omnicore_ico.png",
+      "icon": "markdown_viewer_icon.png",
       "fileAssociations": [
         {
           "ext": "md",
