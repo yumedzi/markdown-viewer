@@ -14,6 +14,8 @@
   // ── Section wrapping ───────────────────────────────────────────────────────
   // After each render, group content following each heading into a
   // .section-content wrapper so we can collapse/expand it.
+  // Click handling is done via event delegation (see initHeadingDelegation),
+  // not per-heading listeners, so there are no stale-closure issues.
 
   function wrapSections() {
     const viewer = document.getElementById("viewer");
@@ -39,14 +41,34 @@
       wrapper.className = "section-content";
       heading.parentNode.insertBefore(wrapper, siblings[0]);
       siblings.forEach((el) => wrapper.appendChild(el));
+    });
+  }
 
-      // Clicking the heading toggles its section
-      heading.addEventListener("click", (e) => {
-        // Only toggle if the click is directly on the heading, not a child link
-        if (e.target.tagName === "A") return;
-        wrapper.classList.toggle("collapsed");
-        heading.classList.toggle("section-collapsed");
-      });
+  // ── Event delegation for heading toggle ───────────────────────────────────
+  // A single delegated listener on #viewer is used instead of per-heading
+  // listeners. This avoids stale closure references (e.g. after a file
+  // reload the heading DOM nodes are replaced but the old listeners still
+  // hold references to old — possibly removed — wrapper nodes).
+  // The wrapper is always re-fetched as heading.nextElementSibling at click time.
+
+  function initHeadingDelegation() {
+    const viewer = document.getElementById("viewer");
+    if (!viewer) return;
+
+    viewer.addEventListener("click", (e) => {
+      // Walk up from the click target to find a collapsible heading
+      const heading = e.target.closest("[data-collapsible]");
+      if (!heading) return;
+
+      // Don't hijack clicks on links that happen to be inside headings
+      if (e.target.closest("a")) return;
+
+      // The wrapper is always the immediate next element sibling of the heading
+      const wrapper = heading.nextElementSibling;
+      if (!wrapper || !wrapper.classList.contains("section-content")) return;
+
+      wrapper.classList.toggle("collapsed");
+      heading.classList.toggle("section-collapsed");
     });
   }
 
@@ -134,6 +156,7 @@
 
   function init() {
     injectViewMenuItems();
+    initHeadingDelegation();
     observeViewer();
     // Wrap any content already present (e.g. restored from tabs)
     wrapSections();
