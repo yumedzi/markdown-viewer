@@ -75,12 +75,33 @@ The upstream binary Dark Mode toggle is replaced with a three-way **Theme** subm
 |--------|-----------|
 | **Light** | Always light |
 | **Dark** | Always dark |
-| **Follow Desktop** | Tracks the OS `prefers-color-scheme` setting in real time |
+| **Desktop** | Tracks the OS `prefers-color-scheme` setting in real time |
 
 - Preference stored in `localStorage` and restored on startup
 - Migrates from the old binary `darkMode` key on first launch
 - Theme switches instantly when OS appearance changes — no restart needed
 - Implemented in `custom-theme.js` (overlay file, never touched by upstream merges)
+
+### Ukrainian UI & Document Translation
+
+- Added **Ukrainian (uk)** as both a Document translation target and an Interface language under **Tools › Language**
+- **Turkish removed** from all language menus (Document and Interface sections)
+- Implemented as a pure overlay in `custom-language.js` — patches `UI_STRINGS` at runtime and manipulates the Language submenu DOM, so upstream `renderer.js` is never modified
+- Full set of ~120 translated strings covering all UI elements, notifications, dialogs, and context menus
+
+### Collapsible Headings (View › Collapse All / Expand All)
+
+Two new entries appear at the **top of the View menu**:
+
+| Action | Behaviour |
+|--------|-----------|
+| **Collapse All** | Folds the content under every heading in the current document |
+| **Expand All** | Unfolds all collapsed sections |
+
+- Headings also become individually clickable to toggle their own section
+- A subtle `▾` indicator on each heading shows collapsed (`▶`) vs expanded state
+- Sections are always expanded in print / PDF export
+- Implemented in `custom-collapse.js` (overlay, no upstream files touched)
 
 ### Compact Header & Wide Scrollbar
 

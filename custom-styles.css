@@ -657,3 +657,31 @@ body.dark-mode .file-info-bar {
     background 0.15s ease,
     color 0.15s ease !important;
 }
+
+/* ============================================
+   CUSTOM: Collapsible Sections (View menu items only)
+   Individual heading collapse is handled by upstream makeHeadersCollapsible().
+   ============================================ */
+
+/* View menu Collapse/Expand items */
+.custom-collapse-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-collapse-item svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.custom-collapse-item:hover svg {
+  opacity: 1;
+}
+
+/* Print: always expand all sections */
+@media print {
+  .collapsible-section.collapsed {
+    display: block !important;
+  }
+}
