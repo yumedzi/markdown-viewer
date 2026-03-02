@@ -127,6 +127,13 @@ else
   echo "     → See CUSTOMIZATIONS.md section 'Window state persistence'"
 fi
 
+if grep -q "app\.on.*open-file" "$ROOT/main.js"; then
+  echo "   ✓ macOS open-file event handler present"
+else
+  echo "   ✗ MISSING: app.on('open-file') handler not found in main.js"
+  echo "     → Add open-file handler before app.whenReady() so double-clicking .md files works"
+fi
+
 if grep -q "title:.*Markdown Viewer" "$ROOT/main.js"; then
   echo "   ✓ BrowserWindow title is 'Markdown Viewer'"
 else

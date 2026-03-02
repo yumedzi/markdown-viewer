@@ -2212,6 +2212,30 @@ function handleFileArgument(argv) {
 log("Initial process.argv:", process.argv);
 handleFileArgument(process.argv);
 
+// macOS: handle file open via Finder / double-click / "Open With"
+// Must be registered before app is ready so early open-file events are caught.
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  log("open-file event received:", filePath);
+  if (!filePath) return;
+
+  if (mainWindow && mainWindow.webContents) {
+    // App already running — send directly to renderer (respects unsaved-changes check)
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once("did-finish-load", () => {
+        mainWindow.webContents.send("external-file-open-request", { filePath });
+      });
+    } else {
+      mainWindow.webContents.send("external-file-open-request", { filePath });
+    }
+  } else {
+    // App not ready yet — store for did-finish-load
+    fileToOpen = filePath;
+  }
+});
+
 ipcMain.on("request-open-file", (event, data) => {
   const { filePath } = data;
   if (filePath && fs.existsSync(filePath)) {
